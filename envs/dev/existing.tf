@@ -55,3 +55,14 @@ data "aws_acm_certificate" "wildcard" {
   domain   = "*.cking.co.kr"
   statuses = ["ISSUED"]
 }
+
+data "aws_instance" "app" {
+  filter {
+    name   = "tag:Name"
+    values = ["dev-cking-app"]
+  }
+}
+
+data "aws_ssm_parameter" "alert_email" {
+  name = "/cking/dev/monitoring/ALERT_EMAIL"
+}

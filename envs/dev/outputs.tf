@@ -19,3 +19,12 @@ output "admin_frontend" {
     deploy_role_arn = aws_iam_role.frontend_deploy.arn
   }
 }
+
+output "observability" {
+  description = "관측 서버 정보"
+  value = {
+    instance_id = aws_instance.observability.id
+    private_ip  = aws_instance.observability.private_ip
+    bucket      = aws_s3_bucket.observability.bucket
+  }
+}

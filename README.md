@@ -18,7 +18,10 @@ envs/dev/     개발 환경. 실행 위치
   existing.tf         콘솔이 관리하는 기존 리소스 읽기(data)
   admin_frontend.tf   관리자 앱 정적 호스팅(S3, CloudFront, WAF, 요금제, Route53)
   frontend_deploy.tf  FE 배포 역할(콘솔에서 가져옴)과 앱별 권한
+  observability.tf    관측 서버(EC2, 데이터 디스크, 스냅샷, 버킷, IAM)
+  alerts.tf           서버 상태 검사 경보와 메일 주제
   outputs.tf          읽어 온 값 출력
+  templates/          서버 첫 부팅 스크립트
 ```
 
 Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙는다. 이 태그가 없는 리소스는 콘솔에서 관리한다.
