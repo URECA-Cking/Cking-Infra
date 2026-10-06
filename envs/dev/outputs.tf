@@ -10,3 +10,12 @@ output "existing" {
     route53_zone_id    = data.aws_route53_zone.main.zone_id
   }
 }
+
+output "admin_frontend" {
+  description = "관리자 앱 배포에 필요한 값"
+  value = {
+    bucket          = aws_s3_bucket.admin_frontend.bucket
+    distribution_id = aws_cloudfront_distribution.admin_frontend.id
+    deploy_role_arn = aws_iam_role.frontend_deploy.arn
+  }
+}

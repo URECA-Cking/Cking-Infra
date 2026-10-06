@@ -1,13 +1,3 @@
-import {
-  to = aws_iam_role.frontend_deploy
-  id = "dev-cking-fe-github-actions-role"
-}
-
-import {
-  to = aws_iam_role_policy.frontend_deploy
-  id = "dev-cking-fe-github-actions-role:dev-cking-fe-deploy"
-}
-
 resource "aws_iam_role" "frontend_deploy" {
   name = "dev-cking-fe-github-actions-role"
 
@@ -45,6 +35,29 @@ resource "aws_iam_role_policy" "frontend_deploy" {
         Effect   = "Allow"
         Action   = "cloudfront:CreateInvalidation"
         Resource = data.aws_cloudfront_distribution.frontend.arn
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "admin_frontend_deploy" {
+  name = "dev-cking-fe-deploy-admin"
+  role = aws_iam_role.frontend_deploy.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "SyncAdminFrontendBucket"
+        Effect   = "Allow"
+        Action   = ["s3:PutObject", "s3:DeleteObject", "s3:ListBucket"]
+        Resource = [aws_s3_bucket.admin_frontend.arn, "${aws_s3_bucket.admin_frontend.arn}/*"]
+      },
+      {
+        Sid      = "InvalidateAdminFrontendCache"
+        Effect   = "Allow"
+        Action   = "cloudfront:CreateInvalidation"
+        Resource = aws_cloudfront_distribution.admin_frontend.arn
       }
     ]
   })

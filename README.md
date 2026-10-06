@@ -16,7 +16,8 @@ envs/dev/     개발 환경. 실행 위치
   backend.tf          상태 저장소(S3)와 잠금
   providers.tf        리전, 계정 고정, 공통 태그
   existing.tf         콘솔이 관리하는 기존 리소스 읽기(data)
-  frontend_deploy.tf  FE 배포 역할과 권한(콘솔에서 가져옴)
+  admin_frontend.tf   관리자 앱 정적 호스팅(S3, CloudFront, WAF, 요금제, Route53)
+  frontend_deploy.tf  FE 배포 역할(콘솔에서 가져옴)과 앱별 권한
   outputs.tf          읽어 온 값 출력
 ```
 
