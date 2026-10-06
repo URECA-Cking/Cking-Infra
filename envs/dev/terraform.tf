@@ -6,5 +6,9 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 6.67"
     }
+    awscc = {
+      source  = "hashicorp/awscc"
+      version = "~> 1.104"
+    }
   }
 }

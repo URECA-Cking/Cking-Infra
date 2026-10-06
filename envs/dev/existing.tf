@@ -49,3 +49,9 @@ data "aws_s3_bucket" "frontend" {
 data "aws_cloudfront_distribution" "frontend" {
   id = "E2NQPJU059830V"
 }
+
+data "aws_acm_certificate" "wildcard" {
+  provider = aws.us_east_1
+  domain   = "*.cking.co.kr"
+  statuses = ["ISSUED"]
+}
