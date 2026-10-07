@@ -35,7 +35,7 @@ services:
   alloy:
     image: grafana/alloy:v1.20.1
     restart: unless-stopped
-    user: "65534:65534"
+    user: "473:473"
     command:
       - run
       - /etc/alloy/gateway.alloy
@@ -50,6 +50,7 @@ services:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
       - /:/host/root:ro
+      - /run/udev/data:/run/udev/data:ro
     mem_limit: 256m
     logging: *logging
 
@@ -65,5 +66,5 @@ services:
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - /data/grafana:/var/lib/grafana
-    mem_limit: 256m
+    mem_limit: 384m
     logging: *logging
