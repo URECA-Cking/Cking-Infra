@@ -72,6 +72,7 @@ resource "aws_iam_role_policy" "observability" {
           "cloudwatch:DescribeAlarmHistory",
           "cloudwatch:GetMetricData",
           "cloudwatch:ListMetrics",
+          "logs:DescribeLogGroups",
           "ec2:DescribeInstances",
           "ec2:DescribeRegions",
           "ec2:DescribeTags",
