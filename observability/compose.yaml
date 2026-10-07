@@ -1,0 +1,69 @@
+name: observability
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  prometheus:
+    image: prom/prometheus:v3.15.0
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=90d
+      - --storage.tsdb.retention.size=6GB
+      - --web.enable-remote-write-receiver
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - /data/prometheus:/prometheus
+    mem_limit: 512m
+    logging: *logging
+
+  loki:
+    image: grafana/loki:3.7.8
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki.yaml
+    volumes:
+      - ./loki/loki.yaml:/etc/loki/loki.yaml:ro
+      - /data/loki:/loki
+    mem_limit: 384m
+    logging: *logging
+
+  alloy:
+    image: grafana/alloy:v1.20.1
+    restart: unless-stopped
+    user: "65534:65534"
+    command:
+      - run
+      - /etc/alloy/gateway.alloy
+      - --storage.path=/var/lib/alloy/data
+      - --server.http.listen-addr=0.0.0.0:12345
+    ports:
+      - "9009:9009"
+      - "3500:3500"
+    volumes:
+      - ./alloy/gateway.alloy:/etc/alloy/gateway.alloy:ro
+      - /data/alloy:/var/lib/alloy/data
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host/root:ro
+    mem_limit: 256m
+    logging: *logging
+
+  grafana:
+    image: grafana/grafana:13.2.3
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD가 지정되지 않았습니다}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - /data/grafana:/var/lib/grafana
+    mem_limit: 256m
+    logging: *logging

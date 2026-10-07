@@ -10,6 +10,7 @@
 ## 구조
 
 ```text
+.github/workflows/         관측 설정 배포 워크플로
 bootstrap/                 Terraform보다 먼저 만든 상태 버킷 기록
 envs/dev/                  개발 환경. 실행 위치
   terraform.tf             Terraform·프로바이더 버전
@@ -23,6 +24,7 @@ envs/dev/                  개발 환경. 실행 위치
   observability_deploy.tf  관측 설정을 배포하는 GitHub Actions 역할
   outputs.tf               읽어 온 값 출력
   templates/               서버 첫 부팅 스크립트
+observability/             관측 서버 위의 프로그램 설정(compose, Prometheus, Loki, Alloy, Grafana)
 ```
 
 Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙는다. 이 태그가 없는 리소스는 콘솔에서 관리한다.
@@ -32,7 +34,8 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
 - 상태 파일은 S3 원격 백엔드에 둔다. 상태 파일, 변수 파일, 비밀값은 커밋하지 않는다
 - 비밀값은 Parameter Store에 두고 코드에는 경로만 쓴다
 - 변경은 PR에 `terraform plan` 결과를 붙여 리뷰한 뒤 적용한다
-- 협업 규칙은 조직 CONTRIBUTING을 따른다. 배포 대상이 없어 `develop` 없이 `main`으로 PR을 보낸다
+- 인프라(`envs/`)는 사람이 plan을 확인하고 apply한다. 관측 서버 위의 설정(`observability/`)은 main에 머지되면 GitHub Actions가 배포한다. 같은 리소스를 두 주체가 관리하지 않는다
+- 협업 규칙은 조직 CONTRIBUTING을 따른다. 환경이 개발 서버 하나라 `develop` 없이 `main`으로 PR을 보낸다
 
 ## 요구 사항
 
