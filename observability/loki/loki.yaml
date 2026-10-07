@@ -1,0 +1,47 @@
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  log_level: info
+
+common:
+  path_prefix: /loki
+  replication_factor: 1
+  instance_addr: 127.0.0.1
+  ring:
+    kvstore:
+      store: inmemory
+
+storage_config:
+  use_thanos_objstore: true
+  object_store:
+    storage_prefix: loki
+    s3:
+      bucket_name: dev-cking-observability-551372961758-ap-northeast-2-an
+      endpoint: s3.ap-northeast-2.amazonaws.com
+      region: ap-northeast-2
+      native_aws_auth_enabled: true
+  tsdb_shipper:
+    active_index_directory: /loki/tsdb-index
+    cache_location: /loki/tsdb-cache
+
+schema_config:
+  configs:
+    - from: "2026-10-01"
+      store: tsdb
+      object_store: s3
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+compactor:
+  working_directory: /loki/compactor
+  retention_enabled: true
+  delete_request_store: s3
+
+limits_config:
+  retention_period: 336h
+
+analytics:
+  reporting_enabled: false
