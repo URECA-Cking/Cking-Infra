@@ -4,7 +4,8 @@ set -euo pipefail
 REGION=ap-northeast-2
 cd "$(dirname "$0")"
 
-install -d -o 65534 -g 65534 /data/prometheus /data/alloy
+install -d -o 65534 -g 65534 /data/prometheus
+install -d -o 473 -g 473 /data/alloy
 install -d -o 10001 -g 10001 /data/loki
 install -d -o 472 -g 0 /data/grafana
 
