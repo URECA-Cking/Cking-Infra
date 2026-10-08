@@ -18,11 +18,11 @@ envs/dev/                  개발 환경. 실행 위치
   providers.tf             리전, 계정 고정, 공통 태그
   existing.tf              콘솔이 관리하는 기존 리소스 읽기(data)
   admin_frontend.tf        관리자 앱 정적 호스팅(S3, CloudFront, WAF, 요금제, Route53)
-  app_server.tf            앱 서버 역할(콘솔에서 가져옴)
+  app_server.tf            앱 서버 역할(콘솔에서 가져옴)과 수집기 설정 읽기 권한
   frontend_deploy.tf       FE 배포 역할(콘솔에서 가져옴)과 앱별 권한
-  observability.tf         관측 서버(EC2, 데이터 디스크, 스냅샷, 버킷, IAM)
+  observability.tf         관측 서버(EC2, 데이터 디스크, 스냅샷, 버킷, IAM, 앱 서버 수집 포트)
   alerts.tf                서버 상태 검사 경보와 메일 주제
-  observability_deploy.tf  관측 설정을 배포하는 GitHub Actions 역할
+  observability_deploy.tf  관측 설정·앱 서버 수집기 설정을 배포하는 GitHub Actions 역할
   outputs.tf               읽어 온 값 출력
   templates/               서버 첫 부팅 스크립트
 observability/             관측 서버 위의 프로그램 설정(compose, Prometheus, Loki, Alloy, Grafana)
