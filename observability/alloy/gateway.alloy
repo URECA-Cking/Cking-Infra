@@ -27,11 +27,15 @@ discovery.relabel "host" {
     target_label = "instance"
     replacement  = "dev-cking-observability"
   }
+
+  rule {
+    target_label = "job"
+    replacement  = "node"
+  }
 }
 
 prometheus.scrape "host" {
   targets         = discovery.relabel.host.output
-  job_name        = "node"
   scrape_interval = "15s"
   forward_to      = [prometheus.remote_write.local.receiver]
 }
