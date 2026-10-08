@@ -4,7 +4,7 @@
 
 ## 범위
 
-- Terraform은 새로 만드는 리소스(관측 서버 등)와 콘솔에서 가져온 리소스를 관리한다. 가져온 리소스: FE 배포 역할(`dev-cking-fe-github-actions-role`)
+- Terraform은 새로 만드는 리소스(관측 서버 등)와 콘솔에서 가져온 리소스를 관리한다. 가져온 리소스: FE 배포 역할(`dev-cking-fe-github-actions-role`), 앱 서버 역할(`dev-cking-ec2-role`)
 - 기존 리소스(VPC, 서브넷, 앱 보안 그룹, ALB, RDS)는 콘솔이 관리하며 Terraform은 `data` 소스로 읽기만 한다
 
 ## 구조
@@ -18,6 +18,7 @@ envs/dev/                  개발 환경. 실행 위치
   providers.tf             리전, 계정 고정, 공통 태그
   existing.tf              콘솔이 관리하는 기존 리소스 읽기(data)
   admin_frontend.tf        관리자 앱 정적 호스팅(S3, CloudFront, WAF, 요금제, Route53)
+  app_server.tf            앱 서버 역할(콘솔에서 가져옴)
   frontend_deploy.tf       FE 배포 역할(콘솔에서 가져옴)과 앱별 권한
   observability.tf         관측 서버(EC2, 데이터 디스크, 스냅샷, 버킷, IAM)
   alerts.tf                서버 상태 검사 경보와 메일 주제
