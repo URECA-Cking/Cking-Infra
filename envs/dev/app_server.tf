@@ -1,28 +1,3 @@
-import {
-  to = aws_iam_role.app_server
-  id = "dev-cking-ec2-role"
-}
-
-import {
-  to = aws_iam_role_policy.app_server_deploy
-  id = "dev-cking-ec2-role:dev-cking-ec2-deploy"
-}
-
-import {
-  to = aws_iam_role_policy.app_server_uploads
-  id = "dev-cking-ec2-role:dev-cking-ec2-uploads"
-}
-
-import {
-  to = aws_iam_role_policy_attachment.app_server_ssm
-  id = "dev-cking-ec2-role/arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-}
-
-import {
-  to = aws_iam_instance_profile.app_server
-  id = "dev-cking-ec2-role"
-}
-
 resource "aws_iam_role" "app_server" {
   name        = "dev-cking-ec2-role"
   description = "Allows EC2 instances to call AWS services on your behalf."
@@ -94,4 +69,28 @@ resource "aws_iam_role_policy_attachment" "app_server_ssm" {
 resource "aws_iam_instance_profile" "app_server" {
   name = "dev-cking-ec2-role"
   role = aws_iam_role.app_server.name
+}
+
+resource "aws_iam_role_policy" "app_server_agent_config" {
+  name = "dev-cking-ec2-app-agent"
+  role = aws_iam_role.app_server.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "ListAppAgentConfig"
+        Effect    = "Allow"
+        Action    = "s3:ListBucket"
+        Resource  = aws_s3_bucket.observability.arn
+        Condition = { StringLike = { "s3:prefix" = ["app-agent/", "app-agent/*"] } }
+      },
+      {
+        Sid      = "ReadAppAgentConfig"
+        Effect   = "Allow"
+        Action   = "s3:GetObject"
+        Resource = "${aws_s3_bucket.observability.arn}/app-agent/*"
+      }
+    ]
+  })
 }

@@ -52,3 +52,39 @@ resource "aws_iam_role_policy" "observability_deploy" {
     ]
   })
 }
+
+resource "aws_iam_role_policy" "app_agent_deploy" {
+  name = "dev-cking-app-agent-deploy"
+  role = aws_iam_role.infra_deploy.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "ListAppAgentConfig"
+        Effect    = "Allow"
+        Action    = "s3:ListBucket"
+        Resource  = aws_s3_bucket.observability.arn
+        Condition = { StringLike = { "s3:prefix" = ["app-agent/", "app-agent/*"] } }
+      },
+      {
+        Sid      = "WriteAppAgentConfig"
+        Effect   = "Allow"
+        Action   = ["s3:PutObject", "s3:DeleteObject"]
+        Resource = "${aws_s3_bucket.observability.arn}/app-agent/*"
+      },
+      {
+        Sid      = "SendAppAgentDeployCommand"
+        Effect   = "Allow"
+        Action   = "ssm:SendCommand"
+        Resource = [data.aws_instance.app.arn, "arn:aws:ssm:ap-northeast-2::document/AWS-RunShellScript"]
+      },
+      {
+        Sid      = "ReadCommandResult"
+        Effect   = "Allow"
+        Action   = ["ssm:GetCommandInvocation", "ec2:DescribeInstances"]
+        Resource = "*"
+      }
+    ]
+  })
+}

@@ -5,6 +5,24 @@ resource "aws_security_group" "observability" {
   tags        = { Name = "dev-cking-observability-sg" }
 }
 
+resource "aws_vpc_security_group_ingress_rule" "observability_metrics_from_app" {
+  security_group_id            = aws_security_group.observability.id
+  description                  = "App server Alloy metrics"
+  ip_protocol                  = "tcp"
+  from_port                    = 9009
+  to_port                      = 9009
+  referenced_security_group_id = data.aws_security_group.app.id
+}
+
+resource "aws_vpc_security_group_ingress_rule" "observability_logs_from_app" {
+  security_group_id            = aws_security_group.observability.id
+  description                  = "App server Alloy logs"
+  ip_protocol                  = "tcp"
+  from_port                    = 3500
+  to_port                      = 3500
+  referenced_security_group_id = data.aws_security_group.app.id
+}
+
 resource "aws_vpc_security_group_egress_rule" "observability_https" {
   security_group_id = aws_security_group.observability.id
   description       = "Docker images, AWS APIs, webhooks"
@@ -111,6 +129,7 @@ resource "aws_instance" "observability" {
   ami                         = "ami-01e3230cee0cae555"
   instance_type               = "t4g.small"
   subnet_id                   = data.aws_subnet.public_2b.id
+  private_ip                  = "10.0.21.245"
   vpc_security_group_ids      = [aws_security_group.observability.id]
   iam_instance_profile        = aws_iam_instance_profile.observability.name
   associate_public_ip_address = true
