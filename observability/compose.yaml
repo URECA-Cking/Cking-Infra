@@ -19,6 +19,8 @@ services:
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - /data/prometheus:/prometheus
+    labels:
+      kr.co.cking.config-hash: ${PROMETHEUS_CONFIG_HASH:?설정 해시가 지정되지 않았습니다}
     mem_limit: 512m
     logging: *logging
 
@@ -29,6 +31,8 @@ services:
     volumes:
       - ./loki/loki.yaml:/etc/loki/loki.yaml:ro
       - /data/loki:/loki
+    labels:
+      kr.co.cking.config-hash: ${LOKI_CONFIG_HASH:?설정 해시가 지정되지 않았습니다}
     mem_limit: 384m
     logging: *logging
 
@@ -51,6 +55,8 @@ services:
       - /sys:/host/sys:ro
       - /:/host/root:ro
       - /run/udev/data:/run/udev/data:ro
+    labels:
+      kr.co.cking.config-hash: ${ALLOY_CONFIG_HASH:?설정 해시가 지정되지 않았습니다}
     mem_limit: 256m
     logging: *logging
 
@@ -67,5 +73,7 @@ services:
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - /data/grafana:/var/lib/grafana
+    labels:
+      kr.co.cking.config-hash: ${GRAFANA_CONFIG_HASH:?설정 해시가 지정되지 않았습니다}
     mem_limit: 512m
     logging: *logging
