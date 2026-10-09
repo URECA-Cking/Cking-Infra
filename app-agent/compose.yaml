@@ -1,0 +1,40 @@
+name: app-agent
+
+services:
+  alloy:
+    image: grafana/alloy:v1.20.1
+    restart: unless-stopped
+    user: "0:0"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    command:
+      - run
+      - /etc/alloy/agent.alloy
+      - --storage.path=/data
+    volumes:
+      - ./agent.alloy:/etc/alloy/agent.alloy:ro
+      - /var/lib/app-agent:/data
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host/root:ro
+      - /run/udev/data:/run/udev/data:ro
+    networks:
+      - cking
+    labels:
+      kr.co.cking.config-hash: ${AGENT_CONFIG_HASH:?설정 해시가 지정되지 않았습니다}
+    mem_limit: 128m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+        labels: "com.docker.compose.service"
+
+networks:
+  cking:
+    name: cking_default
+    external: true
