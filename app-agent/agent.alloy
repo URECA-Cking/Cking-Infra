@@ -1,0 +1,150 @@
+prometheus.scrape "app" {
+  targets         = [{__address__ = "app:8081", instance = "dev-cking-app"}]
+  job_name        = "cking-be"
+  metrics_path    = "/actuator/prometheus"
+  scrape_interval = "15s"
+  forward_to      = [prometheus.relabel.app.receiver]
+}
+
+prometheus.relabel "app" {
+  forward_to = [prometheus.remote_write.gateway.receiver]
+
+  rule {
+    source_labels = ["__name__"]
+    regex         = "spring_security_.*"
+    action        = "drop"
+  }
+}
+
+prometheus.exporter.unix "host" {
+  procfs_path = "/host/proc"
+  sysfs_path  = "/host/sys"
+  rootfs_path = "/host/root"
+}
+
+discovery.relabel "host" {
+  targets = prometheus.exporter.unix.host.targets
+
+  rule {
+    target_label = "instance"
+    replacement  = "dev-cking-app"
+  }
+
+  rule {
+    target_label = "job"
+    replacement  = "node"
+  }
+}
+
+prometheus.scrape "host" {
+  targets         = discovery.relabel.host.output
+  scrape_interval = "15s"
+  forward_to      = [prometheus.remote_write.gateway.receiver]
+}
+
+prometheus.exporter.redis "redis" {
+  redis_addr           = "redis:6379"
+  check_single_streams = ["stream:ticket-deducted", "stream:ticket-earned", "stream:common-ticket-earned"]
+  export_key_values    = false
+}
+
+discovery.relabel "redis" {
+  targets = prometheus.exporter.redis.redis.targets
+
+  rule {
+    target_label = "instance"
+    replacement  = "dev-cking-app"
+  }
+
+  rule {
+    target_label = "job"
+    replacement  = "redis"
+  }
+}
+
+prometheus.scrape "redis" {
+  targets         = discovery.relabel.redis.output
+  scrape_interval = "15s"
+  forward_to      = [prometheus.remote_write.gateway.receiver]
+}
+
+prometheus.exporter.self "agent" {}
+
+discovery.relabel "agent" {
+  targets = prometheus.exporter.self.agent.targets
+
+  rule {
+    target_label = "instance"
+    replacement  = "dev-cking-app"
+  }
+
+  rule {
+    target_label = "job"
+    replacement  = "alloy"
+  }
+}
+
+prometheus.scrape "agent" {
+  targets         = discovery.relabel.agent.output
+  scrape_interval = "15s"
+  forward_to      = [prometheus.remote_write.gateway.receiver]
+}
+
+prometheus.remote_write "gateway" {
+  endpoint {
+    url = "http://10.0.21.245:9009/api/v1/metrics/write"
+  }
+}
+
+local.file_match "docker" {
+  path_targets = [{__path__ = "/var/lib/docker/containers/*/*-json.log"}]
+}
+
+loki.source.file "docker" {
+  targets    = local.file_match.docker.targets
+  forward_to = [loki.process.docker.receiver]
+}
+
+loki.process "docker" {
+  forward_to = [loki.write.gateway.receiver]
+
+  stage.json {
+    expressions = {container = `attrs."com.docker.compose.service"`}
+  }
+
+  stage.docker {}
+
+  stage.labels {
+    values = {container = ""}
+  }
+
+  stage.static_labels {
+    values = {instance = "dev-cking-app"}
+  }
+
+  stage.match {
+    selector = "{container=\"app\"}"
+
+    stage.multiline {
+      firstline = "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}"
+    }
+
+    stage.regex {
+      expression = "^\\S+\\s+(?P<level>TRACE|DEBUG|INFO|WARN|ERROR)\\s"
+    }
+
+    stage.labels {
+      values = {level = ""}
+    }
+  }
+
+  stage.label_drop {
+    values = ["filename", "stream"]
+  }
+}
+
+loki.write "gateway" {
+  endpoint {
+    url = "http://10.0.21.245:3500/loki/api/v1/push"
+  }
+}
