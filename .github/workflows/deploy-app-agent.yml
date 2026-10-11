@@ -46,7 +46,7 @@ jobs:
 
           COMMAND_ID=$(aws ssm send-command --instance-ids "$INSTANCE_ID" \
             --document-name AWS-RunShellScript --comment "deploy app agent ${GITHUB_SHA::7}" \
-            --parameters "commands=[\"aws s3 sync --delete --region $AWS_REGION s3://$BUCKET/app-agent/ /opt/app-agent/\",\"bash /opt/app-agent/apply.sh\"]" \
+            --parameters "commands=[\"aws s3 sync --delete --exact-timestamps --region $AWS_REGION s3://$BUCKET/app-agent/ /opt/app-agent/\",\"bash /opt/app-agent/apply.sh\"]" \
             --query Command.CommandId --output text)
 
           STATUS=Pending
