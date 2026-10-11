@@ -11,7 +11,8 @@ loki.source.api "app" {
     listen_address = "0.0.0.0"
     listen_port    = 3500
   }
-  forward_to = [loki.write.local.receiver]
+  use_incoming_timestamp = true
+  forward_to             = [loki.write.local.receiver]
 }
 
 prometheus.exporter.unix "host" {
