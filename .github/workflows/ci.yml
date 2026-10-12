@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  terraform:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.16.4
+          terraform_wrapper: false
+      - run: terraform fmt -check -recursive
+      - run: terraform init -backend=false -input=false
+        working-directory: envs/dev
+      - run: terraform validate
+        working-directory: envs/dev
+
+  config:
+    runs-on: ubuntu-24.04
+    env:
+      # compose가 요구하는 값. 해석만 하므로 실제 값은 쓰지 않는다.
+      PROMETHEUS_CONFIG_HASH: ci
+      LOKI_CONFIG_HASH: ci
+      ALLOY_CONFIG_HASH: ci
+      GRAFANA_CONFIG_HASH: ci
+      NGINX_CONFIG_HASH: ci
+      GRAFANA_ADMIN_PASSWORD: ci
+      AGENT_CONFIG_HASH: ci
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: compose
+        run: |
+          docker compose -f observability/compose.yaml config --quiet
+          docker compose -f app-agent/compose.yaml config --quiet
+      # 서버와 같은 버전으로 검사하도록 compose에 고정된 이미지를 그대로 쓴다.
+      - name: images
+        run: |
+          image() { docker compose -f observability/compose.yaml config --images | grep -m1 "^$1"; }
+          {
+            echo "ALLOY_IMAGE=$(image grafana/alloy)"
+            echo "PROMETHEUS_IMAGE=$(image prom/prometheus)"
+            echo "LOKI_IMAGE=$(image grafana/loki)"
+            echo "NGINX_IMAGE=$(image nginxinc/nginx-unprivileged)"
+          } >> "$GITHUB_ENV"
+      - name: alloy
+        run: |
+          for f in observability/alloy/host.alloy app-agent/agent.alloy; do
+            docker run --rm -v "$PWD/$f:/config.alloy:ro" "$ALLOY_IMAGE" validate /config.alloy
+          done
+      - name: prometheus
+        run: >
+          docker run --rm --entrypoint promtool
+          -v "$PWD/observability/prometheus/prometheus.yml:/prometheus.yml:ro"
+          "$PROMETHEUS_IMAGE" check config /prometheus.yml
+      - name: loki
+        run: >
+          docker run --rm
+          -v "$PWD/observability/loki/loki.yaml:/etc/loki/loki.yaml:ro"
+          "$LOKI_IMAGE" -config.file=/etc/loki/loki.yaml -verify-config
+      - name: nginx
+        run: >
+          docker run --rm --read-only --tmpfs /tmp
+          -v "$PWD/observability/nginx/nginx.conf:/etc/nginx/nginx.conf:ro"
+          "$NGINX_IMAGE" nginx -t
+
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: shellcheck
+        run: |
+          shellcheck observability/apply.sh app-agent/apply.sh
+          # Terraform templatefile이라 ${...}는 Terraform 변수다. 파일을 고치면 user_data가 바뀌어 서버가 재시작된다.
+          shellcheck -e SC2154,SC1091 envs/dev/templates/observability-init.sh
+      - name: actionlint
+        run: >
+          docker run --rm -v "$PWD:/repo:ro" -w /repo
+          rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667
+          -no-color

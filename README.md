@@ -11,7 +11,7 @@
 ## 구조
 
 ```text
-.github/workflows/         관측 설정·앱 서버 수집기 배포 워크플로
+.github/workflows/         PR 검사(ci.yml), 관측 설정·앱 서버 수집기 배포 워크플로
 .github/dependabot.yml     컨테이너 이미지·GitHub Actions 갱신 PR
 app-agent/                 앱 서버 수집기(Alloy) 설정
 bootstrap/                 Terraform보다 먼저 만든 상태 버킷 기록
@@ -41,6 +41,10 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
 - 변경은 PR에 `terraform plan` 결과를 붙여 리뷰한 뒤 적용한다
 - 인프라(`envs/`)는 사람이 plan을 확인하고 apply한다. 관측 서버 위의 설정(`observability/`)과 앱 서버 수집기 설정(`app-agent/`)은 main에 머지되면 GitHub Actions가 배포한다. 같은 리소스를 두 주체가 관리하지 않는다
 - 컨테이너 이미지는 `이름:버전@sha256:…`으로 고정한다. 태그는 배포처에서 다른 이미지로 옮길 수 있어, 버전은 사람이 읽는 표기로 남기고 실제로는 digest로 받는다. 갱신은 Dependabot PR로 받고, 직접 바꿀 때는 버전과 digest를 함께 바꾼다. digest는 `docker buildx imagetools inspect 이름:버전`의 `Digest` 값이다
+- PR마다 `ci.yml`이 검사하고, main 룰셋의 필수 검사로 건다. 설정 검증은 compose에 고정된 이미지로 실행한다
+  - `terraform`: `terraform fmt -check`, `envs/dev`의 `init -backend=false`·`validate`
+  - `config`: compose 해석, Alloy `validate`, `promtool check config`, Loki `-verify-config`, `nginx -t`
+  - `lint`: `shellcheck`(배포 스크립트, 서버 첫 부팅 스크립트), `actionlint`(워크플로)
 - 협업 규칙은 조직 CONTRIBUTING을 따른다. 환경이 개발 서버 하나라 `develop` 없이 `main`으로 PR을 보낸다
 
 ## 요구 사항
