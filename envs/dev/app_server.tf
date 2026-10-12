@@ -49,7 +49,8 @@ resource "aws_iam_role_policy" "app_server_uploads" {
         Resource = [
           "arn:aws:s3:::dev-cking-uploads-551372961758-ap-northeast-2-an/subscription-verifications/*",
           "arn:aws:s3:::dev-cking-uploads-551372961758-ap-northeast-2-an/post-images/*",
-          "arn:aws:s3:::dev-cking-uploads-551372961758-ap-northeast-2-an/member-profile-images/*"
+          "arn:aws:s3:::dev-cking-uploads-551372961758-ap-northeast-2-an/member-profile-images/*",
+          "arn:aws:s3:::dev-cking-uploads-551372961758-ap-northeast-2-an/creator-space-profile-images/*"
         ]
       },
       {
