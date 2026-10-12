@@ -50,6 +50,10 @@ data "aws_cloudfront_distribution" "frontend" {
   id = "E2NQPJU059830V"
 }
 
+data "aws_s3_bucket" "uploads" {
+  bucket = "dev-cking-uploads-551372961758-ap-northeast-2-an"
+}
+
 data "aws_acm_certificate" "wildcard" {
   provider = aws.us_east_1
   domain   = "*.cking.co.kr"
