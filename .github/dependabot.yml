@@ -13,6 +13,9 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
+      # nginx는 홀수 마이너가 mainline이라, stable 버전대 안의 패치와 재빌드만 받는다.
+      - dependency-name: nginxinc/nginx-unprivileged
+        update-types: ["version-update:semver-minor"]
     commit-message:
       prefix: "[TASK] "
     labels:
