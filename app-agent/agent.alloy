@@ -145,6 +145,7 @@ loki.process "docker" {
 
 loki.write "gateway" {
   endpoint {
-    url = "http://10.0.21.245:3500/loki/api/v1/push"
+    url                 = "http://10.0.21.245:3500/loki/api/v1/push"
+    max_backoff_retries = 0
   }
 }
