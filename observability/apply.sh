@@ -22,7 +22,8 @@ PROMETHEUS_CONFIG_HASH=$(config_hash prometheus)
 LOKI_CONFIG_HASH=$(config_hash loki)
 ALLOY_CONFIG_HASH=$(config_hash alloy)
 GRAFANA_CONFIG_HASH=$(config_hash grafana/provisioning)
-export PROMETHEUS_CONFIG_HASH LOKI_CONFIG_HASH ALLOY_CONFIG_HASH GRAFANA_CONFIG_HASH
+NGINX_CONFIG_HASH=$(config_hash nginx)
+export PROMETHEUS_CONFIG_HASH LOKI_CONFIG_HASH ALLOY_CONFIG_HASH GRAFANA_CONFIG_HASH NGINX_CONFIG_HASH
 
 docker compose pull --quiet
 docker compose up -d --remove-orphans

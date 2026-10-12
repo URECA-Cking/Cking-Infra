@@ -26,7 +26,7 @@ envs/dev/                  개발 환경. 실행 위치
   observability_deploy.tf  관측 설정·앱 서버 수집기 설정을 배포하는 GitHub Actions 역할
   outputs.tf               읽어 온 값 출력
   templates/               서버 첫 부팅 스크립트
-observability/             관측 서버 위의 프로그램 설정(compose, Prometheus, Loki, Alloy, Grafana)
+observability/             관측 서버 위의 프로그램 설정(compose, Prometheus, Loki, Alloy, Grafana, 쓰기 전용 nginx)
 ```
 
 Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙는다. 이 태그가 없는 리소스는 콘솔에서 관리한다.
