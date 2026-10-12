@@ -42,14 +42,11 @@ services:
     user: "473:473"
     command:
       - run
-      - /etc/alloy/gateway.alloy
+      - /etc/alloy/host.alloy
       - --storage.path=/var/lib/alloy/data
       - --server.http.listen-addr=0.0.0.0:12345
-    ports:
-      - "9009:9009"
-      - "3500:3500"
     volumes:
-      - ./alloy/gateway.alloy:/etc/alloy/gateway.alloy:ro
+      - ./alloy/host.alloy:/etc/alloy/host.alloy:ro
       - /data/alloy:/var/lib/alloy/data
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
@@ -58,6 +55,26 @@ services:
     labels:
       kr.co.cking.config-hash: ${ALLOY_CONFIG_HASH:?설정 해시가 지정되지 않았습니다}
     mem_limit: 256m
+    logging: *logging
+
+  nginx:
+    image: nginxinc/nginx-unprivileged:1.30.5-alpine
+    restart: unless-stopped
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    ports:
+      - "9009:9009"
+      - "3500:3500"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    labels:
+      kr.co.cking.config-hash: ${NGINX_CONFIG_HASH:?설정 해시가 지정되지 않았습니다}
+    mem_limit: 32m
     logging: *logging
 
   grafana:
