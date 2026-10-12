@@ -2,7 +2,7 @@ name: app-agent
 
 services:
   alloy:
-    image: grafana/alloy:v1.20.1
+    image: grafana/alloy:v1.20.1@sha256:2aa2099af76c0098d4af7a4d6e48f86cb66dc1a000222ad927a1c67c6542d13f
     restart: unless-stopped
     user: "0:0"
     cap_drop:
@@ -14,6 +14,7 @@ services:
       - run
       - /etc/alloy/agent.alloy
       - --storage.path=/data
+      - --disable-reporting
     volumes:
       - ./agent.alloy:/etc/alloy/agent.alloy:ro
       - /var/lib/app-agent:/data
