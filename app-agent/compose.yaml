@@ -27,7 +27,9 @@ services:
       - cking
     labels:
       kr.co.cking.config-hash: ${AGENT_CONFIG_HASH:?설정 해시가 지정되지 않았습니다}
+    # 서버 메모리가 모자랄 때도 수집기는 swap으로 밀려나지 않게 한다.
     mem_limit: 256m
+    memswap_limit: 256m
     logging:
       driver: json-file
       options:
