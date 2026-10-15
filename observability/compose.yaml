@@ -93,13 +93,16 @@ services:
       GF_AUTH_GOOGLE_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:?GOOGLE_OAUTH_CLIENT_SECRET가 지정되지 않았습니다}
       GF_AUTH_GOOGLE_ALLOW_SIGN_UP: "true"
       GF_AUTH_GOOGLE_AUTO_LOGIN: "true"
-      GF_AUTH_GOOGLE_ROLE_ATTRIBUTE_PATH: ${GRAFANA_ROLE_ATTRIBUTE_PATH:?GRAFANA_ROLE_ATTRIBUTE_PATH가 지정되지 않았습니다}
+      GF_AUTH_GOOGLE_ROLE_ATTRIBUTE_PATH: "$$__file{/run/secrets/grafana_role_attribute_path}"
       GF_AUTH_GOOGLE_ROLE_ATTRIBUTE_STRICT: "true"
+      GF_AUTH_GOOGLE_SKIP_ORG_ROLE_SYNC: "false"
+      GF_AUTH_GOOGLE_USE_REFRESH_TOKEN: "false"
       GF_ANALYTICS_REPORTING_ENABLED: "false"
       GOMEMLIMIT: 460MiB
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - /data/grafana:/var/lib/grafana
+      - /etc/cking/grafana/role_attribute_path:/run/secrets/grafana_role_attribute_path:ro
     labels:
       kr.co.cking.config-hash: ${GRAFANA_CONFIG_HASH:?설정 해시가 지정되지 않았습니다}
     mem_limit: 512m
