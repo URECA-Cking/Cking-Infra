@@ -16,8 +16,14 @@ monitoring_parameter() {
 GRAFANA_ADMIN_PASSWORD=$(monitoring_parameter GRAFANA_ADMIN_PASSWORD)
 GOOGLE_OAUTH_CLIENT_ID=$(monitoring_parameter GOOGLE_OAUTH_CLIENT_ID)
 GOOGLE_OAUTH_CLIENT_SECRET=$(monitoring_parameter GOOGLE_OAUTH_CLIENT_SECRET)
-GRAFANA_ROLE_ATTRIBUTE_PATH=$(monitoring_parameter GRAFANA_ROLE_ATTRIBUTE_PATH)
-export GRAFANA_ADMIN_PASSWORD GOOGLE_OAUTH_CLIENT_ID GOOGLE_OAUTH_CLIENT_SECRET GRAFANA_ROLE_ATTRIBUTE_PATH
+export GRAFANA_ADMIN_PASSWORD GOOGLE_OAUTH_CLIENT_ID GOOGLE_OAUTH_CLIENT_SECRET
+
+# 환경변수로 넘기면 Grafana가 시작 로그에 값(팀원 메일)을 남기므로 파일로 넘긴다
+ROLE_ATTRIBUTE_PATH_FILE=/etc/cking/grafana/role_attribute_path
+install -d -m 0755 /etc/cking/grafana
+(umask 077 && monitoring_parameter GRAFANA_ROLE_ATTRIBUTE_PATH > "$ROLE_ATTRIBUTE_PATH_FILE.tmp")
+chown 472:0 "$ROLE_ATTRIBUTE_PATH_FILE.tmp"
+mv "$ROLE_ATTRIBUTE_PATH_FILE.tmp" "$ROLE_ATTRIBUTE_PATH_FILE"
 
 # 설정 파일 내용이 바뀌면 라벨 값이 바뀌어 compose가 그 서비스만 다시 만든다
 config_hash() {
@@ -26,7 +32,7 @@ config_hash() {
 PROMETHEUS_CONFIG_HASH=$(config_hash prometheus)
 LOKI_CONFIG_HASH=$(config_hash loki)
 ALLOY_CONFIG_HASH=$(config_hash alloy)
-GRAFANA_CONFIG_HASH=$(config_hash grafana/provisioning)
+GRAFANA_CONFIG_HASH=$({ config_hash grafana/provisioning; sha256sum < "$ROLE_ATTRIBUTE_PATH_FILE"; } | sha256sum | cut -c1-12)
 NGINX_CONFIG_HASH=$(config_hash nginx)
 export PROMETHEUS_CONFIG_HASH LOKI_CONFIG_HASH ALLOY_CONFIG_HASH GRAFANA_CONFIG_HASH NGINX_CONFIG_HASH
 
