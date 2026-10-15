@@ -9,10 +9,15 @@ install -d -o 473 -g 473 /data/alloy
 install -d -o 10001 -g 10001 /data/loki
 install -d -o 472 -g 0 /data/grafana
 
-GRAFANA_ADMIN_PASSWORD=$(aws ssm get-parameter --region "$REGION" \
-  --name /cking/dev/monitoring/GRAFANA_ADMIN_PASSWORD \
-  --with-decryption --query Parameter.Value --output text)
-export GRAFANA_ADMIN_PASSWORD
+monitoring_parameter() {
+  aws ssm get-parameter --region "$REGION" --name "/cking/dev/monitoring/$1" \
+    --with-decryption --query Parameter.Value --output text
+}
+GRAFANA_ADMIN_PASSWORD=$(monitoring_parameter GRAFANA_ADMIN_PASSWORD)
+GOOGLE_OAUTH_CLIENT_ID=$(monitoring_parameter GOOGLE_OAUTH_CLIENT_ID)
+GOOGLE_OAUTH_CLIENT_SECRET=$(monitoring_parameter GOOGLE_OAUTH_CLIENT_SECRET)
+GRAFANA_ROLE_ATTRIBUTE_PATH=$(monitoring_parameter GRAFANA_ROLE_ATTRIBUTE_PATH)
+export GRAFANA_ADMIN_PASSWORD GOOGLE_OAUTH_CLIENT_ID GOOGLE_OAUTH_CLIENT_SECRET GRAFANA_ROLE_ATTRIBUTE_PATH
 
 # 설정 파일 내용이 바뀌면 라벨 값이 바뀌어 compose가 그 서비스만 다시 만든다
 config_hash() {
