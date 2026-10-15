@@ -28,25 +28,16 @@ jobs:
 
   config:
     runs-on: ubuntu-24.04
-    env:
-      # compose가 요구하는 값. 해석만 하므로 실제 값은 쓰지 않는다.
-      PROMETHEUS_CONFIG_HASH: ci
-      LOKI_CONFIG_HASH: ci
-      ALLOY_CONFIG_HASH: ci
-      GRAFANA_CONFIG_HASH: ci
-      NGINX_CONFIG_HASH: ci
-      GRAFANA_ADMIN_PASSWORD: ci
-      AGENT_CONFIG_HASH: ci
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: compose
         run: |
-          docker compose -f observability/compose.yaml config --quiet
-          docker compose -f app-agent/compose.yaml config --quiet
+          docker compose -f observability/compose.yaml config --no-interpolate --quiet
+          docker compose -f app-agent/compose.yaml config --no-interpolate --quiet
       # 서버와 같은 버전으로 검사하도록 compose에 고정된 이미지를 그대로 쓴다.
       - name: images
         run: |
-          image() { docker compose -f observability/compose.yaml config --images | grep -m1 "^$1"; }
+          image() { docker compose -f observability/compose.yaml config --no-interpolate --images | grep -m1 "^$1"; }
           {
             echo "ALLOY_IMAGE=$(image grafana/alloy)"
             echo "PROMETHEUS_IMAGE=$(image prom/prometheus)"
