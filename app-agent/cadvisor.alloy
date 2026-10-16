@@ -1,0 +1,38 @@
+// 컨테이너별 CPU·메모리. compose.cadvisor.yaml과 함께 부하 테스트 서버에서만 켠다.
+prometheus.exporter.cadvisor "containers" {
+  docker_only                  = true
+  enabled_metrics              = ["cpu", "memory"]
+  store_container_labels       = false
+  allowlisted_container_labels = ["com.docker.compose.service"]
+}
+
+discovery.relabel "containers" {
+  targets = prometheus.exporter.cadvisor.containers.targets
+
+  rule {
+    target_label = "instance"
+    replacement  = sys.env("CKING_INSTANCE")
+  }
+
+  rule {
+    target_label = "job"
+    replacement  = "cadvisor"
+  }
+}
+
+prometheus.scrape "containers" {
+  targets         = discovery.relabel.containers.output
+  scrape_interval = "15s"
+  forward_to      = [prometheus.relabel.containers.receiver]
+}
+
+// 앱과 Redis 컨테이너만 남겨 시계열 수를 줄인다.
+prometheus.relabel "containers" {
+  forward_to = [prometheus.remote_write.gateway.receiver]
+
+  rule {
+    source_labels = ["container_label_com_docker_compose_service"]
+    regex         = "app|redis"
+    action        = "keep"
+  }
+}

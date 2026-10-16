@@ -1,5 +1,6 @@
 locals {
-  name = "${var.env_name}-cking-app"
+  name     = "${var.env_name}-cking-app"
+  api_host = "${var.env_name}-api.cking.co.kr"
 }
 
 resource "aws_security_group" "app" {

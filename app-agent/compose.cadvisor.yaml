@@ -1,0 +1,18 @@
+# 컨테이너 지표(cadvisor.alloy)를 켤 때 compose.yaml에 덧붙인다. 부하 테스트 서버에서만 쓴다.
+# cAdvisor는 Docker 소켓과 privileged가 필요하다(Alloy prometheus.exporter.cadvisor 문서).
+# 이 권한은 서버 전체 권한과 같아, 띄웠다 지우는 테스트 서버로 한정한다.
+services:
+  alloy:
+    privileged: true
+    cap_drop: !reset []
+    command:
+      - run
+      - /etc/cking-alloy
+      - --storage.path=/data
+      - --disable-reporting
+    volumes:
+      - ./agent.alloy:/etc/cking-alloy/agent.alloy:ro
+      - ./cadvisor.alloy:/etc/cking-alloy/cadvisor.alloy:ro
+      - /var/run:/var/run
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro

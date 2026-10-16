@@ -13,7 +13,7 @@
 ```text
 .github/workflows/         PR 검사(ci.yml), 관측 설정·앱 서버 수집기 배포 워크플로
 .github/dependabot.yml     컨테이너 이미지·GitHub Actions 갱신 PR
-app-agent/                 앱 서버 수집기(Alloy) 설정
+app-agent/                 앱 서버 수집기(Alloy) 설정. cadvisor.alloy·compose.cadvisor.yaml은 부하 테스트 서버에서만 켜는 컨테이너 지표
 bootstrap/                 Terraform보다 먼저 만든 상태 버킷 기록
 envs/dev/                  개발 환경. 실행 위치
   terraform.tf             Terraform·프로바이더 버전
@@ -28,6 +28,13 @@ envs/dev/                  개발 환경. 실행 위치
   alerts.tf                서버 상태 검사 경보와 메일 주제
   observability_deploy.tf  관측 설정·앱 서버 수집기 설정을 배포하는 GitHub Actions 역할
   outputs.tf               읽어 온 값 출력
+  templates/               서버 첫 부팅 스크립트
+envs/loadtest/             부하 테스트 환경. 측정 때 띄우고 끝나면 지운다. 상태는 loadtest/terraform.tfstate
+  app_server.tf            앱 서버(개발 앱 서버와 같은 AMI·크기·Docker 버전·swap)
+  rds.tf                   RDS(개발 RDS와 같은 사양, 빈 DB)
+  alb.tf                   기존 ALB에 loadtest-api.cking.co.kr 경로
+  k6.tf                    k6 서버와 서버 지표 수집기
+  parameters.tf            /cking/loadtest/ 중 비밀이 아닌 값
   templates/               서버 첫 부팅 스크립트
 observability/             관측 서버 위의 프로그램 설정(compose, Prometheus, Loki, Alloy, Grafana, 쓰기 전용 nginx)
 ```
@@ -46,6 +53,20 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
   - `config`: compose 해석, Alloy `validate`, `promtool check config`, Loki `-verify-config`, `nginx -t`
   - `lint`: `shellcheck`(배포 스크립트, 서버 첫 부팅 스크립트), `actionlint`(워크플로)
 - 협업 규칙은 조직 CONTRIBUTING을 따른다. 환경이 개발 서버 하나라 `develop` 없이 `main`으로 PR을 보낸다
+
+## 부하 테스트 환경
+
+순서
+
+1. Parameter Store `/cking/loadtest/`에 비밀값을 SecureString으로 넣는다: `DB_PASSWORD`, `JWT_SECRET`, `ADMIN_ACCOUNT_LOGIN_ID`, `ADMIN_ACCOUNT_PASSWORD`, `DOCS_USERNAME`, `DOCS_PASSWORD`. 나머지 값은 Terraform이 만든다
+2. `envs/loadtest`에서 `terraform plan -out=tfplan` → `terraform apply tfplan`
+3. 앱 서버 수집기: 앱 서버에서 `aws s3 sync --exact-timestamps s3://<관측 버킷>/app-agent/ /opt/app-agent/` 뒤 `CKING_INSTANCE=loadtest-cking-app CKING_CADVISOR=1 bash /opt/app-agent/apply.sh`
+4. 앱 배포: 개발 서버에 떠 있는 이미지 태그로 앱 서버에서 `aws s3 cp s3://dev-cking-deploy-551372961758/releases/<태그>/deploy.sh /opt/cking/deploy.sh` 뒤 `PARAM_PATH=/cking/loadtest/ bash /opt/cking/deploy.sh <태그>`(BE CI가 개발 서버에 배포하는 방식과 같다)
+5. 측정이 끝나면 `terraform destroy`. Parameter Store의 비밀값은 직접 지운다
+
+- 앱 주소는 `https://loadtest-api.cking.co.kr`(기존 ALB, 443 규칙 우선순위 200)
+- k6 결과 지표는 `k6 run -o experimental-prometheus-rw <스크립트>`로 관측 서버에 보낸다. 주소는 k6 서버의 `/etc/profile.d/k6.sh`
+- 이름표: 앱 서버 `loadtest-cking-app`, k6 서버 `loadtest-cking-k6`
 
 ## 요구 사항
 
