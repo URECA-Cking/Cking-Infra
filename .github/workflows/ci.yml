@@ -60,6 +60,13 @@ jobs:
           docker run --rm
           -v "$PWD/observability/loki/loki.yaml:/etc/loki/loki.yaml:ro"
           "$LOKI_IMAGE" -config.file=/etc/loki/loki.yaml -verify-config
+      - name: dashboards
+        run: |
+          for f in observability/grafana/provisioning/dashboards/json/*.json; do
+            jq -e '.uid and .title and (.panels | length > 0)' "$f" > /dev/null || { echo "::error file=$f::대시보드 형식 오류"; exit 1; }
+          done
+          dup=$(jq -r .uid observability/grafana/provisioning/dashboards/json/*.json | sort | uniq -d)
+          [ -z "$dup" ] || { echo "::error::대시보드 uid 중복: $dup"; exit 1; }
       - name: nginx
         run: >
           docker run --rm --read-only --tmpfs /tmp
