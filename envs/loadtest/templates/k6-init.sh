@@ -10,7 +10,7 @@ APT::Periodic::Unattended-Upgrade "0";
 EOF
 
 apt-get update
-apt-get install -y ca-certificates curl unzip
+apt-get install -y ca-certificates curl unzip awscli
 
 cd /tmp
 
