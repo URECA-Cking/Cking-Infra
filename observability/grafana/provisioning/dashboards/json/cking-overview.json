@@ -32,6 +32,51 @@
         "multi": false,
         "includeAll": false,
         "sort": 1
+      },
+      {
+        "name": "level",
+        "label": "로그 레벨",
+        "type": "custom",
+        "query": "ERROR,WARN,INFO",
+        "multi": true,
+        "includeAll": false,
+        "current": {
+          "text": [
+            "ERROR",
+            "WARN"
+          ],
+          "value": [
+            "ERROR",
+            "WARN"
+          ]
+        },
+        "options": [
+          {
+            "text": "ERROR",
+            "value": "ERROR",
+            "selected": true
+          },
+          {
+            "text": "WARN",
+            "value": "WARN",
+            "selected": true
+          },
+          {
+            "text": "INFO",
+            "value": "INFO",
+            "selected": false
+          }
+        ]
+      },
+      {
+        "name": "search",
+        "label": "검색어",
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        }
       }
     ]
   },
@@ -640,6 +685,62 @@
           "sort": "desc"
         }
       }
+    },
+    {
+      "id": 16,
+      "type": "row",
+      "title": "앱 로그",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 17,
+      "type": "logs",
+      "title": "앱 로그 (최근 1시간, 최대 200줄)",
+      "description": "레벨과 검색어로 거른다. 더 긴 범위나 다른 컨테이너는 관리자가 Explore에서 본다",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 24,
+        "h": 12
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "refId": "A",
+          "maxLines": 200,
+          "queryType": "range",
+          "expr": "{container=\"app\", instance=~\"$instance\", level=~\"${level:regex}\"} |~ \"(?i)$search\""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending",
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false
+      },
+      "timeFrom": "1h"
     }
   ]
 }
