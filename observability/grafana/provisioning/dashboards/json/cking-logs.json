@@ -1,0 +1,168 @@
+{
+  "uid": "cking-logs",
+  "title": "크킹 로그",
+  "tags": [
+    "cking"
+  ],
+  "timezone": "browser",
+  "editable": false,
+  "graphTooltip": 1,
+  "refresh": "",
+  "schemaVersion": 39,
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "instance",
+        "label": "서버",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(up{job=\"cking-be\"}, instance)",
+          "refId": "instance"
+        },
+        "definition": "label_values(up{job=\"cking-be\"}, instance)",
+        "refresh": 2,
+        "multi": false,
+        "includeAll": false,
+        "sort": 1
+      },
+      {
+        "name": "container",
+        "label": "컨테이너",
+        "type": "custom",
+        "query": "app,redis",
+        "multi": true,
+        "includeAll": false,
+        "current": {
+          "text": [
+            "app"
+          ],
+          "value": [
+            "app"
+          ]
+        },
+        "options": [
+          {
+            "text": "app",
+            "value": "app",
+            "selected": true
+          },
+          {
+            "text": "redis",
+            "value": "redis",
+            "selected": false
+          }
+        ]
+      },
+      {
+        "name": "level",
+        "label": "로그 레벨 (앱만)",
+        "type": "custom",
+        "query": "ERROR,WARN,INFO",
+        "multi": true,
+        "includeAll": false,
+        "current": {
+          "text": [
+            "ERROR",
+            "WARN"
+          ],
+          "value": [
+            "ERROR",
+            "WARN"
+          ]
+        },
+        "options": [
+          {
+            "text": "ERROR",
+            "value": "ERROR",
+            "selected": true
+          },
+          {
+            "text": "WARN",
+            "value": "WARN",
+            "selected": true
+          },
+          {
+            "text": "INFO",
+            "value": "INFO",
+            "selected": false
+          }
+        ]
+      },
+      {
+        "name": "search",
+        "label": "검색어",
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        }
+      },
+      {
+        "name": "filter",
+        "label": "고급 필터 (LogQL)",
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "description": "질의 뒤에 그대로 붙는다. 예: |= \"Stream\" != \"debug\""
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "logs",
+      "title": "로그",
+      "description": "기간은 오른쪽 위 시간 선택기로 고른다(보관 14일). 한 번에 1,000줄, 끝까지 내리면 이어서 불러온다. 레벨은 앱 로그에만 적용되고 Redis 로그는 전체를 보여 준다",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 26
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "refId": "A",
+          "maxLines": 1000,
+          "queryType": "range",
+          "expr": "{container=~\"${container:regex}\", instance=~\"$instance\"} | container=\"redis\" or level=~\"${level:regex}\" |~ \"(?i)$search\" $filter"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending",
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "enableInfiniteScrolling": true,
+        "showControls": true
+      }
+    }
+  ]
+}
