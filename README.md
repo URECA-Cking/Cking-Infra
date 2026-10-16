@@ -66,6 +66,7 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
 
 - 앱 주소는 `https://loadtest-api.cking.co.kr`(기존 ALB, 443 규칙 우선순위 200)
 - k6 결과 지표는 `k6 run -o experimental-prometheus-rw <스크립트>`로 관측 서버에 보낸다. 주소는 k6 서버의 `/etc/profile.d/k6.sh`
+- k6는 Access Token을 실행 중에 직접 서명한다. 비밀값은 환경변수로만 넘긴다: `JWT_SECRET="$(aws ssm get-parameter --region ap-northeast-2 --name /cking/loadtest/JWT_SECRET --with-decryption --query Parameter.Value --output text)" k6 run -o experimental-prometheus-rw <스크립트>`
 - 이름표: 앱 서버 `loadtest-cking-app`, k6 서버 `loadtest-cking-k6`
 
 ## 요구 사항
