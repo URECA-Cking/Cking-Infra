@@ -98,6 +98,7 @@ services:
       GF_AUTH_GOOGLE_SKIP_ORG_ROLE_SYNC: "false"
       GF_AUTH_GOOGLE_USE_REFRESH_TOKEN: "false"
       GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_PLUGINS_DISABLE_PLUGINS: elasticsearch,grafana-postgresql-datasource,mysql,mssql,influxdb,opentsdb,grafana-pyroscope-datasource,jaeger,tempo,zipkin
       GOMEMLIMIT: 576MiB
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
