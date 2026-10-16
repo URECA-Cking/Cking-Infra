@@ -35,6 +35,7 @@ jobs:
         run: |
           docker compose -f observability/compose.yaml config --no-interpolate --quiet
           docker compose -f app-agent/compose.yaml config --no-interpolate --quiet
+          docker compose -f app-agent/compose.yaml -f app-agent/compose.cadvisor.yaml config --no-interpolate --quiet
       # 서버와 같은 버전으로 검사하도록 compose에 고정된 이미지를 그대로 쓴다.
       - name: images
         run: |
@@ -50,6 +51,8 @@ jobs:
           for f in observability/alloy/host.alloy app-agent/agent.alloy; do
             docker run --rm -v "$PWD/$f:/config.alloy:ro" "$ALLOY_IMAGE" validate /config.alloy
           done
+          # 부하 테스트 서버는 두 파일을 한 폴더에서 함께 읽는다(compose.cadvisor.yaml).
+          docker run --rm -v "$PWD/app-agent/agent.alloy:/cfg/agent.alloy:ro" -v "$PWD/app-agent/cadvisor.alloy:/cfg/cadvisor.alloy:ro" "$ALLOY_IMAGE" validate /cfg
       - name: prometheus
         run: >
           docker run --rm --entrypoint promtool
@@ -81,7 +84,7 @@ jobs:
         run: |
           shellcheck observability/apply.sh app-agent/apply.sh
           # Terraform templatefile이라 ${...}는 Terraform 변수다. 파일을 고치면 user_data가 바뀌어 서버가 재시작된다.
-          shellcheck -e SC2154,SC1091 envs/dev/templates/observability-init.sh envs/loadtest/templates/app-init.sh
+          shellcheck -e SC2154,SC1091 envs/dev/templates/observability-init.sh envs/loadtest/templates/app-init.sh envs/loadtest/templates/k6-init.sh
       - name: actionlint
         run: >
           docker run --rm -v "$PWD:/repo:ro" -w /repo
