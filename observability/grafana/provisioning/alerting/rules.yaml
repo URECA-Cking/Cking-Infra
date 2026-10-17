@@ -1,0 +1,778 @@
+# 생성 파일. 경보 기준과 근거는 Infra #80
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: "앱"
+    folder: "크킹 경보"
+    interval: "1m"
+    rules:
+      - uid: "cking-app-down"
+        title: "앱 중단"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "max(up{job=\"cking-be\",instance=\"dev-cking-app\"})"
+              instant: true
+          - refId: "B"
+            datasourceUid: "__expr__"
+            model:
+              refId: "B"
+              type: "reduce"
+              expression: "A"
+              reducer: "last"
+              settings:
+                mode: "dropNN"
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "B"
+              conditions:
+                - evaluator:
+                    type: "lt"
+                    params:
+                      - 1
+        noDataState: "Alerting"
+        execErrState: "Error"
+        for: "2m"
+        labels:
+          severity: "urgent"
+        annotations:
+          summary: "앱 지표가 2분째 들어오지 않습니다. 앱이 멈췄거나 앱 서버가 응답하지 않습니다."
+      - uid: "cking-5xx"
+        title: "서버 오류 증가"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "(sum(rate(http_server_requests_seconds_count{job=\"cking-be\",instance=\"dev-cking-app\",uri!~\"/readyz|UNKNOWN|REDIRECTION|/\\\\*\\\\*\",status=~\"5..\"}[5m])) or vector(0)) / sum(rate(http_server_requests_seconds_count{job=\"cking-be\",instance=\"dev-cking-app\",uri!~\"/readyz|UNKNOWN|REDIRECTION|/\\\\*\\\\*\"}[5m])) and on() sum(rate(http_server_requests_seconds_count{job=\"cking-be\",instance=\"dev-cking-app\",uri!~\"/readyz|UNKNOWN|REDIRECTION|/\\\\*\\\\*\"}[5m])) >= 0.1"
+              instant: true
+          - refId: "B"
+            datasourceUid: "__expr__"
+            model:
+              refId: "B"
+              type: "reduce"
+              expression: "A"
+              reducer: "last"
+              settings:
+                mode: "dropNN"
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "B"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 0.05
+        noDataState: "OK"
+        execErrState: "Error"
+        for: "5m"
+        labels:
+          severity: "urgent"
+        annotations:
+          summary: "5xx 응답이 전체 요청의 5%를 넘었습니다."
+      - uid: "cking-stream-stopped"
+        title: "Stream 소비 멈춤"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "max by (stream) (redis_stream_group_consumer_idle_seconds{instance=\"dev-cking-app\"})"
+              instant: true
+          - refId: "B"
+            datasourceUid: "__expr__"
+            model:
+              refId: "B"
+              type: "reduce"
+              expression: "A"
+              reducer: "last"
+              settings:
+                mode: "dropNN"
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "B"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 120
+        noDataState: "OK"
+        execErrState: "Error"
+        for: "1m"
+        labels:
+          severity: "urgent"
+        annotations:
+          summary: "소비자가 2분 넘게 Stream을 읽으러 오지 않습니다. 응모·적립이 DB에 반영되지 않습니다."
+      - uid: "cking-stream-lag"
+        title: "Stream 밀림"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "max by (stream) (redis_stream_group_lag{instance=\"dev-cking-app\"})"
+              instant: true
+          - refId: "B"
+            datasourceUid: "__expr__"
+            model:
+              refId: "B"
+              type: "reduce"
+              expression: "A"
+              reducer: "last"
+              settings:
+                mode: "dropNN"
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "B"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 0
+        noDataState: "OK"
+        execErrState: "Error"
+        for: "5m"
+        labels:
+          severity: "urgent"
+        annotations:
+          summary: "Stream에 아직 읽지 않은 메시지가 5분째 남아 있습니다."
+      - uid: "cking-redis-rejected"
+        title: "응모 실패 (Redis 쓰기 거부)"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "sum(increase(redis_commands_rejected_calls_total{instance=\"dev-cking-app\"}[5m]))"
+              instant: true
+          - refId: "B"
+            datasourceUid: "__expr__"
+            model:
+              refId: "B"
+              type: "reduce"
+              expression: "A"
+              reducer: "last"
+              settings:
+                mode: "dropNN"
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "B"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 0
+        noDataState: "OK"
+        execErrState: "Error"
+        for: "0s"
+        labels:
+          severity: "urgent"
+        annotations:
+          summary: "Redis가 명령을 거부했습니다. 메모리 한도에 닿으면 응모 XADD가 실패합니다."
+      - uid: "cking-stream-pending"
+        title: "처리 실패 누적"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "max by (stream) (redis_stream_group_messages_pending{instance=\"dev-cking-app\"})"
+              instant: true
+          - refId: "B"
+            datasourceUid: "__expr__"
+            model:
+              refId: "B"
+              type: "reduce"
+              expression: "A"
+              reducer: "last"
+              settings:
+                mode: "dropNN"
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "B"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 0
+        noDataState: "OK"
+        execErrState: "Error"
+        for: "10m"
+        labels:
+          severity: "normal"
+        annotations:
+          summary: "읽었지만 ACK하지 못한 메시지가 10분째 남아 있습니다. PEL 재처리도 실패하고 있습니다."
+      - uid: "cking-p95"
+        title: "응답 지연"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{job=\"cking-be\",instance=\"dev-cking-app\",uri!~\"/readyz|UNKNOWN|REDIRECTION|/\\\\*\\\\*\"}[5m])))"
+              instant: true
+          - refId: "B"
+            datasourceUid: "__expr__"
+            model:
+              refId: "B"
+              type: "reduce"
+              expression: "A"
+              reducer: "last"
+              settings:
+                mode: "dropNN"
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "B"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 1
+        noDataState: "OK"
+        execErrState: "Error"
+        for: "10m"
+        labels:
+          severity: "normal"
+        annotations:
+          summary: "응답 시간 p95가 10분째 1초를 넘었습니다."
+      - uid: "cking-hikari-pending"
+        title: "DB 연결 대기"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "max(hikaricp_connections_pending{instance=\"dev-cking-app\"})"
+              instant: true
+          - refId: "B"
+            datasourceUid: "__expr__"
+            model:
+              refId: "B"
+              type: "reduce"
+              expression: "A"
+              reducer: "last"
+              settings:
+                mode: "dropNN"
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "B"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 0
+        noDataState: "OK"
+        execErrState: "Error"
+        for: "5m"
+        labels:
+          severity: "normal"
+        annotations:
+          summary: "DB 연결을 기다리는 요청이 5분째 있습니다."
+      - uid: "cking-redis-memory"
+        title: "Redis 메모리"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "max(redis_memory_used_bytes{instance=\"dev-cking-app\"} / redis_config_maxmemory{instance=\"dev-cking-app\"})"
+              instant: true
+          - refId: "B"
+            datasourceUid: "__expr__"
+            model:
+              refId: "B"
+              type: "reduce"
+              expression: "A"
+              reducer: "last"
+              settings:
+                mode: "dropNN"
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "B"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 0.7
+        noDataState: "OK"
+        execErrState: "Error"
+        for: "10m"
+        labels:
+          severity: "normal"
+        annotations:
+          summary: "Redis 메모리가 한도의 70%를 넘었습니다. Stream은 자르지 않아 계속 늘어납니다."
+      - uid: "cking-error-log"
+        title: "ERROR 로그"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "sum(increase(logback_events_total{job=\"cking-be\",instance=\"dev-cking-app\",level=\"error\"}[5m]))"
+              instant: true
+          - refId: "B"
+            datasourceUid: "__expr__"
+            model:
+              refId: "B"
+              type: "reduce"
+              expression: "A"
+              reducer: "last"
+              settings:
+                mode: "dropNN"
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "B"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 0
+        noDataState: "OK"
+        execErrState: "Error"
+        for: "0s"
+        labels:
+          severity: "normal"
+        annotations:
+          summary: "앱이 ERROR 로그를 남겼습니다. 크킹 로그 대시보드에서 확인하세요."
+      - uid: "cking-dead-stream"
+        title: "Dead Stream 이동"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "loki"
+            model:
+              refId: "A"
+              expr: "sum(count_over_time({container=\"app\",instance=\"dev-cking-app\"} |= \"Dead Stream으로 이동했습니다\" [5m]))"
+              queryType: "instant"
+          - refId: "B"
+            datasourceUid: "__expr__"
+            model:
+              refId: "B"
+              type: "reduce"
+              expression: "A"
+              reducer: "last"
+              settings:
+                mode: "dropNN"
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "B"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 0
+        noDataState: "OK"
+        execErrState: "Error"
+        for: "0s"
+        labels:
+          severity: "normal"
+        annotations:
+          summary: "처리에 계속 실패한 메시지가 Dead Stream으로 옮겨졌습니다."
+  - orgId: 1
+    name: "관측"
+    folder: "크킹 경보"
+    interval: "1m"
+    rules:
+      - uid: "cking-target-down"
+        title: "수집 대상 끊김"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "min by (job) (up{instance=\"dev-cking-app\",job=~\"node|redis|alloy\"})"
+              instant: true
+          - refId: "B"
+            datasourceUid: "__expr__"
+            model:
+              refId: "B"
+              type: "reduce"
+              expression: "A"
+              reducer: "last"
+              settings:
+                mode: "dropNN"
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "B"
+              conditions:
+                - evaluator:
+                    type: "lt"
+                    params:
+                      - 1
+        noDataState: "Alerting"
+        execErrState: "Error"
+        for: "5m"
+        labels:
+          team: "infra"
+        annotations:
+          summary: "앱 서버의 서버·Redis·수집기 지표가 5분째 들어오지 않습니다. 다른 경보가 조용해질 수 있습니다."
+      - uid: "cking-remote-write-failed"
+        title: "지표 전송 실패"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "sum by (instance) (rate(prometheus_remote_storage_samples_failed_total{job=\"alloy\",instance=~\"dev-cking-.*|alloy:12345|grafana:3000|loki:3100|localhost:9090\"}[5m]))"
+              instant: true
+          - refId: "B"
+            datasourceUid: "__expr__"
+            model:
+              refId: "B"
+              type: "reduce"
+              expression: "A"
+              reducer: "last"
+              settings:
+                mode: "dropNN"
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "B"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 0
+        noDataState: "OK"
+        execErrState: "Error"
+        for: "10m"
+        labels:
+          team: "infra"
+        annotations:
+          summary: "수집기가 지표를 관측 서버로 보내지 못하고 있습니다."
+      - uid: "cking-log-dropped"
+        title: "로그 버림"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "sum by (instance, reason) (increase(loki_write_dropped_entries_total{job=\"alloy\",instance=~\"dev-cking-.*|alloy:12345|grafana:3000|loki:3100|localhost:9090\"}[5m]))"
+              instant: true
+          - refId: "B"
+            datasourceUid: "__expr__"
+            model:
+              refId: "B"
+              type: "reduce"
+              expression: "A"
+              reducer: "last"
+              settings:
+                mode: "dropNN"
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "B"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 0
+        noDataState: "OK"
+        execErrState: "Error"
+        for: "0s"
+        labels:
+          team: "infra"
+        annotations:
+          summary: "수집기가 로그를 버렸습니다. 끊김 중 수집기를 재시작하지 마세요."
+      - uid: "cking-obs-memory"
+        title: "관측 프로그램 메모리"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "max by (job, instance) (process_resident_memory_bytes{job=\"prometheus\"}) / 536870912 or max by (job, instance) (process_resident_memory_bytes{job=\"loki\"}) / 402653184 or max by (job, instance) (process_resident_memory_bytes{job=\"alloy\",instance=~\"dev-cking-.*|alloy:12345|grafana:3000|loki:3100|localhost:9090\"}) / 268435456"
+              instant: true
+          - refId: "B"
+            datasourceUid: "__expr__"
+            model:
+              refId: "B"
+              type: "reduce"
+              expression: "A"
+              reducer: "last"
+              settings:
+                mode: "dropNN"
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "B"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 0.95
+        noDataState: "OK"
+        execErrState: "Error"
+        for: "5m"
+        labels:
+          team: "infra"
+        annotations:
+          summary: "관측 프로그램 메모리가 컨테이너 상한의 95%를 넘었습니다."
+      - uid: "cking-grafana-memory"
+        title: "Grafana 메모리"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "max(process_resident_memory_bytes{job=\"grafana\"}) / 536870912"
+              instant: true
+          - refId: "B"
+            datasourceUid: "__expr__"
+            model:
+              refId: "B"
+              type: "reduce"
+              expression: "A"
+              reducer: "last"
+              settings:
+                mode: "dropNN"
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "B"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 0.95
+        noDataState: "OK"
+        execErrState: "Error"
+        for: "10m"
+        labels:
+          team: "infra"
+        annotations:
+          summary: "Grafana 본체가 GOMEMLIMIT(512MiB) 근처에 계속 붙어 있습니다. 서버 사양 상향을 검토하세요."
+      - uid: "cking-memory-available"
+        title: "서버 여유 메모리"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "min by (instance) (node_memory_MemAvailable_bytes{job=\"node\",instance=~\"dev-cking-.*|alloy:12345|grafana:3000|loki:3100|localhost:9090\"})"
+              instant: true
+          - refId: "B"
+            datasourceUid: "__expr__"
+            model:
+              refId: "B"
+              type: "reduce"
+              expression: "A"
+              reducer: "last"
+              settings:
+                mode: "dropNN"
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "B"
+              conditions:
+                - evaluator:
+                    type: "lt"
+                    params:
+                      - 104857600
+        noDataState: "OK"
+        execErrState: "Error"
+        for: "10m"
+        labels:
+          team: "infra"
+        annotations:
+          summary: "서버 여유 메모리가 100MiB 아래로 10분째 내려가 있습니다."
+      - uid: "cking-disk-available"
+        title: "디스크 여유"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "min by (instance, mountpoint) (node_filesystem_avail_bytes{job=\"node\",instance=~\"dev-cking-.*|alloy:12345|grafana:3000|loki:3100|localhost:9090\",fstype=~\"ext4|xfs\",mountpoint!~\"/boot.*\"} / node_filesystem_size_bytes{job=\"node\",instance=~\"dev-cking-.*|alloy:12345|grafana:3000|loki:3100|localhost:9090\",fstype=~\"ext4|xfs\",mountpoint!~\"/boot.*\"})"
+              instant: true
+          - refId: "B"
+            datasourceUid: "__expr__"
+            model:
+              refId: "B"
+              type: "reduce"
+              expression: "A"
+              reducer: "last"
+              settings:
+                mode: "dropNN"
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "B"
+              conditions:
+                - evaluator:
+                    type: "lt"
+                    params:
+                      - 0.2
+        noDataState: "OK"
+        execErrState: "Error"
+        for: "10m"
+        labels:
+          team: "infra"
+        annotations:
+          summary: "디스크 여유가 20% 아래입니다."
+  - orgId: 1
+    name: "데드맨"
+    folder: "크킹 경보"
+    interval: "1m"
+    rules:
+      - uid: "cking-deadman"
+        title: "데드맨 (항상 울림)"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "vector(1)"
+              instant: true
+          - refId: "B"
+            datasourceUid: "__expr__"
+            model:
+              refId: "B"
+              type: "reduce"
+              expression: "A"
+              reducer: "last"
+              settings:
+                mode: "dropNN"
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "B"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 0
+        noDataState: "OK"
+        execErrState: "Error"
+        for: "0s"
+        labels:
+          route: "deadman"
+        annotations:
+          summary: "Grafana 경보 경로가 살아 있음을 healthchecks.io에 알립니다."

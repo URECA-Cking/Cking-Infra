@@ -1,0 +1,35 @@
+# 웹후크 주소는 Parameter Store에서 apply.sh가 환경변수로 넘긴다
+apiVersion: 1
+contactPoints:
+  - orgId: 1
+    name: "Slack"
+    receivers:
+      - uid: "cking-slack"
+        type: "slack"
+        settings:
+          url: "$SLACK_ALERT_WEBHOOK_URL"
+  - orgId: 1
+    name: "Slack 급함"
+    receivers:
+      - uid: "cking-slack-urgent"
+        type: "slack"
+        settings:
+          url: "$SLACK_ALERT_WEBHOOK_URL"
+          mentionChannel: "channel"
+  - orgId: 1
+    name: "Slack 관측"
+    receivers:
+      - uid: "cking-slack-infra"
+        type: "slack"
+        settings:
+          url: "$SLACK_ALERT_WEBHOOK_URL"
+          mentionUsers: "U0ARS5UUTUG"
+  - orgId: 1
+    name: "데드맨"
+    receivers:
+      - uid: "cking-deadman"
+        type: "webhook"
+        disableResolveMessage: true
+        settings:
+          url: "$DEADMAN_PING_URL"
+          httpMethod: "POST"
