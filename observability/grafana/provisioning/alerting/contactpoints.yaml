@@ -23,7 +23,7 @@ contactPoints:
         type: "slack"
         settings:
           url: "$SLACK_ALERT_WEBHOOK_URL"
-          mentionUsers: "U0ARS5UUTUG"
+          mentionUsers: "U0C9V1RMCS1"
   - orgId: 1
     name: "데드맨"
     receivers:
