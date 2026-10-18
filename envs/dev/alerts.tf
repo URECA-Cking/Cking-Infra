@@ -19,7 +19,7 @@ resource "aws_cloudwatch_metric_alarm" "system_check" {
   for_each = local.status_check_instances
 
   alarm_name          = "dev-cking-${each.key}-system-check"
-  alarm_description   = "AWS 하드웨어 문제. 복구는 EC2 기본 자동 복구가 한다"
+  alarm_description   = "AWS 하드웨어 문제. 복구는 EC2 기본 자동 복구가 한다. 런북: https://github.com/URECA-Cking/Cking-Infra/blob/main/docs/runbooks/ec2-system-check.md"
   namespace           = "AWS/EC2"
   metric_name         = "StatusCheckFailed_System"
   dimensions          = { InstanceId = each.value }
@@ -37,7 +37,7 @@ resource "aws_cloudwatch_metric_alarm" "instance_check" {
   for_each = local.status_check_instances
 
   alarm_name          = "dev-cking-${each.key}-instance-check"
-  alarm_description   = "OS 응답 없음. 재부팅한다"
+  alarm_description   = "OS 응답 없음. 재부팅한다. 런북: https://github.com/URECA-Cking/Cking-Infra/blob/main/docs/runbooks/ec2-instance-check.md"
   namespace           = "AWS/EC2"
   metric_name         = "StatusCheckFailed_Instance"
   dimensions          = { InstanceId = each.value }
