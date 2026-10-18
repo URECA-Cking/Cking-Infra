@@ -15,6 +15,7 @@
 .github/dependabot.yml     컨테이너 이미지·GitHub Actions 갱신 PR
 app-agent/                 앱 서버 수집기(Alloy) 설정. cadvisor.alloy·compose.cadvisor.yaml은 부하 테스트 서버에서만 켜는 컨테이너 지표
 bootstrap/                 Terraform보다 먼저 만든 상태 버킷 기록
+docs/runbooks/             경보별 대응 절차(런북)
 envs/dev/                  개발 환경. 실행 위치
   terraform.tf             Terraform·프로바이더 버전
   backend.tf               상태 저장소(S3)와 잠금
