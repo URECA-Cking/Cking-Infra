@@ -4,6 +4,8 @@
 services:
   alloy:
     privileged: true
+    # cgroup v2 서버에서 Docker 기본값(cgroupns=private)이면 수집기 자신의 cgroup만 보여 컨테이너별 값이 없다.
+    cgroup: host
     cap_drop: !reset []
     command:
       - run
