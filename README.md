@@ -61,8 +61,8 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
 
 1. Parameter Store `/cking/loadtest/`에 비밀값을 SecureString으로 넣는다: `DB_PASSWORD`, `JWT_SECRET`, `ADMIN_ACCOUNT_LOGIN_ID`, `ADMIN_ACCOUNT_PASSWORD`, `DOCS_USERNAME`, `DOCS_PASSWORD`. 나머지 값은 Terraform이 만든다
 2. `envs/loadtest`에서 `terraform plan -out=tfplan` → `terraform apply tfplan`
-3. 앱 서버 수집기: 앱 서버에서 `aws s3 sync --exact-timestamps s3://<관측 버킷>/app-agent/ /opt/app-agent/` 뒤 `CKING_INSTANCE=loadtest-cking-app CKING_CADVISOR=1 bash /opt/app-agent/apply.sh`
-4. 앱 배포: 개발 서버에 떠 있는 이미지 태그로 앱 서버에서 `aws s3 cp s3://dev-cking-deploy-551372961758/releases/<태그>/deploy.sh /opt/cking/deploy.sh` 뒤 `PARAM_PATH=/cking/loadtest/ bash /opt/cking/deploy.sh <태그>`(BE CI가 개발 서버에 배포하는 방식과 같다)
+3. 앱 배포: 개발 서버에 떠 있는 이미지 태그로 앱 서버에서 `aws s3 cp s3://dev-cking-deploy-551372961758/releases/<태그>/deploy.sh /opt/cking/deploy.sh` 뒤 `PARAM_PATH=/cking/loadtest/ bash /opt/cking/deploy.sh <태그>`(BE CI가 개발 서버에 배포하는 방식과 같다). 측정 내내 같은 태그를 쓴다
+4. 앱 서버 수집기: 앱 서버에서 `aws s3 sync --exact-timestamps s3://<관측 버킷>/app-agent/ /opt/app-agent/` 뒤 `CKING_INSTANCE=loadtest-cking-app CKING_CADVISOR=1 bash /opt/app-agent/apply.sh`. 수집기는 앱 compose의 네트워크(`cking_default`)에 붙으므로 앱 배포 뒤에 적용한다
 5. 측정이 끝나면 `terraform destroy`. Parameter Store의 비밀값은 직접 지운다
 
 - 앱 주소는 `https://loadtest-api.cking.co.kr`(기존 ALB, 443 규칙 우선순위 200)
