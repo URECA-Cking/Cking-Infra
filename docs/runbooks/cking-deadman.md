@@ -29,3 +29,4 @@ sudo docker logs --tail 100 observability-grafana-1
 ## 하면 안 되는 것
 
 - healthchecks.io에서 검사를 일시 정지한 채로 두지 않는다. 다음 장애를 알 수 없다
+- 관측 서버가 멈춘 동안 앱 배포를 미룬다([수집 대상 끊김](cking-target-down.md#하면-안-되는-것))
