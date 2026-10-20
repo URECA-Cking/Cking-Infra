@@ -50,10 +50,11 @@ resource "aws_iam_role_policy" "be_deploy" {
         Action   = ["autoscaling:StartInstanceRefresh", "autoscaling:CancelInstanceRefresh"]
         Resource = aws_autoscaling_group.app.arn
       },
+      # 서버 시작 시각은 교체가 실패했을 때 이미 새 버전으로 바뀐 서버를 찾는 데 쓴다(BE scripts/prod-recover.sh).
       {
         Sid      = "WatchRefresh"
         Effect   = "Allow"
-        Action   = ["autoscaling:DescribeInstanceRefreshes", "autoscaling:DescribeAutoScalingGroups"]
+        Action   = ["autoscaling:DescribeInstanceRefreshes", "autoscaling:DescribeAutoScalingGroups", "ec2:DescribeInstances"]
         Resource = "*"
       },
     ]
