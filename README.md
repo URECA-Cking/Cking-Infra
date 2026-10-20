@@ -48,6 +48,9 @@ envs/prod/                 운영 환경. 상태는 prod/terraform.tfstate
   database.tf              RDS MySQL 8.4 다중 AZ(마스터 비밀번호는 Secrets Manager 관리), 느린 쿼리 로그
   cache.tf                 ElastiCache Valkey 7.2 주·복제(클러스터 모드 끔, noeviction, TLS, 앱·감시 사용자)
   parameters.tf            /cking/prod/·/cking/prod-monitor/ 중 비밀이 아닌 값(DB·Redis 주소와 사용자 이름)
+  servers.tf               운영 서버 공통 값(개발 앱 서버와 같은 AMI·Docker 버전)
+  monitor.tf               감시용 서버(오토스케일링 그룹 1대, t4g.micro, 앱 서브넷 2a·2b)
+  templates/               서버 첫 부팅 스크립트(server-base.sh는 공통 준비)
 envs/prod-base/            운영 환경 EC2 역할과 인스턴스 프로필. 운영 서버보다 먼저 만들고 운영 환경을 지워도 남긴다. 상태는 prod-base/terraform.tfstate
   iam.tf                   앱 서버·추천 배치 서버·감시용 서버 역할(SSM, 운영 비밀값·배포 파일·업로드 버킷, 수집기 설정 읽기, 댓글 필터 호출, 추천 배치 상태 디스크 붙이기)
 modules/api-waf/           API(ALB) 앞단 WAF. 개발·운영이 같은 규칙을 쓴다(관리형 규칙, 본문 크기 예외, IP당 요청 상한, 로그)
@@ -92,6 +95,23 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
    - `envs/prod` plan 전에 Redis 비밀번호 두 개가 있어야 한다(Terraform이 읽어 ElastiCache 사용자에 넣고 상태 파일에는 남기지 않는다): `/cking/prod/REDIS_PASSWORD`, `/cking/prod-monitor/REDIS_PASSWORD`. 16~128자, `,` `"` `/` `@` 제외
    - RDS 마스터 비밀번호는 RDS가 Secrets Manager에 만들고 교체하므로 넣지 않는다
 3. `envs/prod`에서 `terraform plan -out=tfplan` → `terraform apply tfplan`. 비밀이 아닌 값(`DB_HOST`, `DB_USERNAME`, `REDIS_HOST`, `REDIS_USERNAME`)은 Terraform이 만든다
+4. 앱 DB 계정(`cking_app`, `cking` 스키마 권한만)을 처음 한 번 만든다. 앱은 마스터가 아닌 이 계정으로 접속한다. Mac에 Session Manager 플러그인과 `mysql` 클라이언트가 필요하다
+   - `/cking/prod/DB_PASSWORD`에 앱 계정 비밀번호를 SecureString으로 넣는다
+   - 감시용 서버를 거쳐 RDS로 포트 포워딩한다(Mac 터미널 1):
+     ```bash
+     MONITOR_ID=$(aws autoscaling describe-auto-scaling-groups --region ap-northeast-2 --auto-scaling-group-names prod-cking-monitor --query 'AutoScalingGroups[0].Instances[0].InstanceId' --output text)
+     DB_HOST=$(aws ssm get-parameter --region ap-northeast-2 --name /cking/prod/DB_HOST --query Parameter.Value --output text)
+     aws ssm start-session --region ap-northeast-2 --target "$MONITOR_ID" --document-name AWS-StartPortForwardingSessionToRemoteHost --parameters "host=$DB_HOST,portNumber=3306,localPortNumber=13306"
+     ```
+   - 마스터 비밀번호(RDS가 만든 Secrets Manager 비밀)와 앱 계정 비밀번호를 변수로 읽어 SQL을 표준 입력으로 보낸다. 비밀번호가 화면·명령 인자·셸 기록에 남지 않는다(Mac 터미널 2):
+     ```bash
+     SECRET_ARN=$(aws rds describe-db-instances --region ap-northeast-2 --db-instance-identifier prod-cking-mysql --query 'DBInstances[0].MasterUserSecret.SecretArn' --output text)
+     MYSQL_PWD=$(aws secretsmanager get-secret-value --region ap-northeast-2 --secret-id "$SECRET_ARN" --query SecretString --output text | jq -r .password)
+     APP_PW=$(aws ssm get-parameter --region ap-northeast-2 --name /cking/prod/DB_PASSWORD --with-decryption --query Parameter.Value --output text)
+     printf "CREATE USER 'cking_app'@'%%' IDENTIFIED BY '%s';\nGRANT ALL PRIVILEGES ON cking.* TO 'cking_app'@'%%';\n" "$APP_PW" \
+       | MYSQL_PWD="$MYSQL_PWD" MYSQL_HISTFILE=/dev/null mysql -h 127.0.0.1 -P 13306 -u admin
+     unset MYSQL_PWD APP_PW
+     ```
 
 ## 요구 사항
 
