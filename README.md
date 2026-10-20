@@ -38,7 +38,7 @@ envs/loadtest/             부하 테스트 환경. 측정 때 띄우고 끝나�
   parameters.tf            /cking/loadtest/ 중 비밀이 아닌 값
   templates/               서버 첫 부팅 스크립트
 envs/prod-base/            운영 환경 EC2 역할과 인스턴스 프로필. 운영 서버보다 먼저 만들고 운영 환경을 지워도 남긴다. 상태는 prod-base/terraform.tfstate
-  iam.tf                   앱 서버·추천 배치 서버 역할(SSM, 운영 비밀값·배포 파일·업로드 버킷, 수집기 설정 읽기)
+  iam.tf                   앱 서버·추천 배치 서버·감시용 서버 역할(SSM, 운영 비밀값·배포 파일·업로드 버킷, 수집기 설정 읽기)
 observability/             관측 서버 위의 프로그램 설정(compose, Prometheus, Loki, Alloy, Grafana, 쓰기 전용 nginx)
 ```
 
@@ -75,7 +75,7 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
 ## 운영 환경
 
 1. `envs/prod-base`에서 `terraform plan -out=tfplan` → `terraform apply tfplan`. 처음 한 번만 하고, 운영 환경을 지워도 남긴다
-2. 비밀값은 Parameter Store에 SecureString으로 넣는다. 앱은 `/cking/prod/`, 추천 배치 서버는 `/cking/prod-recommendation/`이며 앱 역할은 추천 배치 경로를 읽지 못한다
+2. 비밀값은 Parameter Store에 SecureString으로 넣는다. 앱은 `/cking/prod/`, 추천 배치 서버는 `/cking/prod-recommendation/`, 감시용 서버는 `/cking/prod-monitor/`(Redis 감시 전용 사용자)이며 각 역할은 자기 경로만 읽는다
 
 ## 요구 사항
 
