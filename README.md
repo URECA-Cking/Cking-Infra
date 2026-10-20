@@ -40,7 +40,7 @@ envs/loadtest/             부하 테스트 환경. 측정 때 띄우고 끝나�
 envs/loadtest-base/        부하 테스트 EC2 역할과 인스턴스 프로필. 테스트 환경보다 먼저 만들고 테스트 환경을 지워도 남긴다. 상태는 loadtest-base/terraform.tfstate
   iam.tf                   앱 서버(SSM, /cking/loadtest/, 배포 파일, 수집기 설정 읽기)·k6 서버(SSM, JWT 비밀값) 역할
 envs/prod-base/            운영 환경 EC2 역할과 인스턴스 프로필. 운영 서버보다 먼저 만들고 운영 환경을 지워도 남긴다. 상태는 prod-base/terraform.tfstate
-  iam.tf                   앱 서버·추천 배치 서버·감시용 서버 역할(SSM, 운영 비밀값·배포 파일·업로드 버킷, 수집기 설정 읽기)
+  iam.tf                   앱 서버·추천 배치 서버·감시용 서버 역할(SSM, 운영 비밀값·배포 파일·업로드 버킷, 수집기 설정 읽기, 댓글 필터 호출, 추천 배치 상태 디스크 붙이기)
 observability/             관측 서버 위의 프로그램 설정(compose, Prometheus, Loki, Alloy, Grafana, 쓰기 전용 nginx)
 ```
 
