@@ -50,6 +50,10 @@ envs/prod/                 운영 환경. 상태는 prod/terraform.tfstate
   parameters.tf            /cking/prod/·/cking/prod-monitor/ 중 비밀이 아닌 값(DB·Redis 주소와 사용자 이름)
   servers.tf               운영 서버 공통 값(개발 앱 서버와 같은 AMI·Docker 버전)
   monitor.tf               감시용 서버(오토스케일링 그룹 1대, t4g.micro, 앱 서브넷 2a·2b)
+  buckets.tf               배포·업로드·ALB 접근 로그 버킷
+  alb.tf                   ALB(HTTPS, /readyz 외부 차단, 접근 로그), api.cking.co.kr, API 앞단 WAF(차단, 운영 NAT IP 허용)
+  app.tf                   앱 서버 오토스케일링 그룹(t4g.small 2~4대, CPU 50% 목표 추적, 교체 배포)
+  deploy_roles.tf          GitHub Actions 운영 배포 역할(BE: 배포 파일, 배포 태그, 앱 서버 교체)
   templates/               서버 첫 부팅 스크립트(server-base.sh는 공통 준비)
 envs/prod-base/            운영 환경 EC2 역할과 인스턴스 프로필. 운영 서버보다 먼저 만들고 운영 환경을 지워도 남긴다. 상태는 prod-base/terraform.tfstate
   iam.tf                   앱 서버·추천 배치 서버·감시용 서버 역할(SSM, 운영 비밀값·배포 파일·업로드 버킷, 수집기 설정 읽기, 댓글 필터 호출, 추천 배치 상태 디스크 붙이기)
@@ -112,6 +116,7 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
        | MYSQL_PWD="$MYSQL_PWD" MYSQL_HISTFILE=/dev/null mysql -h 127.0.0.1 -P 13306 -u admin
      unset MYSQL_PWD APP_PW
      ```
+5. BE `main`에 머지해 운영 배포를 실행한다. BE CI가 배포 파일을 운영 배포 버킷에 올리고 `/cking/prod/RELEASE_TAG`를 바꾼 뒤 앱 서버 교체를 시작한다. 그 전까지 앱 서버는 배포 태그나 DB 계정이 없어 헬스체크에 실패하고 교체를 반복한다
 
 ## 요구 사항
 
