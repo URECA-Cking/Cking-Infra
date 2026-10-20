@@ -52,11 +52,11 @@ envs/prod/                 운영 환경. 상태는 prod/terraform.tfstate
   monitor.tf               감시용 서버(오토스케일링 그룹 1대, t4g.micro, 앱 서브넷 2a·2b)
   buckets.tf               배포·업로드·ALB 접근 로그 버킷
   alb.tf                   ALB(HTTPS, /readyz 외부 차단, 접근 로그), api.cking.co.kr, API 앞단 WAF(차단, 운영 NAT IP 허용)
-  app.tf                   앱 서버 오토스케일링 그룹(t4g.small 2~4대, CPU 50% 목표 추적, 교체 배포)
+  app.tf                   앱 서버 오토스케일링 그룹(t4g.small 2~4대, CPU 50% 목표 추적, 교체 배포, 시작 대기 중 자기 스모크 검사)
   deploy_roles.tf          GitHub Actions 운영 배포 역할(BE: 배포 파일, 배포 태그, 앱 서버 교체)
   templates/               서버 첫 부팅 스크립트(server-base.sh는 공통 준비)
 envs/prod-base/            운영 환경 EC2 역할과 인스턴스 프로필. 운영 서버보다 먼저 만들고 운영 환경을 지워도 남긴다. 상태는 prod-base/terraform.tfstate
-  iam.tf                   앱 서버·추천 배치 서버·감시용 서버 역할(SSM, 운영 비밀값·배포 파일·업로드 버킷, 수집기 설정 읽기, 댓글 필터 호출, 추천 배치 상태 디스크 붙이기)
+  iam.tf                   앱 서버·추천 배치 서버·감시용 서버 역할(SSM, 운영 비밀값·배포 파일·업로드 버킷, 수집기 설정 읽기, 댓글 필터 호출, 앱 서버 시작 대기 끝내기, 추천 배치 상태 디스크 붙이기)
 modules/api-waf/           API(ALB) 앞단 WAF. 개발·운영이 같은 규칙을 쓴다(관리형 규칙, 본문 크기 예외, IP당 요청 상한, 로그)
 observability/             관측 서버 위의 프로그램 설정(compose, Prometheus, Loki, Alloy, Grafana, 쓰기 전용 nginx)
 ```
@@ -117,6 +117,11 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
      unset MYSQL_PWD APP_PW
      ```
 5. BE `main`에 머지해 운영 배포를 실행한다. BE CI가 배포 파일을 운영 배포 버킷에 올리고 `/cking/prod/RELEASE_TAG`를 바꾼 뒤 앱 서버 교체를 시작한다. 그 전까지 앱 서버는 배포 태그나 DB 계정이 없어 헬스체크에 실패하고 교체를 반복한다
+6. 배포 실패와 되돌리기
+   - 새 서버는 시작 대기 동안 같은 태그의 `smoke.js`로 자기 자신을 검사하고 통과해야 ALB에 붙는다. 실패하면 버려지고 교체가 실패하며, 옛 서버가 남고 배포 태그가 자동으로 되돌아간다
+   - 교체 뒤 ALB 경로 스모크가 실패하면 BE CI가 이전 태그로 한 번 자동 교체하고 다시 검사한다
+   - 스모크가 잡지 못한 문제는 BE Actions의 `Deploy to prod` 워크플로를 `main`에서 예전 태그로 실행해 되돌린다
+   - 이 절차는 `envs/prod-base`의 앱 역할(시작 대기 끝내기 권한)이 먼저 적용되어 있어야 한다
 
 ## 요구 사항
 

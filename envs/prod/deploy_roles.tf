@@ -4,7 +4,7 @@ data "aws_iam_openid_connect_provider" "github" {
   url = "https://token.actions.githubusercontent.com"
 }
 
-# BE: 배포 파일 업로드 → 배포 태그 갱신 → 앱 서버 교체 시작.
+# BE: 배포 파일 업로드 → 배포 태그 갱신 → 앱 서버 교체 시작. 수동 되돌리기도 같은 역할로 같은 단계를 거친다.
 resource "aws_iam_role" "be_deploy" {
   name = "prod-cking-be-github-actions-role"
 
@@ -31,10 +31,11 @@ resource "aws_iam_role_policy" "be_deploy" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
+      # 읽기는 수동 되돌리기에서 예전 태그의 배포 파일이 있는지 확인할 때 쓴다.
       {
-        Sid      = "UploadRelease"
+        Sid      = "ReleaseFiles"
         Effect   = "Allow"
-        Action   = "s3:PutObject"
+        Action   = ["s3:PutObject", "s3:GetObject"]
         Resource = "${aws_s3_bucket.this["deploy"].arn}/releases/*"
       },
       {
@@ -49,10 +50,11 @@ resource "aws_iam_role_policy" "be_deploy" {
         Action   = ["autoscaling:StartInstanceRefresh", "autoscaling:CancelInstanceRefresh"]
         Resource = aws_autoscaling_group.app.arn
       },
+      # 서버 시작 시각은 교체가 실패했을 때 이미 새 버전으로 바뀐 서버를 찾는 데 쓴다(BE scripts/prod-recover.sh).
       {
         Sid      = "WatchRefresh"
         Effect   = "Allow"
-        Action   = ["autoscaling:DescribeInstanceRefreshes", "autoscaling:DescribeAutoScalingGroups"]
+        Action   = ["autoscaling:DescribeInstanceRefreshes", "autoscaling:DescribeAutoScalingGroups", "ec2:DescribeInstances"]
         Resource = "*"
       },
     ]
