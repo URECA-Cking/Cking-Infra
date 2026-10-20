@@ -116,7 +116,7 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
        | MYSQL_PWD="$MYSQL_PWD" MYSQL_HISTFILE=/dev/null mysql -h 127.0.0.1 -P 13306 -u admin
      unset MYSQL_PWD APP_PW
      ```
-5. BE `main`에 머지해 운영 배포를 실행한다. BE CI가 배포 파일을 운영 배포 버킷에 올리고 `/cking/prod/RELEASE_TAG`를 바꾼 뒤 앱 서버 교체를 시작한다. 그 전까지 앱 서버는 배포 태그나 DB 계정이 없어 헬스체크에 실패하고 교체를 반복한다
+5. BE `main`에 머지해 운영 배포를 실행한다. BE CI가 배포 파일을 운영 배포 버킷에 올리고 `/cking/prod/RELEASE_TAG`를 바꾼 뒤 앱 서버 교체를 시작한다. 그 전까지 앱 서버는 배포 태그나 DB 계정이 없어 시작 대기에서 버려지고 다시 뜨기를 반복한다. 그래서 3단계의 Terraform은 앱 서버가 정상이 되기를 기다리지 않는다
 6. 배포 실패와 되돌리기
    - 새 서버는 시작 대기 동안 같은 태그의 `smoke.js`로 자기 자신을 검사하고 통과해야 ALB에 붙는다. 실패하면 버려지고 교체가 실패하며, 옛 서버가 남고 배포 태그가 자동으로 되돌아간다
    - 교체 뒤 ALB 경로 스모크가 실패하면 BE CI가 이전 태그로 한 번 자동 교체하고 다시 검사한다
