@@ -1,0 +1,60 @@
+# GitHub Actions 운영 배포 역할. 저장소의 main 브랜치에서만 쓸 수 있고, 각 역할은 자기 자원만 다룬다.
+
+data "aws_iam_openid_connect_provider" "github" {
+  url = "https://token.actions.githubusercontent.com"
+}
+
+# BE: 배포 파일 업로드 → 배포 태그 갱신 → 앱 서버 교체 시작.
+resource "aws_iam_role" "be_deploy" {
+  name = "prod-cking-be-github-actions-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Federated = data.aws_iam_openid_connect_provider.github.arn }
+      Action    = "sts:AssumeRoleWithWebIdentity"
+      Condition = {
+        StringEquals = {
+          "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+          "token.actions.githubusercontent.com:sub" = "repo:URECA-Cking@326738686/Cking-BE@1362263486:ref:refs/heads/main"
+        }
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "be_deploy" {
+  name = "prod-cking-be-deploy"
+  role = aws_iam_role.be_deploy.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "UploadRelease"
+        Effect   = "Allow"
+        Action   = "s3:PutObject"
+        Resource = "${aws_s3_bucket.this["deploy"].arn}/releases/*"
+      },
+      {
+        Sid      = "SetReleaseTag"
+        Effect   = "Allow"
+        Action   = ["ssm:GetParameter", "ssm:PutParameter"]
+        Resource = "arn:aws:ssm:ap-northeast-2:551372961758:parameter/cking/prod/RELEASE_TAG"
+      },
+      {
+        Sid      = "RefreshAppServers"
+        Effect   = "Allow"
+        Action   = ["autoscaling:StartInstanceRefresh", "autoscaling:CancelInstanceRefresh"]
+        Resource = aws_autoscaling_group.app.arn
+      },
+      {
+        Sid      = "WatchRefresh"
+        Effect   = "Allow"
+        Action   = ["autoscaling:DescribeInstanceRefreshes", "autoscaling:DescribeAutoScalingGroups"]
+        Resource = "*"
+      },
+    ]
+  })
+}
