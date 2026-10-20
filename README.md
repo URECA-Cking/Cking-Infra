@@ -44,6 +44,10 @@ envs/loadtest-base/        부하 테스트 EC2 역할과 인스턴스 프로필
 envs/prod/                 운영 환경. 상태는 prod/terraform.tfstate
   network.tf               VPC 10.1.0.0/16, AZ 2a·2b의 퍼블릭·프라이빗 앱·프라이빗 데이터 서브넷, AZ마다 NAT, S3 게이트웨이 엔드포인트
   peering.tf               개발 VPC 피어링(관측 서버 공유), 양쪽 경로, 관측 서버 수집 포트에 운영 앱 서브넷 허용
+  security_groups.tf       앱·감시용 서버, RDS, ElastiCache 보안 그룹
+  database.tf              RDS MySQL 8.4 다중 AZ(마스터 비밀번호는 Secrets Manager 관리), 느린 쿼리 로그
+  cache.tf                 ElastiCache Valkey 7.2 주·복제(클러스터 모드 끔, noeviction, TLS, 앱·감시 사용자)
+  parameters.tf            /cking/prod/·/cking/prod-monitor/ 중 비밀이 아닌 값(DB·Redis 주소와 사용자 이름)
 envs/prod-base/            운영 환경 EC2 역할과 인스턴스 프로필. 운영 서버보다 먼저 만들고 운영 환경을 지워도 남긴다. 상태는 prod-base/terraform.tfstate
   iam.tf                   앱 서버·추천 배치 서버·감시용 서버 역할(SSM, 운영 비밀값·배포 파일·업로드 버킷, 수집기 설정 읽기, 댓글 필터 호출, 추천 배치 상태 디스크 붙이기)
 modules/api-waf/           API(ALB) 앞단 WAF. 개발·운영이 같은 규칙을 쓴다(관리형 규칙, 본문 크기 예외, IP당 요청 상한, 로그)
@@ -84,8 +88,10 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
 ## 운영 환경
 
 1. `envs/prod-base`에서 `terraform plan -out=tfplan` → `terraform apply tfplan`. 처음 한 번만 하고, 운영 환경을 지워도 남긴다
-2. `envs/prod`에서 `terraform plan -out=tfplan` → `terraform apply tfplan`
-3. 비밀값은 Parameter Store에 SecureString으로 넣는다. 앱은 `/cking/prod/`, 추천 배치 서버는 `/cking/prod-recommendation/`, 감시용 서버는 `/cking/prod-monitor/`(Redis 감시 전용 사용자)이며 각 역할은 자기 경로만 읽는다
+2. 비밀값은 Parameter Store에 SecureString으로 넣는다. 앱은 `/cking/prod/`, 추천 배치 서버는 `/cking/prod-recommendation/`, 감시용 서버는 `/cking/prod-monitor/`(Redis 감시 전용 사용자)이며 각 역할은 자기 경로만 읽는다
+   - `envs/prod` plan 전에 Redis 비밀번호 두 개가 있어야 한다(Terraform이 읽어 ElastiCache 사용자에 넣고 상태 파일에는 남기지 않는다): `/cking/prod/REDIS_PASSWORD`, `/cking/prod-monitor/REDIS_PASSWORD`. 16~128자, `,` `"` `/` `@` 제외
+   - RDS 마스터 비밀번호는 RDS가 Secrets Manager에 만들고 교체하므로 넣지 않는다
+3. `envs/prod`에서 `terraform plan -out=tfplan` → `terraform apply tfplan`. 비밀이 아닌 값(`DB_HOST`, `DB_USERNAME`, `REDIS_HOST`, `REDIS_USERNAME`)은 Terraform이 만든다
 
 ## 요구 사항
 
