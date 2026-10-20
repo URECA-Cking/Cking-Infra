@@ -15,3 +15,12 @@ output "app" {
     waf_log_group  = module.api_waf.log_group_name
   }
 }
+
+# FE 운영 배포 워크플로가 쓰는 값.
+output "cdn" {
+  value = {
+    distribution_ids = { for k, d in aws_cloudfront_distribution.this : k => d.id }
+    frontend_buckets = { for k in ["web", "admin"] : k => aws_s3_bucket.this[k].id }
+    fe_deploy_role   = aws_iam_role.fe_deploy.arn
+  }
+}
