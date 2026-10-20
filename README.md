@@ -41,6 +41,9 @@ envs/loadtest/             부하 테스트 환경. 측정 때 띄우고 끝나�
   templates/               서버 첫 부팅 스크립트
 envs/loadtest-base/        부하 테스트 EC2 역할과 인스턴스 프로필. 테스트 환경보다 먼저 만들고 테스트 환경을 지워도 남긴다. 상태는 loadtest-base/terraform.tfstate
   iam.tf                   앱 서버(SSM, /cking/loadtest/, 배포 파일, 수집기 설정 읽기)·k6 서버(SSM, JWT 비밀값) 역할
+envs/prod/                 운영 환경. 상태는 prod/terraform.tfstate
+  network.tf               VPC 10.1.0.0/16, AZ 2a·2b의 퍼블릭·프라이빗 앱·프라이빗 데이터 서브넷, AZ마다 NAT, S3 게이트웨이 엔드포인트
+  peering.tf               개발 VPC 피어링(관측 서버 공유), 양쪽 경로, 관측 서버 수집 포트에 운영 앱 서브넷 허용
 envs/prod-base/            운영 환경 EC2 역할과 인스턴스 프로필. 운영 서버보다 먼저 만들고 운영 환경을 지워도 남긴다. 상태는 prod-base/terraform.tfstate
   iam.tf                   앱 서버·추천 배치 서버·감시용 서버 역할(SSM, 운영 비밀값·배포 파일·업로드 버킷, 수집기 설정 읽기)
 modules/api-waf/           API(ALB) 앞단 WAF. 개발·운영이 같은 규칙을 쓴다(관리형 규칙, 본문 크기 예외, IP당 요청 상한, 로그)
@@ -57,7 +60,7 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
 - 인프라(`envs/`)는 사람이 plan을 확인하고 apply한다. 관측 서버 위의 설정(`observability/`)과 앱 서버 수집기 설정(`app-agent/`)은 main에 머지되면 GitHub Actions가 배포한다. 같은 리소스를 두 주체가 관리하지 않는다
 - 컨테이너 이미지는 `이름:버전@sha256:…`으로 고정한다. 태그는 배포처에서 다른 이미지로 옮길 수 있어, 버전은 사람이 읽는 표기로 남기고 실제로는 digest로 받는다. 갱신은 Dependabot PR로 받고, 직접 바꿀 때는 버전과 digest를 함께 바꾼다. digest는 `docker buildx imagetools inspect 이름:버전`의 `Digest` 값이다
 - PR마다 `ci.yml`이 검사하고, main 룰셋의 필수 검사로 건다. 설정 검증은 compose에 고정된 이미지로 실행한다
-  - `terraform`: `terraform fmt -check`, `envs/dev`의 `init -backend=false`·`validate`
+  - `terraform`: `terraform fmt -check`, `envs/` 아래 각 환경의 `init -backend=false`·`validate`
   - `config`: compose 해석, Alloy `validate`, `promtool check config`, Loki `-verify-config`, `nginx -t`
   - `lint`: `shellcheck`(배포 스크립트, 서버 첫 부팅 스크립트), `actionlint`(워크플로)
 - 협업 규칙은 조직 CONTRIBUTING을 따른다. 환경이 개발 서버 하나라 `develop` 없이 `main`으로 PR을 보낸다
@@ -81,7 +84,8 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
 ## 운영 환경
 
 1. `envs/prod-base`에서 `terraform plan -out=tfplan` → `terraform apply tfplan`. 처음 한 번만 하고, 운영 환경을 지워도 남긴다
-2. 비밀값은 Parameter Store에 SecureString으로 넣는다. 앱은 `/cking/prod/`, 추천 배치 서버는 `/cking/prod-recommendation/`, 감시용 서버는 `/cking/prod-monitor/`(Redis 감시 전용 사용자)이며 각 역할은 자기 경로만 읽는다
+2. `envs/prod`에서 `terraform plan -out=tfplan` → `terraform apply tfplan`
+3. 비밀값은 Parameter Store에 SecureString으로 넣는다. 앱은 `/cking/prod/`, 추천 배치 서버는 `/cking/prod-recommendation/`, 감시용 서버는 `/cking/prod-monitor/`(Redis 감시 전용 사용자)이며 각 역할은 자기 경로만 읽는다
 
 ## 요구 사항
 
