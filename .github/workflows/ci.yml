@@ -22,7 +22,7 @@ jobs:
           terraform_wrapper: false
       - run: terraform fmt -check -recursive
       - run: |
-          for dir in envs/dev envs/loadtest envs/loadtest-base envs/prod-base; do
+          for dir in envs/dev envs/loadtest envs/loadtest-base envs/prod envs/prod-base; do
             terraform -chdir="$dir" init -backend=false -input=false
             terraform -chdir="$dir" validate
           done
