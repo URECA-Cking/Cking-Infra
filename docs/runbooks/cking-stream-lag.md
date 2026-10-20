@@ -35,3 +35,8 @@ idle은 짧은데 lag가 줄지 않는다. 소비자는 Stream마다 1개(동시
 ## 하면 안 되는 것
 
 [공통](stream.md#공통으로-하면-안-되는-것)과 같다.
+
+## 운영에서 다른 점
+
+- 소비자는 서버마다 하나라, 처리가 느릴 때 서버 대수를 늘리면 동시 처리가 는다. DB가 병목이면 효과가 없으므로 RDS CPU(CloudWatch)를 먼저 본다
+- 대수 조정: `aws autoscaling set-desired-capacity --region ap-northeast-2 --auto-scaling-group-name prod-cking-app --desired-capacity 3` (최대 4). 목표 추적 정책이 CPU 기준으로 다시 줄일 수 있다

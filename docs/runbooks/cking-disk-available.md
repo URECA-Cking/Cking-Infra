@@ -30,3 +30,8 @@ sudo docker system df
 
 - 앱 서버에서 `docker system prune --volumes`나 `docker volume prune`을 쓰지 않는다. Redis 볼륨이 지워진다
 - 관측 서버 `/data/prometheus` 아래 파일을 직접 지우지 않는다. 저장소가 깨진다
+
+## 운영에서 다른 점
+
+- 운영 앱 서버 `/`는 30GiB gp3다. 서버가 배포마다 새로 뜨므로 이미지가 쌓이지 않는다. 차고 있으면 로그·다른 원인을 찾는다
+- 고치기 어려우면 서버를 교체한다([운영](README.md#운영))

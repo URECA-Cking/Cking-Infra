@@ -34,3 +34,8 @@
 ## 하면 안 되는 것
 
 [공통](stream.md#공통으로-하면-안-되는-것)과 같다. 특히 pending을 `XACK`로 지우지 않는다.
+
+## 운영에서 다른 점
+
+- `XPENDING`은 [운영 상태 확인](stream.md#운영-상태-확인)으로 본다(감시용 사용자로는 안 된다)
+- 되돌리기는 [운영 앱 배포](deploy-failed.md#운영-앱-배포-cking-be-deploy-to-prod)
