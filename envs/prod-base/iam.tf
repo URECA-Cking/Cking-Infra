@@ -120,3 +120,36 @@ resource "aws_iam_instance_profile" "recommendation" {
   name = "prod-cking-recommendation-role"
   role = aws_iam_role.recommendation.name
 }
+
+resource "aws_iam_role" "monitor" {
+  name               = "prod-cking-monitor-role"
+  assume_role_policy = local.ec2_trust
+}
+
+resource "aws_iam_role_policy_attachment" "monitor_ssm" {
+  role       = aws_iam_role.monitor.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_iam_role_policy" "monitor" {
+  name = "prod-cking-monitor"
+  role = aws_iam_role.monitor.id
+
+  # Redis 감시 전용 사용자의 비밀번호만 읽는다. 앱 비밀값(/cking/prod/)은 읽지 않는다.
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = concat([
+      {
+        Sid      = "ReadMonitorParameters"
+        Effect   = "Allow"
+        Action   = ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"]
+        Resource = "${local.parameter_arn}/cking/prod-monitor/*"
+      },
+    ], local.app_agent_statements)
+  })
+}
+
+resource "aws_iam_instance_profile" "monitor" {
+  name = "prod-cking-monitor-role"
+  role = aws_iam_role.monitor.name
+}
