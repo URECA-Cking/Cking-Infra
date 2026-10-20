@@ -7,6 +7,7 @@
 - Terraform은 새로 만드는 리소스(관측 서버 등)와 콘솔에서 가져온 리소스를 관리한다. 가져온 리소스: FE 배포 역할(`dev-cking-fe-github-actions-role`), 앱 서버 역할(`dev-cking-ec2-role`)
 - 기존 리소스(VPC, 서브넷, 앱 보안 그룹, ALB, RDS)는 콘솔이 관리하며 Terraform은 `data` 소스로 읽기만 한다
 - 업로드 버킷(`dev-cking-uploads-…`)은 콘솔이 관리하고, 버킷 정책(CDN 읽기 허용)만 Terraform이 관리한다
+- ALB는 콘솔이 관리하고, API 앞단 WAF 연결만 Terraform이 관리한다
 
 ## 구조
 
@@ -21,6 +22,7 @@ envs/dev/                  개발 환경. 실행 위치
   backend.tf               상태 저장소(S3)와 잠금
   providers.tf             리전, 계정 고정, 공통 태그
   existing.tf              콘솔이 관리하는 기존 리소스 읽기(data)
+  api_waf.tf               API 앞단 WAF(modules/api-waf)를 기존 ALB에 세기만 상태로 연결
   admin_frontend.tf        관리자 앱 정적 호스팅(S3, CloudFront, WAF, 요금제, Route53)
   uploads_cdn.tf           업로드 이미지 공개 CDN(CloudFront, WAF, 요금제, Route53, 버킷 정책)
   app_server.tf            앱 서버 역할(콘솔에서 가져옴)과 수집기 설정 읽기 권한
@@ -41,6 +43,7 @@ envs/loadtest-base/        부하 테스트 EC2 역할과 인스턴스 프로필
   iam.tf                   앱 서버(SSM, /cking/loadtest/, 배포 파일, 수집기 설정 읽기)·k6 서버(SSM, JWT 비밀값) 역할
 envs/prod-base/            운영 환경 EC2 역할과 인스턴스 프로필. 운영 서버보다 먼저 만들고 운영 환경을 지워도 남긴다. 상태는 prod-base/terraform.tfstate
   iam.tf                   앱 서버·추천 배치 서버·감시용 서버 역할(SSM, 운영 비밀값·배포 파일·업로드 버킷, 수집기 설정 읽기)
+modules/api-waf/           API(ALB) 앞단 WAF. 개발·운영이 같은 규칙을 쓴다(관리형 규칙, 본문 크기 예외, IP당 요청 상한, 로그)
 observability/             관측 서버 위의 프로그램 설정(compose, Prometheus, Loki, Alloy, Grafana, 쓰기 전용 nginx)
 ```
 
