@@ -2,15 +2,17 @@
 
 > 전제: 개발 서버 1대(`dev-cking-app`), Docker Compose, Cking-BE `deploy.sh` 배포
 
-`max by (stream) (redis_stream_group_consumer_idle_seconds) > 120`이 1분 지속될 때. 급함(`@channel`).
+`min by (stream) (redis_stream_group_consumer_idle_seconds) > 120`이 1분 지속될 때. 급함(`@channel`).
 
 ## 뜻하는 것
 
-앱의 소비자가 2분 넘게 Stream을 읽으러 오지 않았다. 응모·적립 요청은 성공하지만 DB에 반영되지 않는다. 구조는 [Redis Stream 공통](stream.md).
+그룹의 소비자 누구도 2분 넘게 Stream을 읽으러 오지 않았다. 응모·적립 요청은 성공하지만 DB에 반영되지 않는다. 구조는 [Redis Stream 공통](stream.md).
 
 평소 idle은 2초 이하, 7일 최대 37초(앱 재시작 중)다.
 
-소비자가 읽기를 멈춰도 Redis의 소비자 목록은 남으므로 소비자 수가 아니라 idle로 판단한다.
+소비자가 읽기를 멈춰도 Redis의 소비자 목록은 남으므로 소비자 수가 아니라 idle로 판단한다. 소비자 이름이 서버별이라 떠난 서버의 이름이 정리되기 전(약 1시간)까지 목록에 남는다. 그래서 가장 오래 쉰 소비자(max)가 아니라 가장 최근에 읽은 소비자(min)를 본다.
+
+서버 여러 대 중 한 대의 소비자만 멈추면 이 경보는 울리지 않는다. 새 메시지는 읽고 있는 소비자가 받고, 멈춘 소비자가 들고 있던 메시지는 PEL 재처리가 가져간다. 그 경우는 [앱 중단](cking-app-down.md)과 [처리 실패 누적](cking-stream-pending.md)이 잡는다.
 
 ## 먼저 볼 곳
 

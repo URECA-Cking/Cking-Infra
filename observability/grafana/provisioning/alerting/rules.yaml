@@ -99,7 +99,7 @@ groups:
             datasourceUid: "prometheus"
             model:
               refId: "A"
-              expr: "max by (stream) (redis_stream_group_consumer_idle_seconds{instance=\"dev-cking-app\"})"
+              expr: "min by (stream) (redis_stream_group_consumer_idle_seconds{instance=\"dev-cking-app\"})"
               instant: true
           - refId: "B"
             datasourceUid: "__expr__"
