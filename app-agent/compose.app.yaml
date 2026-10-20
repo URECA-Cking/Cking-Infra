@@ -1,0 +1,12 @@
+# 앱 지표(app.alloy)를 켤 때 compose.yaml에 덧붙인다. 앱 compose의 네트워크에 붙어 app:8081을 읽는다.
+services:
+  alloy:
+    volumes:
+      - ./app.alloy:/etc/cking-alloy/app.alloy:ro
+    networks:
+      - cking
+
+networks:
+  cking:
+    name: cking_default
+    external: true

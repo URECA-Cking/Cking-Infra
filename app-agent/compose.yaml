@@ -10,23 +10,22 @@ services:
     security_opt:
       - no-new-privileges:true
     read_only: true
+    # 켜는 지표에 따라 apply.sh가 덧붙이는 compose가 설정 파일을 이 폴더에 더한다.
     command:
       - run
-      - /etc/alloy/agent.alloy
+      - /etc/cking-alloy
       - --storage.path=/data
       - --disable-reporting
     environment:
       CKING_INSTANCE: ${CKING_INSTANCE:-dev-cking-app}
     volumes:
-      - ./agent.alloy:/etc/alloy/agent.alloy:ro
+      - ./agent.alloy:/etc/cking-alloy/agent.alloy:ro
       - /var/lib/app-agent:/data
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
       - /:/host/root:ro
       - /run/udev/data:/run/udev/data:ro
-    networks:
-      - cking
     labels:
       kr.co.cking.config-hash: ${AGENT_CONFIG_HASH:?설정 해시가 지정되지 않았습니다}
     # 서버 메모리가 모자랄 때도 수집기는 swap으로 밀려나지 않게 한다.
@@ -38,8 +37,3 @@ services:
         max-size: "10m"
         max-file: "5"
         labels: "com.docker.compose.service"
-
-networks:
-  cking:
-    name: cking_default
-    external: true

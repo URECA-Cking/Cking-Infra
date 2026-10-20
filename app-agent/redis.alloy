@@ -1,0 +1,28 @@
+// 개발 앱 서버는 같은 Docker 네트워크의 redis:6379, 운영 감시용 서버는 ElastiCache(rediss://, 감시 전용 사용자)를 읽는다.
+prometheus.exporter.redis "redis" {
+  redis_addr           = sys.env("CKING_REDIS_ADDR")
+  redis_user           = sys.env("CKING_REDIS_USER")
+  redis_password_file  = sys.env("CKING_REDIS_PASSWORD_FILE")
+  check_single_streams = ["stream:ticket-deducted", "stream:ticket-earned", "stream:common-ticket-earned"]
+  export_key_values    = false
+}
+
+discovery.relabel "redis" {
+  targets = prometheus.exporter.redis.redis.targets
+
+  rule {
+    target_label = "instance"
+    replacement  = sys.env("CKING_INSTANCE")
+  }
+
+  rule {
+    target_label = "job"
+    replacement  = "redis"
+  }
+}
+
+prometheus.scrape "redis" {
+  targets         = discovery.relabel.redis.output
+  scrape_interval = "15s"
+  forward_to      = [prometheus.remote_write.gateway.receiver]
+}

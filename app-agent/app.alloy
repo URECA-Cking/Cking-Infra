@@ -1,0 +1,17 @@
+prometheus.scrape "app" {
+  targets         = [{__address__ = "app:8081", instance = sys.env("CKING_INSTANCE")}]
+  job_name        = "cking-be"
+  metrics_path    = "/actuator/prometheus"
+  scrape_interval = "15s"
+  forward_to      = [prometheus.relabel.app.receiver]
+}
+
+prometheus.relabel "app" {
+  forward_to = [prometheus.remote_write.gateway.receiver]
+
+  rule {
+    source_labels = ["__name__"]
+    regex         = "spring_security_.*"
+    action        = "drop"
+  }
+}
