@@ -16,6 +16,17 @@ policies:
         group_wait: "0s"
         group_interval: "1m"
         repeat_interval: "5m"
+      # 운영 규칙(env=prod)은 개발 경로보다 먼저 받아 운영 채널로만 보낸다
+      - receiver: "Slack 운영"
+        object_matchers:
+          - ["env", "=", "prod"]
+        routes:
+          - receiver: "Slack 운영 급함"
+            object_matchers:
+              - ["severity", "=", "urgent"]
+          - receiver: "Slack 운영 관측"
+            object_matchers:
+              - ["team", "=", "infra"]
       - receiver: "Slack 급함"
         object_matchers:
           - ["severity", "=", "urgent"]

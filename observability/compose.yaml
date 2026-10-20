@@ -101,6 +101,7 @@ services:
       GF_PLUGINS_DISABLE_PLUGINS: elasticsearch,grafana-postgresql-datasource,mysql,mssql,influxdb,opentsdb,grafana-pyroscope-datasource,jaeger,tempo,zipkin
       GOMEMLIMIT: 512MiB
       SLACK_ALERT_WEBHOOK_URL: ${SLACK_ALERT_WEBHOOK_URL:?SLACK_ALERT_WEBHOOK_URL가 지정되지 않았습니다}
+      SLACK_PROD_ALERT_WEBHOOK_URL: ${SLACK_PROD_ALERT_WEBHOOK_URL:?SLACK_PROD_ALERT_WEBHOOK_URL가 지정되지 않았습니다}
       DEADMAN_PING_URL: ${DEADMAN_PING_URL:?DEADMAN_PING_URL가 지정되지 않았습니다}
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
