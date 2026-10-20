@@ -27,14 +27,6 @@ data "aws_security_group" "observability" {
   name   = "dev-cking-observability-sg"
 }
 
-data "aws_s3_bucket" "deploy" {
-  bucket = "dev-cking-deploy-551372961758"
-}
-
-data "aws_s3_bucket" "observability" {
-  bucket = "dev-cking-observability-551372961758-ap-northeast-2-an"
-}
-
 data "aws_instance" "observability" {
   filter {
     name   = "tag:Name"
@@ -63,4 +55,13 @@ data "aws_route53_zone" "main" {
 
 data "aws_db_subnet_group" "main" {
   name = "dev-cking-db-subnet-group"
+}
+
+# 역할은 envs/loadtest-base에서 먼저 만든다. 없으면 plan이 여기서 멈춘다.
+data "aws_iam_instance_profile" "app" {
+  name = "loadtest-cking-app-role"
+}
+
+data "aws_iam_instance_profile" "k6" {
+  name = "loadtest-cking-k6-role"
 }
