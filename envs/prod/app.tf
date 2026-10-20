@@ -81,6 +81,9 @@ resource "aws_autoscaling_group" "app" {
   health_check_grace_period = 120
   default_instance_warmup   = 300
 
+  # 첫 배포 전에는 배포 태그가 없어 새 서버가 시작 대기에서 버려진다. 서버가 정상인지는 BE 배포의 자기 검사·스모크가 확인한다.
+  wait_for_capacity_timeout = "0"
+
   launch_template {
     id      = aws_launch_template.app.id
     version = aws_launch_template.app.latest_version
