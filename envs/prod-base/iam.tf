@@ -1,5 +1,5 @@
 # 운영 EC2가 쓰는 역할. 서버와 같은 apply로 만들면 전파 전에 부팅해 SSM 에이전트가 자격 증명을 받지 못해 따로 먼저 만든다.
-# 버킷은 envs/prod에서 만들므로 이름으로 가리킨다.
+# 버킷·함수·앱 서버 그룹은 envs/prod에서 만들므로 이름으로 가리킨다.
 locals {
   parameter_arn        = "arn:aws:ssm:ap-northeast-2:551372961758:parameter"
   deploy_bucket        = "prod-cking-deploy-551372961758-ap-northeast-2-an"
@@ -86,6 +86,12 @@ resource "aws_iam_role_policy" "app" {
         Effect   = "Allow"
         Action   = ["lambda:InvokeFunctionUrl", "lambda:InvokeFunction"]
         Resource = local.comment_filter_arn
+      },
+      {
+        Sid      = "CompleteOwnLaunch"
+        Effect   = "Allow"
+        Action   = "autoscaling:CompleteLifecycleAction"
+        Resource = "arn:aws:autoscaling:ap-northeast-2:551372961758:autoScalingGroup:*:autoScalingGroupName/prod-cking-app"
       },
     ], local.app_agent_statements)
   })
