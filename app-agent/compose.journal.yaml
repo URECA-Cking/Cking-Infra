@@ -1,0 +1,7 @@
+# journald 로그(journal.alloy)를 켤 때 compose.yaml에 덧붙인다. 추천 배치 서버에서 쓴다.
+services:
+  alloy:
+    volumes:
+      - ./journal.alloy:/etc/cking-alloy/journal.alloy:ro
+      - /var/log/journal:/var/log/journal:ro
+      - /etc/machine-id:/etc/machine-id:ro

@@ -35,6 +35,8 @@ output "recommendation" {
     deploy_role_arn   = aws_iam_role.recommendation_deploy.arn
     release_prefix    = "s3://dev-cking-deploy-551372961758/recommendation/releases/"
     release_parameter = "/cking/dev-recommendation/RELEASE"
+    server_group      = aws_autoscaling_group.recommendation.name
+    state_volume_id   = aws_ebs_volume.recommendation_state.id
   }
 }
 

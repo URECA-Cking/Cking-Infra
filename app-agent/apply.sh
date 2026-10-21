@@ -15,6 +15,7 @@ config_hash() {
 #                    운영 감시용 서버는 CKING_REDIS_ADDR(rediss://…), CKING_REDIS_USER,
 #                    CKING_REDIS_PASSWORD_FILE(/var/lib/app-agent-secrets 안 파일의 컨테이너 경로 /run/cking/…)을 넘긴다
 #   CKING_CADVISOR=1 컨테이너 지표(cadvisor.alloy). 부하 테스트 서버
+#   CKING_JOURNAL=1  systemd 서비스 journald 로그(journal.alloy). 추천 배치 서버
 compose_files=(-f compose.yaml)
 config_files=(agent.alloy)
 if [[ "${CKING_APP:-1}" == "1" ]]; then
@@ -29,6 +30,10 @@ fi
 if [[ "${CKING_CADVISOR:-0}" == "1" ]]; then
   compose_files+=(-f compose.cadvisor.yaml)
   config_files+=(cadvisor.alloy compose.cadvisor.yaml)
+fi
+if [[ "${CKING_JOURNAL:-0}" == "1" ]]; then
+  compose_files+=(-f compose.journal.yaml)
+  config_files+=(journal.alloy compose.journal.yaml)
 fi
 
 AGENT_CONFIG_HASH=$(config_hash "${config_files[@]}")

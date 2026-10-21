@@ -6,6 +6,14 @@ data "aws_vpc" "main" {
   }
 }
 
+data "aws_subnet" "public_2a" {
+  vpc_id = data.aws_vpc.main.id
+
+  tags = {
+    Name = "dev-cking-subnet-public1-ap-northeast-2a"
+  }
+}
+
 data "aws_subnet" "public_2b" {
   vpc_id = data.aws_vpc.main.id
 

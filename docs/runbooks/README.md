@@ -84,6 +84,12 @@ aws ec2 describe-instances --filters Name=tag:Name,Values=dev-cking-app Name=ins
 | --- | --- |
 | 판정을 바로 멈춰야 할 때(멀쩡한 댓글 BLOCK, 호출을 멈춰야 할 때), 콜드 스타트가 실행 상한에 걸릴 때 | [comment-filter](comment-filter.md) |
 
+### 추천 배치 (경보 없이 쓰는 절차)
+
+| 상황 | 런북 |
+| --- | --- |
+| 개발 추천 배치 서버를 처음 띄우거나 값을 바꿀 때, 작업자가 돌지 않을 때, 스팟 중단 확인 | [recommendation-batch](recommendation-batch.md) |
+
 ## 운영
 
 운영 경보는 Grafana 폴더 **크킹 운영 경보**에 있고 운영 경보 채널로 간다(급함은 `@channel`, 관측 경보는 인프라 담당 멘션). 규칙 uid는 `cking-prod-<개발 uid>`이며, 같은 이름의 개발 런북과 그 런북의 `운영에서 다른 점`을 함께 본다. 운영에만 있는 경보는 uid 이름의 파일이다. 운영 규칙은 운영을 열 때까지 멈춰 있다(`isPaused`).

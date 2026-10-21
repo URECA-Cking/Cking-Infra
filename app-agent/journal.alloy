@@ -1,0 +1,31 @@
+// systemd로 도는 서비스의 journald 로그. compose.journal.yaml과 함께 추천 배치 서버에서 켠다.
+// 추천 배치 콘텐츠 작업자(cking-content-*) 유닛만 남긴다. 실패 알림 유닛(cking-content-alert@)도 같은 이름으로 시작한다.
+loki.relabel "journal" {
+  forward_to = []
+
+  rule {
+    source_labels = ["__journal__systemd_unit"]
+    target_label  = "unit"
+  }
+
+  rule {
+    source_labels = ["__journal_priority_keyword"]
+    target_label  = "level"
+  }
+}
+
+loki.source.journal "services" {
+  path          = "/var/log/journal"
+  relabel_rules = loki.relabel.journal.rules
+  labels        = {instance = sys.env("CKING_INSTANCE"), container = "journal"}
+  forward_to    = [loki.process.journal.receiver]
+}
+
+loki.process "journal" {
+  forward_to = [loki.write.gateway.receiver]
+
+  stage.match {
+    selector = "{unit!~\"cking-content-.*\"}"
+    action   = "drop"
+  }
+}
