@@ -54,6 +54,7 @@ envs/prod/                 운영 환경. 상태는 prod/terraform.tfstate
   alb.tf                   ALB(HTTPS, /readyz 외부 차단, 접근 로그), api.cking.co.kr, API 앞단 WAF(차단, 운영 NAT IP 허용)
   app.tf                   앱 서버 오토스케일링 그룹(t4g.small 2~4대, CPU 50% 목표 추적, 교체 배포, 시작 대기 중 자기 스모크 검사)
   cdn.tf                   CloudFront(종량제, WAF 없음): cking.co.kr(www 이동)·admin.cking.co.kr 프론트, images.cking.co.kr 프로필 이미지
+  alarms.tf                AWS 서비스 경보(ALB, 서버 띄우기 실패, ElastiCache, RDS) → SNS → 운영 채널(Amazon Q)·메일
   deploy_roles.tf          GitHub Actions 운영 배포 역할(BE: 배포 파일, 배포 태그, 앱 서버 교체 / FE: 프론트 버킷 동기화, 캐시 무효화)
   templates/               서버 첫 부팅 스크립트(server-base.sh는 공통 준비)
   functions/               CloudFront Functions(www → cking.co.kr 이동)

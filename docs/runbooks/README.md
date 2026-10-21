@@ -128,6 +128,21 @@ aws autoscaling terminate-instance-in-auto-scaling-group --region ap-northeast-2
 
 개발의 앱 중단·Redis 메모리는 운영에서 CloudWatch(ALB 정상 대상 수, ElastiCache 메모리 사용률)가 맡는다.
 
+### CloudWatch: 운영 AWS 서비스 경보 (SNS `prod-cking-alerts` → 운영 채널(Amazon Q), 인프라 담당 메일)
+
+관측 서버·피어링이 죽어도 울리도록 CloudWatch에 둔다. Amazon Q 기본 알림에는 `@channel` 멘션이 없다.
+
+| 경보 | 조건 | 런북 |
+| --- | --- | --- |
+| `prod-cking-alb-no-healthy-target` | 정상 대상 0대 1분 | [prod-alb](prod-alb.md) |
+| `prod-cking-alb-few-healthy-targets` | 정상 대상 2대 미만 15분 | [prod-alb](prod-alb.md) |
+| `prod-cking-alb-5xx` | ALB가 만든 5xx 비율 5% 초과 5분 (요청 30건 이상) | [prod-alb](prod-alb.md) |
+| `prod-cking-launch-failed` (EventBridge) | 서버 그룹의 서버 띄우기 실패마다 | [prod-launch-failed](prod-launch-failed.md) |
+| `prod-cking-redis-memory-<노드>` | 메모리 사용률 70% 초과 10분 | [prod-elasticache](prod-elasticache.md) |
+| `prod-cking-redis-engine-cpu-<노드>` | 엔진 CPU 80% 초과 10분 | [prod-elasticache](prod-elasticache.md) |
+| `prod-cking-rds-cpu` | CPU 80% 초과 15분 | [prod-rds](prod-rds.md) |
+| `prod-cking-rds-free-storage` | 남은 저장 공간 2GiB 미만 15분 | [prod-rds](prod-rds.md) |
+
 ### Grafana: 운영 관측 경보 (운영 채널, 인프라 담당 멘션)
 
 | 경보 | 조건 | 런북 |
