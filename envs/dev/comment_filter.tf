@@ -2,8 +2,9 @@
 # 모델 파일은 Git에 없어 개발 배포 버킷 filter/models/에 두고, 이미지 빌드 때 받아 이미지에 넣는다.
 
 locals {
-  comment_filter_function = "dev-cking-comment-filter"
-  deploy_bucket_arn       = "arn:aws:s3:::dev-cking-deploy-551372961758"
+  comment_filter_function     = "dev-cking-comment-filter"
+  comment_filter_function_arn = "arn:aws:lambda:ap-northeast-2:551372961758:function:${local.comment_filter_function}"
+  deploy_bucket_arn           = "arn:aws:s3:::dev-cking-deploy-551372961758"
 }
 
 resource "aws_ecr_repository" "comment_filter" {
@@ -60,7 +61,7 @@ resource "aws_ecr_repository_policy" "comment_filter" {
   })
 }
 
-# 필터 저장소 CI: develop에서 모델을 받아 이미지를 빌드하고 올린 뒤 개발 Lambda를 그 이미지로 바꾼다.
+# 필터 저장소 CI: develop에서 모델을 받아 이미지를 빌드하고 올린 뒤 개발 Lambda를 그 이미지로 바꾸고, 함수 URL로 호출해 확인한다.
 resource "aws_iam_role" "comment_filter_deploy" {
   name = "dev-cking-filter-github-actions-role"
 
@@ -119,8 +120,71 @@ resource "aws_iam_role_policy" "comment_filter_deploy" {
         Sid      = "UpdateDevFunction"
         Effect   = "Allow"
         Action   = ["lambda:UpdateFunctionCode", "lambda:GetFunction", "lambda:GetFunctionConfiguration"]
-        Resource = "arn:aws:lambda:ap-northeast-2:551372961758:function:${local.comment_filter_function}"
+        Resource = local.comment_filter_function_arn
+      },
+      {
+        Sid      = "InvokeDevFunction"
+        Effect   = "Allow"
+        Action   = ["lambda:InvokeFunctionUrl", "lambda:InvokeFunction"]
+        Resource = local.comment_filter_function_arn
       },
     ]
   })
+}
+
+# 개발 필터 Lambda. 처음 이미지는 필터 저장소 develop 첫 CI(8a2cded)가 올린 것이고, 이후 이미지는 CI가 바꾸므로 Terraform은 비교하지 않는다.
+# 메모리는 측정 최대 약 962MB에 2배 여유, 실행 상한은 콜드 첫 호출(모델 로딩 + 판정)에 여유를 둔 값. 개발에서 측정해 조정한다.
+resource "aws_cloudwatch_log_group" "comment_filter" {
+  name              = "/aws/lambda/${local.comment_filter_function}"
+  retention_in_days = 14
+}
+
+resource "aws_iam_role" "comment_filter_function" {
+  name = "dev-cking-comment-filter-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "lambda.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "comment_filter_function" {
+  name = "dev-cking-comment-filter-logs"
+  role = aws_iam_role.comment_filter_function.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid      = "WriteLogs"
+      Effect   = "Allow"
+      Action   = ["logs:CreateLogStream", "logs:PutLogEvents"]
+      Resource = "${aws_cloudwatch_log_group.comment_filter.arn}:*"
+    }]
+  })
+}
+
+resource "aws_lambda_function" "comment_filter" {
+  function_name = local.comment_filter_function
+  role          = aws_iam_role.comment_filter_function.arn
+  package_type  = "Image"
+  image_uri     = "${aws_ecr_repository.comment_filter.repository_url}@sha256:5e646701ee3e1240fdf6a6152d5dc7bb7c2da94560c8c9396b3e6d7582dc0d00"
+  architectures = ["arm64"]
+  memory_size   = 2048
+  timeout       = 30
+
+  depends_on = [aws_cloudwatch_log_group.comment_filter, aws_iam_role_policy.comment_filter_function]
+
+  lifecycle {
+    ignore_changes = [image_uri]
+  }
+}
+
+# 별칭 없이 $LATEST에 붙인다. CI가 바꾼 이미지가 바로 호출된다.
+resource "aws_lambda_function_url" "comment_filter" {
+  function_name      = aws_lambda_function.comment_filter.function_name
+  authorization_type = "AWS_IAM"
 }

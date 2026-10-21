@@ -25,12 +25,12 @@ envs/dev/                  개발 환경. 실행 위치
   api_waf.tf               API 앞단 WAF(modules/api-waf)를 기존 ALB에 세기만 상태로 연결
   admin_frontend.tf        관리자 앱 정적 호스팅(S3, CloudFront, WAF, 요금제, Route53)
   uploads_cdn.tf           업로드 이미지 공개 CDN(CloudFront, WAF, 요금제, Route53, 버킷 정책)
-  app_server.tf            앱 서버 역할(콘솔에서 가져옴)과 수집기 설정 읽기 권한
+  app_server.tf            앱 서버 역할(콘솔에서 가져옴)과 수집기 설정 읽기·댓글 필터 호출 권한
   frontend_deploy.tf       FE 배포 역할(콘솔에서 가져옴)과 앱별 권한
   observability.tf         관측 서버(EC2, 데이터 디스크, 스냅샷, 버킷, IAM, 앱 서버 수집 포트)
   alerts.tf                서버 상태 검사 경보와 메일 주제
   observability_deploy.tf  관측 설정·앱 서버 수집기 설정을 배포하는 GitHub Actions 역할
-  comment_filter.tf        댓글 필터 이미지 저장소(ECR, 개발·운영 공용)와 필터 저장소 GitHub Actions 개발 역할(모델 읽기, 이미지 푸시, 개발 Lambda 갱신)
+  comment_filter.tf        댓글 필터 이미지 저장소(ECR, 개발·운영 공용), 개발 Lambda(arm64 이미지, 함수 URL IAM 인증, 이미지는 필터 저장소 CI가 바꿈), 필터 저장소 GitHub Actions 개발 역할(모델 읽기, 이미지 푸시, 개발 Lambda 갱신·호출)
   outputs.tf               읽어 온 값 출력
   templates/               서버 첫 부팅 스크립트
 envs/loadtest/             부하 테스트 환경. 측정 때 띄우고 끝나면 지운다. 상태는 loadtest/terraform.tfstate

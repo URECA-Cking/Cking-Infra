@@ -96,3 +96,18 @@ resource "aws_iam_role_policy" "app_server_agent_config" {
     ]
   })
 }
+
+resource "aws_iam_role_policy" "app_server_comment_filter" {
+  name = "dev-cking-ec2-comment-filter"
+  role = aws_iam_role.app_server.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid      = "InvokeCommentFilter"
+      Effect   = "Allow"
+      Action   = ["lambda:InvokeFunctionUrl", "lambda:InvokeFunction"]
+      Resource = local.comment_filter_function_arn
+    }]
+  })
+}
