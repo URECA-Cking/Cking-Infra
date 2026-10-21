@@ -1,8 +1,8 @@
 # 댓글 필터 차단·해제
 
-> 전제: 필터 Lambda `dev-cking-comment-filter`(운영은 `prod-cking-comment-filter`), 함수 URL IAM 인증, 예약 동시성 없음. BE는 판정을 비동기로 요청하고, 실패하면 1·2·4·8분 간격으로 최대 5번 다시 요청한다
+> 전제: 필터 Lambda `dev-cking-comment-filter`(운영은 `prod-cking-comment-filter`), 함수 URL IAM 인증, 예약 동시성 없음. BE는 판정을 비동기로 요청하고(응답 대기 30초, 판정 스레드 2개·대기열 100), 실패하면 1·2·4·8분 간격으로 최대 5번 다시 요청한다
 
-경보와 연결된 절차가 아니다. 필터 판정이 잘못되거나(멀쩡한 댓글이 BLOCK) 필터 호출을 멈춰야 할 때 쓴다.
+필터 판정이 잘못되거나(멀쩡한 댓글이 BLOCK) 필터 호출을 멈춰야 할 때 쓴다. 경보 [댓글 필터 호출 실패 지속](cking-comment-filter-failing.md)·[댓글 판정 대기열 쌓임](cking-comment-filter-queue.md)이 함께 보는 확인 방법도 여기에 둔다.
 
 ## 뜻하는 것
 
@@ -46,7 +46,7 @@ Grafana(`https://dev-monitoring.cking.co.kr`) → Explore. 운영은 `instance="
   ```
 - 판정 대기열과 처리 중인 스레드(Prometheus): `executor_queued_tasks{instance="dev-cking-app", name="commentFilterExecutor"}`, `executor_active_threads{instance="dev-cking-app", name="commentFilterExecutor"}`. 스레드는 2개, 대기열은 100이다
 - 재시도 제출·상한 도달·대기열 가득 참, 1시간(Prometheus): `increase(comment_filter_retry_attempted_total{instance="dev-cking-app"}[1h])`. `_exhausted_total`, `_queue_full_total`도 같은 형식이다. BE가 다시 시작하면 카운터는 0부터 센다
-- 2026-10-21 개발: 따뜻할 때 BE 대기 0.1~0.8초. 쉬고 난 뒤 첫 판정은 콜드 스타트 때문에 5초에 시간 초과되고 1분 뒤 재시도에서 저장됐다
+- 2026-10-21 개발: 따뜻할 때 BE 대기 0.1~0.8초. 응답 대기가 5초일 때는 쉬고 난 뒤 첫 판정이 콜드 스타트 때문에 시간 초과되고 1분 뒤 재시도에서 저장됐다(URECA-Cking/Cking-BE#726에서 30초로 늘림). 필터를 켤 때 쌓여 있던 판정을 처리하며 대기열은 최대 17건까지 찼다가 몇 초 안에 비었다
 
 ## 콜드 스타트 확인
 
