@@ -28,3 +28,11 @@ output "observability" {
     bucket      = aws_s3_bucket.observability.bucket
   }
 }
+
+output "comment_filter" {
+  description = "필터 저장소 CI에 넣을 값"
+  value = {
+    repository_url  = aws_ecr_repository.comment_filter.repository_url
+    deploy_role_arn = aws_iam_role.comment_filter_deploy.arn
+  }
+}
