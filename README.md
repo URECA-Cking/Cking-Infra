@@ -31,6 +31,7 @@ envs/dev/                  개발 환경. 실행 위치
   alerts.tf                서버 상태 검사 경보와 메일 주제
   observability_deploy.tf  관측 설정·앱 서버 수집기 설정을 배포하는 GitHub Actions 역할
   comment_filter.tf        댓글 필터 이미지 저장소(ECR, 개발·운영 공용), 개발 Lambda(arm64 이미지, 함수 URL IAM 인증, 이미지는 필터 저장소 CI가 바꿈), 필터 저장소 GitHub Actions 개발 역할(모델 읽기, 이미지 푸시, 개발 Lambda 갱신·호출)
+  recommendation.tf        추천 배치 저장소 GitHub Actions 개발 역할(배포 패키지 올리기, 배포 버전 값, 개발 추천 배치 서버 교체)
   outputs.tf               읽어 온 값 출력
   templates/               서버 첫 부팅 스크립트
 envs/loadtest/             부하 테스트 환경. 측정 때 띄우고 끝나면 지운다. 상태는 loadtest/terraform.tfstate
