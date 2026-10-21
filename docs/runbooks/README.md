@@ -23,6 +23,8 @@ aws ec2 describe-instances --filters Name=tag:Name,Values=dev-cking-app Name=ins
 
 관측 서버는 `Values=dev-cking-observability`. Grafana는 `https://dev-monitoring.cking.co.kr`.
 
+대시보드는 맨 위 `환경`에서 개발·운영·부하 테스트를 고르고, `서버`는 그 환경의 서버를 여러 대·전체로 고른다. 요청·응답 패널은 고른 서버를 합치고, 스레드·연결·메모리·CPU는 서버별 선으로 본다. Redis·RDS 패널은 서버 선택과 관계없이 그 환경의 것을 본다.
+
 ## 경보 목록
 
 ### Grafana: 팀 경보 (Slack)
@@ -105,6 +107,7 @@ aws ec2 describe-instances --filters Name=tag:Name,Values=dev-cking-app Name=ins
 | DB | RDS | RDS db.t4g.small 다중 AZ |
 | 배포·되돌리기 | `Deploy to dev server` | `Deploy to prod`([배포 실패](deploy-failed.md#운영-앱-배포-cking-be-deploy-to-prod)) |
 | 서버 하나의 고장 | 그 서버를 고친다 | 원인을 본 뒤 서버를 교체한다. 새 서버는 자기 검사를 통과해야 요청을 받는다 |
+| 대시보드 | `환경` 개발 | `환경` 운영. `서버` 전체가 앱 서버 합계, 한 대를 고르면 그 서버만 |
 
 서버 찾기:
 

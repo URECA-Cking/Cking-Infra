@@ -16,6 +16,35 @@
   "templating": {
     "list": [
       {
+        "name": "env",
+        "label": "환경",
+        "type": "custom",
+        "query": "개발 : dev,운영 : prod,부하 테스트 : loadtest",
+        "current": {
+          "text": "개발",
+          "value": "dev"
+        },
+        "options": [
+          {
+            "text": "개발",
+            "value": "dev",
+            "selected": true
+          },
+          {
+            "text": "운영",
+            "value": "prod",
+            "selected": false
+          },
+          {
+            "text": "부하 테스트",
+            "value": "loadtest",
+            "selected": false
+          }
+        ],
+        "multi": false,
+        "includeAll": false
+      },
+      {
         "name": "instance",
         "label": "서버",
         "type": "query",
@@ -24,14 +53,18 @@
           "uid": "prometheus"
         },
         "query": {
-          "query": "label_values(up{job=\"cking-be\"}, instance)",
+          "query": "label_values(up{job=\"cking-be\",instance=~\"${env}-cking-.*\"}, instance)",
           "refId": "instance"
         },
-        "definition": "label_values(up{job=\"cking-be\"}, instance)",
+        "definition": "label_values(up{job=\"cking-be\",instance=~\"${env}-cking-.*\"}, instance)",
         "refresh": 2,
-        "multi": false,
-        "includeAll": false,
-        "sort": 1
+        "multi": true,
+        "includeAll": true,
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
       }
     ]
   },
@@ -230,7 +263,7 @@
             "uid": "prometheus"
           },
           "expr": "tomcat_threads_busy_threads{job=\"cking-be\",instance=~\"$instance\"}",
-          "legendFormat": "사용 중",
+          "legendFormat": "사용 중 {{instance}}",
           "refId": "A"
         },
         {
@@ -239,7 +272,7 @@
             "uid": "prometheus"
           },
           "expr": "tomcat_threads_config_max_threads{job=\"cking-be\",instance=~\"$instance\"}",
-          "legendFormat": "최대",
+          "legendFormat": "최대 {{instance}}",
           "refId": "B"
         }
       ],
@@ -299,7 +332,7 @@
             "uid": "prometheus"
           },
           "expr": "hikaricp_connections_active{job=\"cking-be\",instance=~\"$instance\"}",
-          "legendFormat": "사용 중",
+          "legendFormat": "사용 중 {{instance}}",
           "refId": "A"
         },
         {
@@ -308,7 +341,7 @@
             "uid": "prometheus"
           },
           "expr": "hikaricp_connections_idle{job=\"cking-be\",instance=~\"$instance\"}",
-          "legendFormat": "대기",
+          "legendFormat": "대기 {{instance}}",
           "refId": "B"
         },
         {
@@ -317,7 +350,7 @@
             "uid": "prometheus"
           },
           "expr": "hikaricp_connections_pending{job=\"cking-be\",instance=~\"$instance\"}",
-          "legendFormat": "연결 기다리는 요청",
+          "legendFormat": "연결 기다리는 요청 {{instance}}",
           "refId": "C"
         },
         {
@@ -326,7 +359,7 @@
             "uid": "prometheus"
           },
           "expr": "hikaricp_connections{job=\"cking-be\",instance=~\"$instance\"}",
-          "legendFormat": "전체",
+          "legendFormat": "전체 {{instance}}",
           "refId": "D"
         }
       ],
@@ -373,7 +406,7 @@
             "uid": "prometheus"
           },
           "expr": "rate(hikaricp_connections_acquire_seconds_sum{job=\"cking-be\",instance=~\"$instance\"}[$__rate_interval]) / rate(hikaricp_connections_acquire_seconds_count{job=\"cking-be\",instance=~\"$instance\"}[$__rate_interval])",
-          "legendFormat": "",
+          "legendFormat": "{{instance}}",
           "refId": "A"
         }
       ],
@@ -432,8 +465,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (area) (jvm_memory_used_bytes{job=\"cking-be\",instance=~\"$instance\"})",
-          "legendFormat": "{{area}}",
+          "expr": "sum by (instance, area) (jvm_memory_used_bytes{job=\"cking-be\",instance=~\"$instance\"})",
+          "legendFormat": "{{instance}} {{area}}",
           "refId": "A"
         },
         {
@@ -441,8 +474,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (id) (jvm_buffer_memory_used_bytes{job=\"cking-be\",instance=~\"$instance\"})",
-          "legendFormat": "버퍼 {{id}}",
+          "expr": "sum by (instance, id) (jvm_buffer_memory_used_bytes{job=\"cking-be\",instance=~\"$instance\"})",
+          "legendFormat": "{{instance}} 버퍼 {{id}}",
           "refId": "B"
         }
       ],
@@ -488,8 +521,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (gc) (rate(jvm_gc_pause_seconds_sum{job=\"cking-be\",instance=~\"$instance\"}[$__rate_interval]))",
-          "legendFormat": "{{gc}}",
+          "expr": "sum by (instance, gc) (rate(jvm_gc_pause_seconds_sum{job=\"cking-be\",instance=~\"$instance\"}[$__rate_interval]))",
+          "legendFormat": "{{instance}} {{gc}}",
           "refId": "A"
         }
       ],
@@ -536,7 +569,7 @@
             "uid": "prometheus"
           },
           "expr": "jvm_threads_live_threads{job=\"cking-be\",instance=~\"$instance\"}",
-          "legendFormat": "살아 있는 스레드",
+          "legendFormat": "살아 있는 스레드 {{instance}}",
           "refId": "A"
         }
       ],
@@ -583,7 +616,7 @@
             "uid": "prometheus"
           },
           "expr": "process_cpu_usage{job=\"cking-be\",instance=~\"$instance\"}",
-          "legendFormat": "앱",
+          "legendFormat": "앱 {{instance}}",
           "refId": "A"
         },
         {
@@ -592,7 +625,7 @@
             "uid": "prometheus"
           },
           "expr": "system_cpu_usage{job=\"cking-be\",instance=~\"$instance\"}",
-          "legendFormat": "서버 전체",
+          "legendFormat": "서버 전체 {{instance}}",
           "refId": "B"
         }
       ],

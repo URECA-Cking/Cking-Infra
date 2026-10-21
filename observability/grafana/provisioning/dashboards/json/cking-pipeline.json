@@ -285,7 +285,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "up{job=~\"prometheus|loki|grafana|alloy\",instance!~\"dev-cking-.*\"}",
+          "expr": "up{job=~\"prometheus|loki|grafana|alloy\",instance!~\".+-cking-.*\"}",
           "legendFormat": "{{job}}",
           "refId": "A"
         }
