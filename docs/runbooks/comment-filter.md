@@ -1,6 +1,6 @@
 # 댓글 필터 차단·해제
 
-> 전제: 필터 Lambda `dev-cking-comment-filter`(운영은 `prod-cking-comment-filter`), 함수 URL IAM 인증, 예약 동시성 개발 2(BE 판정 스레드 2개 × 앱 서버 1대). BE는 판정을 비동기로 요청하고(응답 대기 30초, 판정 스레드 2개·대기열 100), 실패하면 1·2·4·8분 간격으로 최대 5번 다시 요청한다
+> 전제: 필터 Lambda `dev-cking-comment-filter`(운영은 `prod-cking-comment-filter`), 함수 URL IAM 인증, 예약 동시성 개발 2·운영 8(BE 판정 스레드 2개 × 앱 서버 개발 1대·운영 최대 4대). BE는 판정을 비동기로 요청하고(응답 대기 30초, 판정 스레드 2개·대기열 100), 실패하면 1·2·4·8분 간격으로 최대 5번 다시 요청한다
 
 필터 판정이 잘못되거나(멀쩡한 댓글이 BLOCK) 필터 호출을 멈춰야 할 때 쓴다. 경보 [댓글 필터 호출 실패 지속](cking-comment-filter-failing.md)·[댓글 판정 대기열 쌓임](cking-comment-filter-queue.md)이 함께 보는 확인 방법도 여기에 둔다.
 
@@ -20,13 +20,20 @@ Parameter Store 값은 BE 배포 때 `deploy.sh`가 읽는다. 값만 바꾸면 
 ```bash
 # Mac: 차단. 모든 호출이 429로 거절된다
 aws lambda put-function-concurrency --region ap-northeast-2 --function-name <env>-cking-comment-filter --reserved-concurrent-executions 0
-# Mac: 해제. 코드의 예약 동시성(개발 2)으로 되돌린다
+# Mac: 해제. 코드의 예약 동시성(개발 2, 운영 8)으로 되돌린다
 aws lambda put-function-concurrency --region ap-northeast-2 --function-name dev-cking-comment-filter --reserved-concurrent-executions 2
+aws lambda put-function-concurrency --region ap-northeast-2 --function-name prod-cking-comment-filter --reserved-concurrent-executions 8
 ```
 
 - 차단 중 BE는 판정 실패(`httpStatus=429`)로 기록하고 다시 요청한다. 재요청 간격이 늘어나므로 차단이 약 15분을 넘으면 그동안 쓴 댓글은 재요청을 다 써서, 해제한 뒤에도 판정하지 않은 채(보이는 상태로) 남는다
 - 이미 BLOCK된 댓글은 차단해도 그대로 숨겨져 있다
 - 2026-10-22 개발에서 확인: 차단 뒤 0.2초 호출은 아직 200, 1.4초 호출부터 429(0.07초). 예약 동시성 2로 해제한 직후(0.2초) 200
+
+## 운영 이미지 배포·되돌리기
+
+운영 Lambda 이미지는 필터 저장소 `main` 머지 때 CI가 바꾼다. 개발 Lambda가 쓰는 이미지(개발에서 확인한 이미지)에 `prod-<main 커밋>` 태그를 붙여 운영 Lambda로 바꾸고 함수 URL을 호출해 확인한다. 확인에 실패하면 이전 이미지로 되돌린다. 그 이미지의 커밋 뒤에 이미지에 들어가는 파일이 바뀌었으면 승격하지 않는다(develop에서 개발 배포로 먼저 확인한다).
+
+수동 되돌리기는 필터 저장소 Actions에서 예전 `prod-` 태그로 직접 실행한다. ECR은 `prod-` 태그 이미지를 최근 10개 남긴다(`envs/dev/comment_filter.tf`).
 
 ## 판정 상태 보기
 
@@ -68,6 +75,6 @@ filter @type = "REPORT"
 
 ## 하면 안 되는 것
 
-- 차단 중에 그 환경을 `terraform apply`하지 않는다. apply가 예약 동시성을 코드 값으로 되돌려 차단을 푼다(개발 plan에 `reserved_concurrent_executions = 0 -> 2`)
-- 해제에 `delete-function-concurrency`를 쓰지 않는다. 예약이 지워져 다음 apply 전까지 개발 Lambda가 운영과 같이 쓰는 계정 동시성을 제한 없이 쓴다
+- 차단 중에 그 환경을 `terraform apply`하지 않는다. apply가 예약 동시성을 코드 값으로 되돌려 차단을 푼다(plan에 `reserved_concurrent_executions = 0 -> 2`, 운영 `0 -> 8`)
+- 해제에 `delete-function-concurrency`를 쓰지 않는다. 예약이 지워져 다음 apply 전까지 그 Lambda가 개발·운영이 같이 쓰는 계정 동시성을 제한 없이 쓴다
 - 콜드 스타트 timeout을 보고 실행 상한을 줄이지 않는다. 기동이 끝나지 못하고 되풀이된다
