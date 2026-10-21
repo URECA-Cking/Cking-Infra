@@ -42,6 +42,8 @@ aws ec2 describe-instances --filters Name=tag:Name,Values=dev-cking-app Name=ins
 | Dead Stream 이동 | 이동 로그 5분 안에 1건 이상 | | [cking-dead-stream](cking-dead-stream.md) |
 | 댓글 필터 호출 실패 지속 | 필터 호출 실패 로그 10분 동안 5건 이상 | | [cking-comment-filter-failing](cking-comment-filter-failing.md) |
 | 댓글 판정 대기열 쌓임 | 판정 대기열 50건 이상 5분 | | [cking-comment-filter-queue](cking-comment-filter-queue.md) |
+| 추천 배치 실패 반복 | 실패 알림 로그 10분 동안 3건 이상 | | [cking-recommendation-failing](cking-recommendation-failing.md) |
+| 추천 배치 멈춤 | 1분 확인 실행 로그 15분 없음 | | [cking-recommendation-stalled](cking-recommendation-stalled.md) |
 
 ### Grafana: 관측 경보 (Slack, 인프라 담당 멘션)
 

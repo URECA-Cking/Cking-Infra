@@ -540,6 +540,93 @@ groups:
           summary: "개발 댓글 판정 대기열이 5분 넘게 50건 이상입니다."
           runbook_url: "https://github.com/URECA-Cking/Cking-Infra/blob/main/docs/runbooks/cking-comment-filter-queue.md"
   - orgId: 1
+    name: "추천 배치"
+    folder: "크킹 경보"
+    interval: "1m"
+    rules:
+      - uid: "cking-recommendation-failing"
+        title: "추천 배치 실패 반복"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 900
+              to: 0
+            datasourceUid: "loki"
+            model:
+              refId: "A"
+              expr: "sum(count_over_time({instance=\"dev-cking-recommendation\",unit=~\"cking-content-alert@.*\",level=\"error\"}[10m]))"
+              queryType: "instant"
+          - refId: "B"
+            datasourceUid: "__expr__"
+            model:
+              refId: "B"
+              type: "reduce"
+              expression: "A"
+              reducer: "last"
+              settings:
+                mode: "dropNN"
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "B"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 2
+        noDataState: "OK"
+        execErrState: "Error"
+        for: "0s"
+        labels:
+          severity: "normal"
+        annotations:
+          summary: "개발 추천 배치 작업이 10분 동안 3번 이상 실패했습니다. 크리에이터 콘텐츠 태그·추천 반영이 늦어지고 있습니다."
+          runbook_url: "https://github.com/URECA-Cking/Cking-Infra/blob/main/docs/runbooks/cking-recommendation-failing.md"
+      - uid: "cking-recommendation-stalled"
+        title: "추천 배치 멈춤"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 900
+              to: 0
+            datasourceUid: "loki"
+            model:
+              refId: "A"
+              expr: "sum(count_over_time({instance=\"dev-cking-recommendation\",unit=\"cking-content-event.service\"}[15m])) or vector(0)"
+              queryType: "instant"
+          - refId: "B"
+            datasourceUid: "__expr__"
+            model:
+              refId: "B"
+              type: "reduce"
+              expression: "A"
+              reducer: "last"
+              settings:
+                mode: "dropNN"
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "B"
+              conditions:
+                - evaluator:
+                    type: "lt"
+                    params:
+                      - 1
+        noDataState: "Alerting"
+        execErrState: "Error"
+        for: "0s"
+        labels:
+          severity: "normal"
+        annotations:
+          summary: "개발 추천 배치의 1분 확인 실행 기록이 15분 동안 없습니다. 콘텐츠 태그·추천 반영이 멈췄습니다."
+          runbook_url: "https://github.com/URECA-Cking/Cking-Infra/blob/main/docs/runbooks/cking-recommendation-stalled.md"
+  - orgId: 1
     name: "관측"
     folder: "크킹 경보"
     interval: "1m"
