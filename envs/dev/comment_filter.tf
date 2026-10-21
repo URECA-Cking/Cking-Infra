@@ -176,6 +176,9 @@ resource "aws_lambda_function" "comment_filter" {
   memory_size   = 2048
   timeout       = 120
 
+  # 개발 BE 판정 스레드 2개 × 앱 서버 1대. 운영과 같이 쓰는 계정 동시성을 그 이상 쓰지 않게 묶는다.
+  reserved_concurrent_executions = 2
+
   depends_on = [aws_cloudwatch_log_group.comment_filter, aws_iam_role_policy.comment_filter_function]
 
   lifecycle {

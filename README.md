@@ -30,7 +30,7 @@ envs/dev/                  개발 환경. 실행 위치
   observability.tf         관측 서버(EC2, 데이터 디스크, 스냅샷, 버킷, IAM, 앱·추천 배치 서버 수집 포트)
   alerts.tf                서버 상태 검사 경보와 메일 주제
   observability_deploy.tf  관측 설정·앱 서버 수집기 설정을 배포하는 GitHub Actions 역할
-  comment_filter.tf        댓글 필터 이미지 저장소(ECR, 개발·운영 공용), 개발 Lambda(arm64 이미지, 함수 URL IAM 인증, 이미지는 필터 저장소 CI가 바꿈), 필터 저장소 GitHub Actions 개발 역할(모델 읽기, 이미지 푸시, 개발 Lambda 갱신·호출)
+  comment_filter.tf        댓글 필터 이미지 저장소(ECR, 개발·운영 공용), 개발 Lambda(arm64 이미지, 함수 URL IAM 인증, 예약 동시성 2, 이미지는 필터 저장소 CI가 바꿈), 필터 저장소 GitHub Actions 개발 역할(모델 읽기, 이미지 푸시, 개발 Lambda 갱신·호출)
   recommendation.tf        개발 추천 배치 서버(1대짜리 서버 그룹, t4g.small 스팟, 상태 디스크, 시작 대기 자기 검사, 역할, 비밀이 아닌 값)와 추천 배치 저장소 GitHub Actions 개발 역할(배포 패키지 올리기, 배포 버전 값, 서버 교체)
   outputs.tf               읽어 온 값 출력
   templates/               서버 첫 부팅 스크립트(추천 배치 서버는 운영 공통 준비 envs/prod/templates/server-base.sh를 함께 쓴다)
