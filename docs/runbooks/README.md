@@ -40,6 +40,8 @@ aws ec2 describe-instances --filters Name=tag:Name,Values=dev-cking-app Name=ins
 | Redis 메모리 | 한도의 70% 초과 10분 | | [cking-redis-memory](cking-redis-memory.md) |
 | ERROR 로그 | ERROR 5분 안에 1건 이상 | | [cking-error-log](cking-error-log.md) |
 | Dead Stream 이동 | 이동 로그 5분 안에 1건 이상 | | [cking-dead-stream](cking-dead-stream.md) |
+| 댓글 필터 호출 실패 지속 | 필터 호출 실패 로그 10분 동안 5건 이상 | | [cking-comment-filter-failing](cking-comment-filter-failing.md) |
+| 댓글 판정 대기열 쌓임 | 판정 대기열 50건 이상 5분 | | [cking-comment-filter-queue](cking-comment-filter-queue.md) |
 
 ### Grafana: 관측 경보 (Slack, 인프라 담당 멘션)
 
@@ -78,7 +80,7 @@ aws ec2 describe-instances --filters Name=tag:Name,Values=dev-cking-app Name=ins
 | --- | --- | --- |
 | 앱 배포(Cking-BE `cicd.yml`), 관측 설정·앱 서버 수집기 배포(이 저장소) | GitHub Actions 실패 알림 | [deploy-failed](deploy-failed.md) |
 
-### 댓글 필터 (경보 없음)
+### 댓글 필터 (경보 없이 쓰는 절차)
 
 | 상황 | 런북 |
 | --- | --- |
@@ -137,6 +139,8 @@ aws autoscaling terminate-instance-in-auto-scaling-group --region ap-northeast-2
 | DB 연결 대기 | 서버별 Hikari 대기 0 초과 5분 | | [cking-hikari-pending](cking-hikari-pending.md) |
 | ERROR 로그 | 서버별 ERROR 5분 안에 1건 이상 | | [cking-error-log](cking-error-log.md) |
 | Dead Stream 이동 | 서버별 이동 로그 5분 안에 1건 이상 | | [cking-dead-stream](cking-dead-stream.md) |
+| 댓글 필터 호출 실패 지속 | 운영 앱 서버 전체 필터 호출 실패 로그 10분 동안 5건 이상 | | [cking-comment-filter-failing](cking-comment-filter-failing.md) |
+| 댓글 판정 대기열 쌓임 | 서버별 판정 대기열 최댓값 50건 이상 5분 | | [cking-comment-filter-queue](cking-comment-filter-queue.md) |
 
 개발의 앱 중단·Redis 메모리는 운영에서 CloudWatch(ALB 정상 대상 수, ElastiCache 메모리 사용률)가 맡는다.
 

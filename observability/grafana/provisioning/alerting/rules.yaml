@@ -457,6 +457,88 @@ groups:
         annotations:
           summary: "처리에 계속 실패한 메시지가 Dead Stream으로 옮겨졌습니다."
           runbook_url: "https://github.com/URECA-Cking/Cking-Infra/blob/main/docs/runbooks/cking-dead-stream.md"
+      - uid: "cking-comment-filter-failing"
+        title: "댓글 필터 호출 실패 지속"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 900
+              to: 0
+            datasourceUid: "loki"
+            model:
+              refId: "A"
+              expr: "sum(count_over_time({container=\"app\",instance=\"dev-cking-app\"} |= \"필터 서비스 호출에 실패했습니다\" [10m]))"
+              queryType: "instant"
+          - refId: "B"
+            datasourceUid: "__expr__"
+            model:
+              refId: "B"
+              type: "reduce"
+              expression: "A"
+              reducer: "last"
+              settings:
+                mode: "dropNN"
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "B"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 4
+        noDataState: "OK"
+        execErrState: "Error"
+        for: "0s"
+        labels:
+          severity: "normal"
+        annotations:
+          summary: "개발 댓글 필터 호출이 10분 동안 5번 이상 실패했습니다. 판정이 늦어지고 있습니다(댓글은 보입니다)."
+          runbook_url: "https://github.com/URECA-Cking/Cking-Infra/blob/main/docs/runbooks/cking-comment-filter-failing.md"
+      - uid: "cking-comment-filter-queue"
+        title: "댓글 판정 대기열 쌓임"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "max(executor_queued_tasks{instance=\"dev-cking-app\",name=\"commentFilterExecutor\"})"
+              instant: true
+          - refId: "B"
+            datasourceUid: "__expr__"
+            model:
+              refId: "B"
+              type: "reduce"
+              expression: "A"
+              reducer: "last"
+              settings:
+                mode: "dropNN"
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "B"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 49
+        noDataState: "OK"
+        execErrState: "Error"
+        for: "5m"
+        labels:
+          severity: "normal"
+        annotations:
+          summary: "개발 댓글 판정 대기열이 5분 넘게 50건 이상입니다."
+          runbook_url: "https://github.com/URECA-Cking/Cking-Infra/blob/main/docs/runbooks/cking-comment-filter-queue.md"
   - orgId: 1
     name: "관측"
     folder: "크킹 경보"
@@ -1187,6 +1269,92 @@ groups:
         annotations:
           summary: "처리에 계속 실패한 메시지가 Dead Stream으로 옮겨졌습니다({{ $labels.instance }})."
           runbook_url: "https://github.com/URECA-Cking/Cking-Infra/blob/main/docs/runbooks/cking-dead-stream.md"
+      - uid: "cking-prod-comment-filter-failing"
+        title: "댓글 필터 호출 실패 지속"
+        condition: "C"
+        isPaused: true
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 900
+              to: 0
+            datasourceUid: "loki"
+            model:
+              refId: "A"
+              expr: "sum(count_over_time({container=\"app\",instance=~\"prod-cking-app-.*\"} |= \"필터 서비스 호출에 실패했습니다\" [10m]))"
+              queryType: "instant"
+          - refId: "B"
+            datasourceUid: "__expr__"
+            model:
+              refId: "B"
+              type: "reduce"
+              expression: "A"
+              reducer: "last"
+              settings:
+                mode: "dropNN"
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "B"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 4
+        noDataState: "OK"
+        execErrState: "Error"
+        for: "0s"
+        labels:
+          env: "prod"
+          severity: "normal"
+        annotations:
+          summary: "운영 댓글 필터 호출이 10분 동안 5번 이상 실패했습니다. 판정이 늦어지고 있습니다(댓글은 보입니다)."
+          runbook_url: "https://github.com/URECA-Cking/Cking-Infra/blob/main/docs/runbooks/cking-comment-filter-failing.md"
+      - uid: "cking-prod-comment-filter-queue"
+        title: "댓글 판정 대기열 쌓임"
+        condition: "C"
+        isPaused: true
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "max(executor_queued_tasks{instance=~\"prod-cking-app-.*\",name=\"commentFilterExecutor\"})"
+              instant: true
+          - refId: "B"
+            datasourceUid: "__expr__"
+            model:
+              refId: "B"
+              type: "reduce"
+              expression: "A"
+              reducer: "last"
+              settings:
+                mode: "dropNN"
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "B"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 49
+        noDataState: "OK"
+        execErrState: "Error"
+        for: "5m"
+        labels:
+          env: "prod"
+          severity: "normal"
+        annotations:
+          summary: "운영 댓글 판정 대기열이 5분 넘게 50건 이상입니다."
+          runbook_url: "https://github.com/URECA-Cking/Cking-Infra/blob/main/docs/runbooks/cking-comment-filter-queue.md"
   - orgId: 1
     name: "운영 관측"
     folder: "크킹 운영 경보"
