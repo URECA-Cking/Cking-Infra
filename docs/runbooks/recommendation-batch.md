@@ -6,7 +6,7 @@
 
 ## 뜻하는 것
 
-배포는 서버 교체다. 새 서버는 시작 대기(Pending:Wait)에서 상태 디스크를 붙이고 배포 버전의 패키지(Python 3.12 포함)를 설치한 뒤에야 들어온다. 실패하거나 900초가 지나면 버려지고 그룹이 새 서버를 띄운다. 스팟이 중단돼도 같은 과정으로 새 서버가 뜬다.
+배포는 서버 교체다. 새 서버는 시작 대기(Pending:Wait)에서 상태 디스크를 붙이고 배포 버전의 패키지(Python 3.12 포함)를 설치한 뒤에야 들어온다. 실패하거나 900초가 지나면 버려지고 그룹이 새 서버를 띄운다. 스팟이 중단돼도 같은 과정으로 새 서버가 뜬다. 수집기 설정(`app-agent/`)이 바뀌어도 Infra 수집기 배포 워크플로가 서버를 교체한다.
 
 환경 파일(`/etc/cking/content-worker.env`)은 부팅 때 `/cking/dev-recommendation/`에서 만든다. 값 6개(`CKING_BE_URL`, `CKING_CONTENT_TAG_ACCESS_TOKEN`, `CKING_RECOMMENDATION_API_KEY`, `OPENAI_API_KEY`, `DEEPINFRA_API_KEY`, `CKING_TAG_DAILY_CALLS`)가 모두 있어야 타이머를 켠다. 빠진 값이 있으면 서버는 들어오고 타이머만 꺼져 있다. `CKING_BE_URL`과 `CKING_TAG_DAILY_CALLS`는 Terraform이 만든다.
 
