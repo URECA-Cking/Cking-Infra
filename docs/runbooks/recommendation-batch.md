@@ -2,7 +2,7 @@
 
 > 전제: 서버 그룹 `dev-cking-recommendation`(1대, t4g.small 스팟, 2a), 상태 디스크 `dev-cking-recommendation-state`(`/var/lib/cking-content`), 배포 버전 `/cking/dev-recommendation/RELEASE`, 콘텐츠 작업자 타이머 `cking-content-event.timer`(1분)·`cking-content-daily.timer`(03:00). 작업자 동작과 복구는 [콘텐츠 작업자 운영](https://github.com/URECA-Cking/Cking-LLM-Benchmark/blob/develop/docs/guides/content-worker.md)
 
-경보와 연결된 절차가 아니다. 서버를 처음 띄울 때, 값을 넣거나 바꿀 때, 작업자가 돌지 않을 때 쓴다.
+서버를 처음 띄울 때, 값을 넣거나 바꿀 때, 작업자가 돌지 않을 때 쓴다. 경보 [추천 배치 실패 반복](cking-recommendation-failing.md)·[추천 배치 멈춤](cking-recommendation-stalled.md)이 함께 보는 확인 방법도 여기에 둔다.
 
 ## 뜻하는 것
 
@@ -42,7 +42,7 @@ sudo journalctl -u cking-content-event.service --since -1h --no-pager | tail -20
 sudo tail -50 /var/log/cloud-init-output.log
 ```
 
-Grafana Explore(Loki)에서 작업자 로그는 `{instance="dev-cking-recommendation", container="journal"}`, 실패 알림은 `{instance="dev-cking-recommendation", unit=~"cking-content-alert@.*"}`로 본다.
+Grafana Explore(Loki)에서 작업자 로그는 `{instance="dev-cking-recommendation", container="journal"}`, 1분 확인 실행 기록(systemd 시작·끝 포함)은 `{instance="dev-cking-recommendation", unit="cking-content-event.service"}`, 실패 알림은 `{instance="dev-cking-recommendation", unit=~"cking-content-alert@.*"}`로 본다.
 
 ## 원인별 대응
 
