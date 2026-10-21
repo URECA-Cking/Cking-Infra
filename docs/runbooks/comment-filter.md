@@ -31,7 +31,7 @@ aws lambda put-function-concurrency --region ap-northeast-2 --function-name prod
 
 ## 운영 이미지 배포·되돌리기
 
-운영 Lambda 이미지는 필터 저장소 `main` 머지 때 CI가 바꾼다. 개발 Lambda가 쓰는 이미지(개발에서 확인한 이미지)에 `prod-<main 커밋>` 태그를 붙여 운영 Lambda로 바꾸고 함수 URL을 호출해 확인한다. 확인에 실패하면 이전 이미지로 되돌린다. 그 이미지의 커밋 뒤에 이미지에 들어가는 파일이 바뀌었으면 승격하지 않는다(develop에서 개발 배포로 먼저 확인한다).
+운영 Lambda 이미지는 필터 저장소 `main` 머지 때 CI가 바꾼다. 개발 CI가 확인하고 올린 이미지 중 이미지에 들어가는 파일이 main과 같은 커밋의 이미지에 `prod-<main 커밋>` 태그를 붙여 운영 Lambda로 바꾸고, 함수 URL을 호출해 확인한다. 확인에 실패하면 이전 이미지로 되돌린다. 그런 이미지가 없으면(develop의 개발 배포가 끝나기 전에 합친 경우) 올리지 않는다.
 
 수동 되돌리기는 필터 저장소 Actions에서 예전 `prod-` 태그로 직접 실행한다. ECR은 `prod-` 태그 이미지를 최근 10개 남긴다(`envs/dev/comment_filter.tf`).
 

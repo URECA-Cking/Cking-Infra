@@ -104,7 +104,7 @@ resource "aws_iam_role_policy" "fe_deploy" {
   })
 }
 
-# 필터: 개발 Lambda가 쓰는 이미지에 prod- 태그를 붙여 운영 Lambda로 바꾸고, 함수 URL로 호출해 확인한다. 이미지는 새로 빌드하지 않는다.
+# 필터: 개발 CI가 확인하고 올린 이미지에 prod- 태그를 붙여 운영 Lambda로 바꾸고, 함수 URL로 호출해 확인한다. 이미지는 새로 올리지 않는다.
 resource "aws_iam_role" "filter_deploy" {
   name = "prod-cking-filter-github-actions-role"
 
@@ -131,12 +131,6 @@ resource "aws_iam_role_policy" "filter_deploy" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-      {
-        Sid      = "ReadDevFunction"
-        Effect   = "Allow"
-        Action   = "lambda:GetFunction"
-        Resource = "arn:aws:lambda:ap-northeast-2:551372961758:function:dev-cking-comment-filter"
-      },
       {
         Sid      = "TagImage"
         Effect   = "Allow"

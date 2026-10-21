@@ -1,4 +1,4 @@
-# 운영 댓글 필터 Lambda. 이미지 저장소는 개발 스택에 하나만 둔다(envs/dev/comment_filter.tf). 개발 Lambda에서 검증한 이미지를
+# 운영 댓글 필터 Lambda. 이미지 저장소는 개발 스택에 하나만 둔다(envs/dev/comment_filter.tf). 개발 CI가 확인하고 올린 이미지를
 # 필터 저장소 main CI가 그대로 올린다. 처음 이미지는 개발 Lambda가 쓰는 이미지(필터 저장소 develop 8a2cded)이고, 이후는 CI가 바꾼다.
 
 locals {
