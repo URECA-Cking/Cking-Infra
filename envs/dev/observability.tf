@@ -23,6 +23,24 @@ resource "aws_vpc_security_group_ingress_rule" "observability_logs_from_app" {
   referenced_security_group_id = data.aws_security_group.app.id
 }
 
+resource "aws_vpc_security_group_ingress_rule" "observability_metrics_from_recommendation" {
+  security_group_id            = aws_security_group.observability.id
+  description                  = "Recommendation batch server Alloy metrics"
+  ip_protocol                  = "tcp"
+  from_port                    = 9009
+  to_port                      = 9009
+  referenced_security_group_id = aws_security_group.recommendation.id
+}
+
+resource "aws_vpc_security_group_ingress_rule" "observability_logs_from_recommendation" {
+  security_group_id            = aws_security_group.observability.id
+  description                  = "Recommendation batch server Alloy logs"
+  ip_protocol                  = "tcp"
+  from_port                    = 3500
+  to_port                      = 3500
+  referenced_security_group_id = aws_security_group.recommendation.id
+}
+
 resource "aws_vpc_security_group_egress_rule" "observability_https" {
   security_group_id = aws_security_group.observability.id
   description       = "Docker images, AWS APIs, webhooks"
