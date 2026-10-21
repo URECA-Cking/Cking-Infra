@@ -19,5 +19,5 @@ output "db_address" {
 }
 
 output "k6_instance_id" {
-  value = aws_instance.k6.id
+  value = module.k6.instance_id
 }

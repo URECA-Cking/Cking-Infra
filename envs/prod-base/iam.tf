@@ -194,3 +194,34 @@ resource "aws_iam_instance_profile" "monitor" {
   name = "prod-cking-monitor-role"
   role = aws_iam_role.monitor.name
 }
+
+resource "aws_iam_role" "k6" {
+  name               = "prod-cking-k6-role"
+  assume_role_policy = local.ec2_trust
+}
+
+resource "aws_iam_role_policy_attachment" "k6_ssm" {
+  role       = aws_iam_role.k6.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+# 운영 부하 테스트 k6가 Access Token을 직접 서명하도록 JWT 비밀값 하나만 읽는다. 다른 운영 비밀값은 읽지 않는다.
+resource "aws_iam_role_policy" "k6" {
+  name = "prod-cking-k6-read-jwt-secret"
+  role = aws_iam_role.k6.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid      = "ReadJwtSecret"
+      Effect   = "Allow"
+      Action   = "ssm:GetParameter"
+      Resource = "${local.parameter_arn}/cking/prod/JWT_SECRET"
+    }]
+  })
+}
+
+resource "aws_iam_instance_profile" "k6" {
+  name = "prod-cking-k6-role"
+  role = aws_iam_role.k6.name
+}
