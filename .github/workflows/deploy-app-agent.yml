@@ -63,3 +63,32 @@ jobs:
             --query '[StandardOutputContent, StandardErrorContent]' --output text
           echo "결과: $STATUS"
           [ "$STATUS" = "Success" ]
+
+      # 추천 배치 서버는 부팅할 때 설정을 받는다. 배치 저장소 배포와 같이 서버를 교체해 새 설정으로 띄운다.
+      - name: 추천 배치 서버 교체
+        env:
+          ASG_NAME: dev-cking-recommendation
+        run: |
+          COUNT=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names "$ASG_NAME" \
+            --query 'length(AutoScalingGroups)' --output text)
+          if [ "$COUNT" = 0 ]; then
+            echo "추천 배치 서버 그룹이 없어 교체를 건너뛴다"
+            exit 0
+          fi
+          ID=$(aws autoscaling start-instance-refresh --auto-scaling-group-name "$ASG_NAME" \
+            --preferences '{"MinHealthyPercentage":0}' --query InstanceRefreshId --output text)
+          for _ in $(seq 1 80); do
+            STATUS=$(aws autoscaling describe-instance-refreshes --auto-scaling-group-name "$ASG_NAME" \
+              --instance-refresh-ids "$ID" --query 'InstanceRefreshes[0].Status' --output text)
+            case "$STATUS" in
+              Successful)
+                echo "추천 배치 서버 교체 완료: $ID"
+                exit 0 ;;
+              Failed|Cancelled|RollbackSuccessful|RollbackFailed)
+                echo "::error::추천 배치 서버 교체 $STATUS: $ID"
+                exit 1 ;;
+            esac
+            sleep 15
+          done
+          echo "::error::추천 배치 서버 교체가 20분 안에 끝나지 않았다: $ID"
+          exit 1

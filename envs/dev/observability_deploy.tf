@@ -80,6 +80,18 @@ resource "aws_iam_role_policy" "app_agent_deploy" {
         Resource = [data.aws_instance.app.arn, "arn:aws:ssm:ap-northeast-2::document/AWS-RunShellScript"]
       },
       {
+        Sid      = "RefreshRecommendationServer"
+        Effect   = "Allow"
+        Action   = "autoscaling:StartInstanceRefresh"
+        Resource = local.recommendation_asg_arn
+      },
+      {
+        Sid      = "ReadRecommendationServerGroup"
+        Effect   = "Allow"
+        Action   = ["autoscaling:DescribeAutoScalingGroups", "autoscaling:DescribeInstanceRefreshes"]
+        Resource = "*"
+      },
+      {
         Sid      = "ReadCommandResult"
         Effect   = "Allow"
         Action   = ["ssm:GetCommandInvocation", "ec2:DescribeInstances"]

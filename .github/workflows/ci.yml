@@ -34,8 +34,8 @@ jobs:
       - name: compose
         run: |
           docker compose -f observability/compose.yaml config --no-interpolate --quiet
-          # 수집기는 서버 역할마다 덧붙이는 compose가 다르다: 개발 앱, 운영 앱, 운영 감시용, 부하 테스트.
-          for overlays in "app redis" "app" "redis" "app redis cadvisor"; do
+          # 수집기는 서버 역할마다 덧붙이는 compose가 다르다: 개발 앱, 운영 앱, 운영 감시용, 부하 테스트, 추천 배치.
+          for overlays in "app redis" "app" "redis" "app redis cadvisor" "journal"; do
             args=(-f app-agent/compose.yaml)
             for o in $overlays; do args+=(-f "app-agent/compose.$o.yaml"); done
             docker compose "${args[@]}" config --no-interpolate --quiet
@@ -54,7 +54,7 @@ jobs:
         run: |
           docker run --rm -v "$PWD/observability/alloy/host.alloy:/config.alloy:ro" "$ALLOY_IMAGE" validate /config.alloy
           # 수집기는 역할에 맞는 파일을 한 폴더에서 함께 읽는다(apply.sh). compose 검사와 같은 조합을 검사한다.
-          for files in "agent app redis" "agent app" "agent redis" "agent app redis cadvisor"; do
+          for files in "agent app redis" "agent app" "agent redis" "agent app redis cadvisor" "agent journal"; do
             mounts=()
             for f in $files; do mounts+=(-v "$PWD/app-agent/$f.alloy:/cfg/$f.alloy:ro"); done
             docker run --rm "${mounts[@]}" "$ALLOY_IMAGE" validate /cfg

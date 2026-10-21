@@ -8,6 +8,13 @@ loki.relabel "journal" {
     target_label  = "unit"
   }
 
+  // systemd가 유닛을 시작·끝낼 때 남기는 줄은 보낸 쪽이 init.scope이고 대상 유닛은 UNIT 필드에 있다.
+  rule {
+    source_labels = ["__journal_unit"]
+    regex         = "(cking-content-.+)"
+    target_label  = "unit"
+  }
+
   rule {
     source_labels = ["__journal_priority_keyword"]
     target_label  = "level"
