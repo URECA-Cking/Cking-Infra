@@ -18,6 +18,35 @@
   "templating": {
     "list": [
       {
+        "name": "env",
+        "label": "환경",
+        "type": "custom",
+        "query": "개발 : dev,운영 : prod,부하 테스트 : loadtest",
+        "current": {
+          "text": "부하 테스트",
+          "value": "loadtest"
+        },
+        "options": [
+          {
+            "text": "개발",
+            "value": "dev",
+            "selected": false
+          },
+          {
+            "text": "운영",
+            "value": "prod",
+            "selected": false
+          },
+          {
+            "text": "부하 테스트",
+            "value": "loadtest",
+            "selected": true
+          }
+        ],
+        "multi": false,
+        "includeAll": false
+      },
+      {
         "name": "testid",
         "label": "k6 실행",
         "type": "query",
@@ -44,17 +73,17 @@
           "uid": "prometheus"
         },
         "query": {
-          "query": "label_values(up{job=\"cking-be\"}, instance)",
+          "query": "label_values(up{job=\"cking-be\",instance=~\"${env}-cking-.*\"}, instance)",
           "refId": "instance"
         },
-        "definition": "label_values(up{job=\"cking-be\"}, instance)",
+        "definition": "label_values(up{job=\"cking-be\",instance=~\"${env}-cking-.*\"}, instance)",
         "refresh": 2,
-        "multi": false,
-        "includeAll": false,
+        "multi": true,
+        "includeAll": true,
         "sort": 1,
         "current": {
-          "text": "loadtest-cking-app",
-          "value": "loadtest-cking-app"
+          "text": "All",
+          "value": "$__all"
         }
       }
     ]
@@ -413,7 +442,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.5, sum by (le) (rate(http_server_requests_seconds_bucket{instance=\"$instance\",job=\"cking-be\",method=\"POST\",uri=\"/api/events/{eventId}/entries\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by (le) (rate(http_server_requests_seconds_bucket{instance=~\"$instance\",job=\"cking-be\",method=\"POST\",uri=\"/api/events/{eventId}/entries\"}[$__rate_interval])))",
           "legendFormat": "p50",
           "refId": "A"
         },
@@ -422,7 +451,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{instance=\"$instance\",job=\"cking-be\",method=\"POST\",uri=\"/api/events/{eventId}/entries\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{instance=~\"$instance\",job=\"cking-be\",method=\"POST\",uri=\"/api/events/{eventId}/entries\"}[$__rate_interval])))",
           "legendFormat": "p95",
           "refId": "B"
         },
@@ -431,7 +460,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_requests_seconds_bucket{instance=\"$instance\",job=\"cking-be\",method=\"POST\",uri=\"/api/events/{eventId}/entries\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_requests_seconds_bucket{instance=~\"$instance\",job=\"cking-be\",method=\"POST\",uri=\"/api/events/{eventId}/entries\"}[$__rate_interval])))",
           "legendFormat": "p99",
           "refId": "C"
         }
@@ -477,7 +506,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (status) (rate(http_server_requests_seconds_count{instance=\"$instance\",job=\"cking-be\",method=\"POST\",uri=\"/api/events/{eventId}/entries\"}[$__rate_interval]))",
+          "expr": "sum by (status) (rate(http_server_requests_seconds_count{instance=~\"$instance\",job=\"cking-be\",method=\"POST\",uri=\"/api/events/{eventId}/entries\"}[$__rate_interval]))",
           "legendFormat": "{{status}}",
           "refId": "A"
         }
@@ -551,7 +580,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.5, sum by (le) (rate(cking_stream_apply_delay_seconds_bucket{instance=\"$instance\",stream=\"spend\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by (le) (rate(cking_stream_apply_delay_seconds_bucket{instance=~\"$instance\",stream=\"spend\"}[$__rate_interval])))",
           "legendFormat": "p50",
           "refId": "A"
         },
@@ -560,7 +589,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(cking_stream_apply_delay_seconds_bucket{instance=\"$instance\",stream=\"spend\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(cking_stream_apply_delay_seconds_bucket{instance=~\"$instance\",stream=\"spend\"}[$__rate_interval])))",
           "legendFormat": "p95",
           "refId": "B"
         },
@@ -569,7 +598,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(cking_stream_apply_delay_seconds_bucket{instance=\"$instance\",stream=\"spend\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(cking_stream_apply_delay_seconds_bucket{instance=~\"$instance\",stream=\"spend\"}[$__rate_interval])))",
           "legendFormat": "p99",
           "refId": "C"
         }
@@ -617,7 +646,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(cking_stream_apply_delay_seconds_bucket{instance=\"$instance\",stream=\"spend\",le=\"1.0\"}[$__rate_interval])) / sum(rate(cking_stream_apply_delay_seconds_count{instance=\"$instance\",stream=\"spend\"}[$__rate_interval]))",
+          "expr": "sum(rate(cking_stream_apply_delay_seconds_bucket{instance=~\"$instance\",stream=\"spend\",le=\"1.0\"}[$__rate_interval])) / sum(rate(cking_stream_apply_delay_seconds_count{instance=~\"$instance\",stream=\"spend\"}[$__rate_interval]))",
           "legendFormat": "1초 이내",
           "refId": "A"
         }
@@ -663,7 +692,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(http_server_requests_seconds_count{instance=\"$instance\",job=\"cking-be\",method=\"POST\",uri=\"/api/events/{eventId}/entries\",status=\"200\"}[$__rate_interval]))",
+          "expr": "sum(rate(http_server_requests_seconds_count{instance=~\"$instance\",job=\"cking-be\",method=\"POST\",uri=\"/api/events/{eventId}/entries\",status=\"200\"}[$__rate_interval]))",
           "legendFormat": "응모 성공 (초당)",
           "refId": "A"
         },
@@ -672,7 +701,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(cking_stream_apply_delay_seconds_count{instance=\"$instance\",stream=\"spend\"}[$__rate_interval]))",
+          "expr": "sum(rate(cking_stream_apply_delay_seconds_count{instance=~\"$instance\",stream=\"spend\"}[$__rate_interval]))",
           "legendFormat": "DB 반영 (초당)",
           "refId": "B"
         }
@@ -718,7 +747,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(redis_stream_group_lag{instance=\"$instance\",stream=\"stream:ticket-deducted\"})",
+          "expr": "max(redis_stream_group_lag{job=\"redis\",instance=~\"${env}-cking-.*\",stream=\"stream:ticket-deducted\"})",
           "legendFormat": "아직 안 읽음 (lag)",
           "refId": "A"
         },
@@ -727,7 +756,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(redis_stream_group_messages_pending{instance=\"$instance\",stream=\"stream:ticket-deducted\"})",
+          "expr": "max(redis_stream_group_messages_pending{job=\"redis\",instance=~\"${env}-cking-.*\",stream=\"stream:ticket-deducted\"})",
           "legendFormat": "읽고 아직 반영 안 됨 (pending)",
           "refId": "B"
         }
@@ -773,7 +802,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(hikaricp_connections_active{instance=\"$instance\"})",
+          "expr": "sum(hikaricp_connections_active{instance=~\"$instance\"})",
           "legendFormat": "사용 중",
           "refId": "A"
         },
@@ -782,7 +811,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(hikaricp_connections_pending{instance=\"$instance\"})",
+          "expr": "sum(hikaricp_connections_pending{instance=~\"$instance\"})",
           "legendFormat": "대기",
           "refId": "B"
         },
@@ -791,7 +820,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(hikaricp_connections_max{instance=\"$instance\"})",
+          "expr": "sum(hikaricp_connections_max{instance=~\"$instance\"})",
           "legendFormat": "최대",
           "refId": "C"
         }
@@ -851,7 +880,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "1 - avg by (instance) (rate(node_cpu_seconds_total{job=\"node\",instance=~\"loadtest.*\",mode=\"idle\"}[$__rate_interval]))",
+          "expr": "1 - avg by (instance) (rate(node_cpu_seconds_total{job=\"node\",instance=~\"${env}-cking-.*\",mode=\"idle\"}[$__rate_interval]))",
           "legendFormat": "{{instance}}",
           "refId": "A"
         }
@@ -897,7 +926,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (container_label_com_docker_compose_service) (rate(container_cpu_usage_seconds_total{instance=\"$instance\",job=\"cadvisor\"}[$__rate_interval]))",
+          "expr": "sum by (container_label_com_docker_compose_service) (rate(container_cpu_usage_seconds_total{instance=~\"$instance\",job=\"cadvisor\"}[$__rate_interval]))",
           "legendFormat": "{{container_label_com_docker_compose_service}}",
           "refId": "A"
         }
@@ -943,7 +972,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (container_label_com_docker_compose_service) (container_memory_working_set_bytes{instance=\"$instance\",job=\"cadvisor\"})",
+          "expr": "sum by (container_label_com_docker_compose_service) (container_memory_working_set_bytes{instance=~\"$instance\",job=\"cadvisor\"})",
           "legendFormat": "{{container_label_com_docker_compose_service}}",
           "refId": "A"
         },
@@ -952,7 +981,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (container_label_com_docker_compose_service) (container_spec_memory_limit_bytes{instance=\"$instance\",job=\"cadvisor\"} > 0)",
+          "expr": "max by (container_label_com_docker_compose_service) (container_spec_memory_limit_bytes{instance=~\"$instance\",job=\"cadvisor\"} > 0)",
           "legendFormat": "{{container_label_com_docker_compose_service}} 상한",
           "refId": "B"
         }
@@ -998,7 +1027,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(jvm_memory_used_bytes{instance=\"$instance\",area=\"heap\"})",
+          "expr": "sum(jvm_memory_used_bytes{instance=~\"$instance\",area=\"heap\"})",
           "legendFormat": "사용",
           "refId": "A"
         },
@@ -1007,7 +1036,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(jvm_memory_max_bytes{instance=\"$instance\",area=\"heap\"})",
+          "expr": "sum(jvm_memory_max_bytes{instance=~\"$instance\",area=\"heap\"})",
           "legendFormat": "최대",
           "refId": "B"
         }
@@ -1053,7 +1082,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(redis_memory_used_bytes{instance=\"$instance\"})",
+          "expr": "max(redis_memory_used_bytes{job=\"redis\",instance=~\"${env}-cking-.*\"})",
           "legendFormat": "사용",
           "refId": "A"
         },
@@ -1062,7 +1091,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(redis_memory_max_bytes{instance=\"$instance\"})",
+          "expr": "max(redis_memory_max_bytes{job=\"redis\",instance=~\"${env}-cking-.*\"})",
           "legendFormat": "상한 (noeviction)",
           "refId": "B"
         }
@@ -1108,7 +1137,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(jvm_gc_pause_seconds_sum{instance=\"$instance\"}[$__rate_interval]))",
+          "expr": "sum(rate(jvm_gc_pause_seconds_sum{instance=~\"$instance\"}[$__rate_interval]))",
           "legendFormat": "GC",
           "refId": "A"
         }
@@ -1170,7 +1199,7 @@
           "namespace": "AWS/RDS",
           "metricName": "CPUUtilization",
           "dimensions": {
-            "DBInstanceIdentifier": "loadtest-cking-mysql"
+            "DBInstanceIdentifier": "${env}-cking-mysql"
           },
           "matchExact": true,
           "statistic": "Average",
@@ -1228,7 +1257,7 @@
           "namespace": "AWS/RDS",
           "metricName": "DatabaseConnections",
           "dimensions": {
-            "DBInstanceIdentifier": "loadtest-cking-mysql"
+            "DBInstanceIdentifier": "${env}-cking-mysql"
           },
           "matchExact": true,
           "statistic": "Average",
@@ -1286,7 +1315,7 @@
           "namespace": "AWS/RDS",
           "metricName": "CPUCreditBalance",
           "dimensions": {
-            "DBInstanceIdentifier": "loadtest-cking-mysql"
+            "DBInstanceIdentifier": "${env}-cking-mysql"
           },
           "matchExact": true,
           "statistic": "Average",

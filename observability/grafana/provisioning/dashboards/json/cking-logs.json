@@ -16,6 +16,35 @@
   "templating": {
     "list": [
       {
+        "name": "env",
+        "label": "환경",
+        "type": "custom",
+        "query": "개발 : dev,운영 : prod,부하 테스트 : loadtest",
+        "current": {
+          "text": "개발",
+          "value": "dev"
+        },
+        "options": [
+          {
+            "text": "개발",
+            "value": "dev",
+            "selected": true
+          },
+          {
+            "text": "운영",
+            "value": "prod",
+            "selected": false
+          },
+          {
+            "text": "부하 테스트",
+            "value": "loadtest",
+            "selected": false
+          }
+        ],
+        "multi": false,
+        "includeAll": false
+      },
+      {
         "name": "instance",
         "label": "서버",
         "type": "query",
@@ -24,20 +53,24 @@
           "uid": "prometheus"
         },
         "query": {
-          "query": "label_values(up{job=\"cking-be\"}, instance)",
+          "query": "label_values(up{job=\"node\",instance=~\"${env}-cking-.*\"}, instance)",
           "refId": "instance"
         },
-        "definition": "label_values(up{job=\"cking-be\"}, instance)",
+        "definition": "label_values(up{job=\"node\",instance=~\"${env}-cking-.*\"}, instance)",
         "refresh": 2,
-        "multi": false,
-        "includeAll": false,
-        "sort": 1
+        "multi": true,
+        "includeAll": true,
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
       },
       {
         "name": "container",
         "label": "컨테이너",
         "type": "custom",
-        "query": "app,redis",
+        "query": "app,redis,journal",
         "multi": true,
         "includeAll": false,
         "current": {
@@ -57,6 +90,11 @@
           {
             "text": "redis",
             "value": "redis",
+            "selected": false
+          },
+          {
+            "text": "journal",
+            "value": "journal",
             "selected": false
           }
         ]
@@ -144,7 +182,7 @@
           "refId": "A",
           "maxLines": 1000,
           "queryType": "range",
-          "expr": "{container=~\"${container:regex}\", instance=~\"$instance\"} | container=\"redis\" or level=~\"${level:regex}\" |~ \"(?i)$search\" $filter"
+          "expr": "{container=~\"${container:regex}\", instance=~\"$instance\"} | container=~\"redis|journal\" or level=~\"${level:regex}\" |~ \"(?i)$search\" $filter"
         }
       ],
       "fieldConfig": {
