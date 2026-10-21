@@ -28,12 +28,39 @@ aws lambda delete-function-concurrency --region ap-northeast-2 --function-name <
 - 이미 BLOCK된 댓글은 차단해도 그대로 숨겨져 있다
 - 2026-10-21 개발에서 확인: 차단 직후 호출 429(0.08초), 해제 직후 200
 
+## 판정 상태 보기
+
+Grafana(`https://dev-monitoring.cking.co.kr`) → Explore. 운영은 `instance="dev-cking-app"`을 `instance=~"prod-cking-app.*"`로 바꾼다.
+
+- 판정·실패 로그(Loki):
+  ```
+  {instance="dev-cking-app", container="app"} |~ "댓글 필터|필터 서비스"
+  ```
+- BE가 필터 응답을 기다린 시간 p95, 1시간(Loki):
+  ```
+  quantile_over_time(0.95, {instance="dev-cking-app", container="app"} |= "판정을 저장했습니다" | regexp "latencyMs=(?P<latency>[0-9]+)" | unwrap latency [1h])
+  ```
+- 시간 초과 횟수, 1시간(Loki):
+  ```
+  sum(count_over_time({instance="dev-cking-app", container="app"} |= "failureKind=TIMEOUT" [1h]))
+  ```
+- 판정 대기열과 처리 중인 스레드(Prometheus): `executor_queued_tasks{instance="dev-cking-app", name="commentFilterExecutor"}`, `executor_active_threads{instance="dev-cking-app", name="commentFilterExecutor"}`. 스레드는 2개, 대기열은 100이다
+- 재시도 제출·상한 도달·대기열 가득 참, 1시간(Prometheus): `increase(comment_filter_retry_attempted_total{instance="dev-cking-app"}[1h])`. `_exhausted_total`, `_queue_full_total`도 같은 형식이다. BE가 다시 시작하면 카운터는 0부터 센다
+- 2026-10-21 개발: 따뜻할 때 BE 대기 0.1~0.8초. 쉬고 난 뒤 첫 판정은 콜드 스타트 때문에 5초에 시간 초과되고 1분 뒤 재시도에서 저장됐다
+
 ## 콜드 스타트 확인
 
 ```bash
 # Mac: 최근 1시간 호출 기록. Init Duration이 있는 줄이 콜드 스타트다
 aws logs filter-log-events --region ap-northeast-2 --log-group-name /aws/lambda/<env>-cking-comment-filter \
   --start-time $(( ($(date +%s) - 3600) * 1000 )) --filter-pattern REPORT --query 'events[].message' --output text
+```
+
+CloudWatch → Logs Insights에서 로그 그룹 `/aws/lambda/<env>-cking-comment-filter`를 고르면 30분 단위 요약을 볼 수 있다.
+
+```
+filter @type = "REPORT"
+| stats count() as calls, count(@initDuration) as cold_starts, avg(@duration) as avg_ms, pct(@duration, 95) as p95_ms, max(@duration) as max_ms, max(@maxMemoryUsed) / 1000000 as max_mem_mb by bin(30m)
 ```
 
 - 콜드 스타트 중 `Status: timeout`이면 기동이 실행 상한(120초)보다 오래 걸린 것이다. 상한에 걸리면 기동을 처음부터 다시 하므로 상한을 늘린다
