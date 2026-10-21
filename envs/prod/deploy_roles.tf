@@ -1,4 +1,4 @@
-# GitHub Actions 운영 배포 역할(BE, FE). 저장소의 main 브랜치에서만 쓸 수 있고, 각 역할은 자기 자원만 다룬다.
+# GitHub Actions 운영 배포 역할(BE, FE, 댓글 필터). 저장소의 main 브랜치에서만 쓸 수 있고, 각 역할은 자기 자원만 다룬다.
 
 data "aws_iam_openid_connect_provider" "github" {
   url = "https://token.actions.githubusercontent.com"
@@ -99,6 +99,61 @@ resource "aws_iam_role_policy" "fe_deploy" {
         Effect   = "Allow"
         Action   = "cloudfront:CreateInvalidation"
         Resource = [for k in ["web", "admin"] : aws_cloudfront_distribution.this[k].arn]
+      },
+    ]
+  })
+}
+
+# 필터: 개발 Lambda가 쓰는 이미지에 prod- 태그를 붙여 운영 Lambda로 바꾸고, 함수 URL로 호출해 확인한다. 이미지는 새로 빌드하지 않는다.
+resource "aws_iam_role" "filter_deploy" {
+  name = "prod-cking-filter-github-actions-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Federated = data.aws_iam_openid_connect_provider.github.arn }
+      Action    = "sts:AssumeRoleWithWebIdentity"
+      Condition = {
+        StringEquals = {
+          "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+          "token.actions.githubusercontent.com:sub" = "repo:URECA-Cking@326738686/Cking-Filtering-Benchmark@1399174039:ref:refs/heads/main"
+        }
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "filter_deploy" {
+  name = "prod-cking-filter-deploy"
+  role = aws_iam_role.filter_deploy.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "ReadDevFunction"
+        Effect   = "Allow"
+        Action   = "lambda:GetFunction"
+        Resource = "arn:aws:lambda:ap-northeast-2:551372961758:function:dev-cking-comment-filter"
+      },
+      {
+        Sid      = "TagImage"
+        Effect   = "Allow"
+        Action   = ["ecr:DescribeImages", "ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer", "ecr:PutImage"]
+        Resource = data.aws_ecr_repository.comment_filter.arn
+      },
+      {
+        Sid      = "UpdateProdFunction"
+        Effect   = "Allow"
+        Action   = ["lambda:UpdateFunctionCode", "lambda:GetFunction", "lambda:GetFunctionConfiguration", "lambda:GetFunctionUrlConfig"]
+        Resource = aws_lambda_function.comment_filter.arn
+      },
+      {
+        Sid      = "InvokeProdFunction"
+        Effect   = "Allow"
+        Action   = ["lambda:InvokeFunctionUrl", "lambda:InvokeFunction"]
+        Resource = aws_lambda_function.comment_filter.arn
       },
     ]
   })
