@@ -16,7 +16,7 @@
 .github/dependabot.yml     컨테이너 이미지·GitHub Actions 갱신 PR
 app-agent/                 서버 수집기(Alloy) 설정. agent.alloy(서버 지표·로그·전송)는 항상, app.alloy(앱 지표)·redis.alloy(Redis 지표)·cadvisor.alloy(컨테이너 지표, 부하 테스트 서버)는 apply.sh가 서버 역할에 따라 켠다
 bootstrap/                 Terraform보다 먼저 만든 상태 버킷 기록
-docs/runbooks/             경보별 대응 절차(런북)
+docs/runbooks/             경보별 대응 절차와 댓글 필터 차단·해제 절차(런북)
 envs/dev/                  개발 환경. 실행 위치
   terraform.tf             Terraform·프로바이더 버전
   backend.tf               상태 저장소(S3)와 잠금
