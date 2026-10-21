@@ -40,26 +40,3 @@ variable "k6_instance_type" {
   default     = "c7g.medium"
 }
 
-variable "k6_version" {
-  description = "k6 버전(GitHub 릴리스 태그)"
-  type        = string
-  default     = "v2.3.0"
-}
-
-variable "k6_sha256" {
-  description = "k6 linux-arm64 tar.gz의 SHA-256(릴리스 checksums.txt)"
-  type        = string
-  default     = "5ca3433e8201da72a284aaa241a1bb5fb47f4abb4e384d39410ddd8062f49b90"
-}
-
-variable "alloy_version" {
-  description = "k6 서버 수집기 Alloy 버전. 앱 서버 수집기와 같은 버전"
-  type        = string
-  default     = "v1.20.1"
-}
-
-variable "alloy_sha256" {
-  description = "alloy-linux-arm64.zip의 SHA-256(릴리스 SHA256SUMS)"
-  type        = string
-  default     = "396827d58158f181c98d5776c908348b38b4099f1d18a1e7554f2fda0fcb9203"
-}

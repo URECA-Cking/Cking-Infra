@@ -128,6 +128,7 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
    - 교체 뒤 ALB 경로 스모크가 실패하면 BE CI가 이전 태그로 한 번 자동 교체하고 다시 검사한다
    - 스모크가 잡지 못한 문제는 BE Actions의 `Deploy to prod` 워크플로를 `main`에서 예전 태그로 실행해 되돌린다
    - 이 절차는 `envs/prod-base`의 앱 역할(시작 대기 끝내기 권한)이 먼저 적용되어 있어야 한다
+7. 운영 부하 테스트: `envs/prod`에서 `terraform apply -var k6_enabled=true`로 k6 서버(`prod-cking-k6`)를 만들고, 끝나면 `k6_enabled` 없이 다시 apply해 지운다. 실행 절차는 BE `docs/operations/loadtest.md`의 "운영에서 실행"
 
 ## 요구 사항
 

@@ -9,3 +9,7 @@ output "recommendation_instance_profile" {
 output "monitor_instance_profile" {
   value = aws_iam_instance_profile.monitor.name
 }
+
+output "k6_instance_profile" {
+  value = aws_iam_instance_profile.k6.name
+}
