@@ -26,3 +26,8 @@
 
 - 원인을 고치기 전에 replay하지 않는다. 같은 이유로 다시 실패한다
 - `dead_stream_message`를 DB에서 직접 지우거나 고치지 않는다. 반영되지 않은 응모·적립의 유일한 기록이다
+
+## 운영에서 다른 점
+
+- 관리자 API 주소는 `https://api.cking.co.kr`, 관리자 화면은 `https://admin.cking.co.kr`이다
+- 원인 수정 배포와 되돌리기는 [운영 앱 배포](deploy-failed.md#운영-앱-배포-cking-be-deploy-to-prod)

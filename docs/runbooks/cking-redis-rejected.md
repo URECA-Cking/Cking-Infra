@@ -44,3 +44,9 @@ sudo docker exec cking-redis redis-cli CONFIG SET maxmemory 384mb
 - `maxmemory-policy`를 축출 정책(`allkeys-lru` 등)으로 바꾸지 않는다. 잔액 키가 지워진다
 - 메모리를 비우려고 키나 Stream을 지우지 않는다([공통](stream.md#공통으로-하면-안-되는-것))
 - 서버 여유 메모리를 넘겨 한도를 올리지 않는다. 앱 서버 전체가 메모리 부족에 빠진다
+
+## 운영에서 다른 점
+
+- ElastiCache는 `CONFIG SET`을 막아 한도를 즉시 올릴 수 없다. 메모리 사용률은 CloudWatch(ElastiCache 메모리 경보)나 [운영 상태 확인](stream.md#운영-상태-확인)의 `INFO memory`로 본다
+- 한도를 올리려면 노드 크기를 올린다. 요청 중에도 진행되지만 끝날 때까지 시간이 걸린다: `aws elasticache modify-replication-group --region ap-northeast-2 --replication-group-id prod-cking-redis --cache-node-type <더 큰 크기> --apply-immediately`. 그 뒤 Terraform `envs/prod/cache.tf`의 크기를 같은 값으로 맞춘다
+- 파라미터 그룹의 `maxmemory-policy`(noeviction)를 바꾸지 않는다

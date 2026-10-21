@@ -1,4 +1,4 @@
-# 웹후크 주소는 Parameter Store에서 apply.sh가 환경변수로 넘긴다
+# 웹후크 주소는 Parameter Store에서 apply.sh가 환경변수로 넘긴다. 운영 경보는 운영 전용 채널의 웹후크를 쓴다
 apiVersion: 1
 contactPoints:
   - orgId: 1
@@ -23,6 +23,29 @@ contactPoints:
         type: "slack"
         settings:
           url: "$SLACK_ALERT_WEBHOOK_URL"
+          mentionUsers: "U0C9V1RMCS1"
+  - orgId: 1
+    name: "Slack 운영"
+    receivers:
+      - uid: "cking-slack-prod"
+        type: "slack"
+        settings:
+          url: "$SLACK_PROD_ALERT_WEBHOOK_URL"
+  - orgId: 1
+    name: "Slack 운영 급함"
+    receivers:
+      - uid: "cking-slack-prod-urgent"
+        type: "slack"
+        settings:
+          url: "$SLACK_PROD_ALERT_WEBHOOK_URL"
+          mentionChannel: "channel"
+  - orgId: 1
+    name: "Slack 운영 관측"
+    receivers:
+      - uid: "cking-slack-prod-infra"
+        type: "slack"
+        settings:
+          url: "$SLACK_PROD_ALERT_WEBHOOK_URL"
           mentionUsers: "U0C9V1RMCS1"
   - orgId: 1
     name: "데드맨"
