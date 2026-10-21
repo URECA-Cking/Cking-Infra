@@ -214,7 +214,8 @@ resource "aws_cloudwatch_event_target" "launch_failed" {
   }
 }
 
-# noeviction이라 메모리가 차면 응모 쓰기가 거부된다. 부하 테스트 증가 속도(초당 80에서 분당 약 2.4MiB)면 남은 30%는 약 2시간이다.
+# noeviction이라 메모리가 차면 응모 쓰기가 거부된다. 응모 키는 만료 시간이 있어 메모리가 초당 건수 × 1.7~2.1MB에서 멈추므로
+# (부하 테스트 2차 계산값) small에서 70%는 초당 약 370~450건이 이어져야 닿는다. 정상 부하로는 닿지 않는 값이라 닿으면 이상 신호다.
 resource "aws_cloudwatch_metric_alarm" "redis_memory" {
   for_each = toset(local.redis_node_ids)
 
