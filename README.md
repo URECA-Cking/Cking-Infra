@@ -14,9 +14,9 @@
 ```text
 .github/workflows/         PR 검사(ci.yml), 관측 설정·앱 서버 수집기 배포 워크플로
 .github/dependabot.yml     컨테이너 이미지·GitHub Actions 갱신 PR
-app-agent/                 서버 수집기(Alloy) 설정. agent.alloy(서버 지표·로그·전송)는 항상, app.alloy(앱 지표)·redis.alloy(Redis 지표)·cadvisor.alloy(컨테이너 지표, 부하 테스트 서버)는 apply.sh가 서버 역할에 따라 켠다
+app-agent/                 서버 수집기(Alloy) 설정. agent.alloy(서버 지표·로그·전송)는 항상, app.alloy(앱 지표)·redis.alloy(Redis 지표)·cadvisor.alloy(컨테이너 지표, 부하 테스트 서버)·journal.alloy(systemd 서비스 journald 로그, 추천 배치 서버)는 apply.sh가 서버 역할에 따라 켠다
 bootstrap/                 Terraform보다 먼저 만든 상태 버킷 기록
-docs/runbooks/             경보별 대응 절차와 댓글 필터 차단·해제 절차(런북)
+docs/runbooks/             경보별 대응 절차와 댓글 필터 차단·해제, 추천 배치 서버 절차(런북)
 envs/dev/                  개발 환경. 실행 위치
   terraform.tf             Terraform·프로바이더 버전
   backend.tf               상태 저장소(S3)와 잠금
@@ -27,13 +27,13 @@ envs/dev/                  개발 환경. 실행 위치
   uploads_cdn.tf           업로드 이미지 공개 CDN(CloudFront, WAF, 요금제, Route53, 버킷 정책)
   app_server.tf            앱 서버 역할(콘솔에서 가져옴)과 수집기 설정 읽기·댓글 필터 호출 권한
   frontend_deploy.tf       FE 배포 역할(콘솔에서 가져옴)과 앱별 권한
-  observability.tf         관측 서버(EC2, 데이터 디스크, 스냅샷, 버킷, IAM, 앱 서버 수집 포트)
+  observability.tf         관측 서버(EC2, 데이터 디스크, 스냅샷, 버킷, IAM, 앱·추천 배치 서버 수집 포트)
   alerts.tf                서버 상태 검사 경보와 메일 주제
   observability_deploy.tf  관측 설정·앱 서버 수집기 설정을 배포하는 GitHub Actions 역할
   comment_filter.tf        댓글 필터 이미지 저장소(ECR, 개발·운영 공용), 개발 Lambda(arm64 이미지, 함수 URL IAM 인증, 이미지는 필터 저장소 CI가 바꿈), 필터 저장소 GitHub Actions 개발 역할(모델 읽기, 이미지 푸시, 개발 Lambda 갱신·호출)
-  recommendation.tf        추천 배치 저장소 GitHub Actions 개발 역할(배포 패키지 올리기, 배포 버전 값, 개발 추천 배치 서버 교체)
+  recommendation.tf        개발 추천 배치 서버(1대짜리 서버 그룹, t4g.small 스팟, 상태 디스크, 시작 대기 자기 검사, 역할, 비밀이 아닌 값)와 추천 배치 저장소 GitHub Actions 개발 역할(배포 패키지 올리기, 배포 버전 값, 서버 교체)
   outputs.tf               읽어 온 값 출력
-  templates/               서버 첫 부팅 스크립트
+  templates/               서버 첫 부팅 스크립트(추천 배치 서버는 운영 공통 준비 envs/prod/templates/server-base.sh를 함께 쓴다)
 envs/loadtest/             부하 테스트 환경. 측정 때 띄우고 끝나면 지운다. 상태는 loadtest/terraform.tfstate
   app_server.tf            앱 서버(개발 앱 서버와 같은 AMI·크기·Docker 버전·swap)
   rds.tf                   RDS(개발 RDS와 같은 사양, 빈 DB)
