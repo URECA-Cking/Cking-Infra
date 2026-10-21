@@ -133,7 +133,7 @@ resource "aws_iam_role_policy" "comment_filter_deploy" {
 }
 
 # 개발 필터 Lambda. 처음 이미지는 필터 저장소 develop 첫 CI(8a2cded)가 올린 것이고, 이후 이미지는 CI가 바꾸므로 Terraform은 비교하지 않는다.
-# 메모리는 측정 최대 약 962MB에 2배 여유, 실행 상한은 콜드 첫 호출(모델 로딩 + 판정)에 여유를 둔 값. 개발에서 측정해 조정한다.
+# 메모리는 측정 최대 약 962MB에 2배 여유. 실행 상한에 걸리면 기동을 처음부터 다시 하므로, 측정한 콜드 스타트 최대 53.5초에 2배 여유를 둔다.
 resource "aws_cloudwatch_log_group" "comment_filter" {
   name              = "/aws/lambda/${local.comment_filter_function}"
   retention_in_days = 14
@@ -174,7 +174,7 @@ resource "aws_lambda_function" "comment_filter" {
   image_uri     = "${aws_ecr_repository.comment_filter.repository_url}@sha256:5e646701ee3e1240fdf6a6152d5dc7bb7c2da94560c8c9396b3e6d7582dc0d00"
   architectures = ["arm64"]
   memory_size   = 2048
-  timeout       = 30
+  timeout       = 120
 
   depends_on = [aws_cloudwatch_log_group.comment_filter, aws_iam_role_policy.comment_filter_function]
 
