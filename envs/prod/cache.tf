@@ -33,7 +33,7 @@ resource "aws_elasticache_user" "monitor" {
   user_id              = "cking-monitor"
   user_name            = "cking-monitor"
   engine               = "valkey"
-  access_string        = "on ~* &* -@all +@connection +info +xinfo +xlen +slowlog +latency +memory +type +strlen +llen +scard +zcard +hlen +pfcount +get +scan +command|info"
+  access_string        = "on ~* &* -@all +@connection +info +xinfo +xlen +slowlog +latency +memory +type +strlen +llen +scard +zcard +hlen +pfcount +get +scan"
   passwords_wo         = ephemeral.aws_ssm_parameter.redis_monitor_password.value
   passwords_wo_version = 1
 }
