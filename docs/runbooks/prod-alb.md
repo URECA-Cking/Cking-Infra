@@ -16,13 +16,23 @@ Amazon Q 기본 알림에는 `@channel` 멘션이 없다. 같은 경보가 메�
 - **2대 미만 15분**: 서버 하나를 교체하는 상한(시작 대기 900초)을 넘겼다. 새 서버가 계속 버려지고 있을 가능성이 크다
 - **ALB 5xx**: 앱까지 가지 못한 요청이다. 502(대상이 연결을 끊음)·503(정상 대상 없음)·504(응답 시간 초과). 앱이 낸 5xx는 Grafana [서버 오류 증가](cking-5xx.md)가 본다
 
+서버 그룹은 ALB 헬스체크(`/readyz`, 10초 간격 2번 실패면 비정상)로 서버 상태를 보고, 비정상 서버를 유예 120초 뒤 교체한다.
+
 첫 BE 배포 전에는 배포 태그가 없어 정상 대상이 0대이므로 앞의 두 경보가 울리는 것이 정상이다.
 
 ## 먼저 볼 곳
 
 1. 서버 그룹의 서버 상태와 활동 기록([서버 찾기](README.md#운영), [운영 서버 띄우기 실패](prod-launch-failed.md#먼저-볼-곳))
 2. 직전 배포: Cking-BE Actions `Deploy to prod`
-3. AWS 콘솔 EC2 → 대상 그룹 `prod-cking-app-tg` → 대상: 비정상 사유(`Health checks failed`, `Request timed out`)
+3. 대상 그룹 `prod-cking-app-tg`의 대상별 상태와 비정상 사유(`Target.ResponseCodeMismatch`는 `/readyz`가 200이 아님, `Target.Timeout`은 응답 없음)
+
+```bash
+# Mac
+aws elbv2 describe-target-health --region ap-northeast-2 \
+  --target-group-arn $(aws elbv2 describe-target-groups --region ap-northeast-2 --names prod-cking-app-tg --query 'TargetGroups[0].TargetGroupArn' --output text) \
+  --query 'TargetHealthDescriptions[].[Target.Id,TargetHealth.State,TargetHealth.Reason]' --output table
+```
+
 4. Grafana **크킹 앱**: `instance`별 요청량·오류
 
 ## 원인별 대응
@@ -37,11 +47,15 @@ Amazon Q 기본 알림에는 `@channel` 멘션이 없다. 같은 경보가 메�
 
 ### 3. 서버는 떠 있는데 헬스체크 실패
 
-`/readyz`가 실패하는 원인은 대개 DB·Redis 연결이다. [운영 RDS 경보](prod-rds.md), [운영 ElastiCache 경보](prod-elasticache.md), Grafana [DB 연결 대기](cking-hikari-pending.md)가 함께 울렸는지 본다.
+`/readyz`가 실패하는 원인은 대개 DB·Redis 연결이다. [운영 RDS 경보](prod-rds.md), [운영 ElastiCache 경보](prod-elasticache.md), Grafana [DB 연결 대기](cking-hikari-pending.md)가 함께 울렸는지 본다. 서버 그룹이 비정상 서버를 교체하는데, 원인이 DB·Redis처럼 공통이면 새 서버도 자기 검사에서 버려져 [운영 서버 띄우기 실패](prod-launch-failed.md) 알림이 이어진다. 교체로는 풀리지 않으므로 DB·Redis를 먼저 고친다.
 
 ### 4. 5xx만 늘어남 (정상 대상 수는 정상)
 
 504가 대부분이면 느린 요청이다([응답 지연](cking-p95.md)). 502가 배포 시각에 몰리면 서버가 요청 처리 중에 빠진 것이다(해제 대기 90초와 앱 종료 대기 설정 확인).
+
+## 해결 확인
+
+위 대상 상태가 `healthy` 2대 이상이고, CloudWatch 경보가 OK로 돌아온다(운영 채널에 OK 알림이 온다).
 
 ## 하면 안 되는 것
 
