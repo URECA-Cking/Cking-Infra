@@ -133,6 +133,12 @@ resource "aws_iam_role_policy" "observability" {
         Effect   = "Allow"
         Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
         Resource = "${aws_s3_bucket.observability.arn}/loki/*"
+      },
+      {
+        Sid      = "AlertAnalysis"
+        Effect   = "Allow"
+        Action   = "sns:Publish"
+        Resource = aws_sns_topic.alert_analysis.arn
       }
     ]
   })
