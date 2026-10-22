@@ -33,6 +33,19 @@ resource "aws_cloudwatch_log_group" "slow_query" {
   retention_in_days = 14
 }
 
+# 평소 60초. 운영 부하 테스트 동안 1초로 apply해 정각의 CPU steal과 RDS 관리 프로세스를 보고, 끝나면 되돌린다.
+# 1초는 RDSOSMetrics 수집이 시간당 약 28MB(2026-10-21 부하 테스트 RDS 측정)라 켜 두면 월 약 $16이다.
+variable "rds_monitoring_interval" {
+  description = "RDS Enhanced Monitoring 간격(초)"
+  type        = number
+  default     = 60
+
+  validation {
+    condition     = contains([1, 5, 10, 15, 30, 60], var.rds_monitoring_interval)
+    error_message = "Enhanced Monitoring 간격은 1, 5, 10, 15, 30, 60 중 하나다."
+  }
+}
+
 resource "aws_db_instance" "main" {
   identifier     = "prod-cking-mysql"
   engine         = "mysql"
@@ -56,6 +69,9 @@ resource "aws_db_instance" "main" {
   ca_cert_identifier     = "rds-ca-rsa2048-g1"
 
   enabled_cloudwatch_logs_exports = ["slowquery"]
+
+  monitoring_interval = var.rds_monitoring_interval
+  monitoring_role_arn = "arn:aws:iam::551372961758:role/prod-cking-rds-monitoring-role"
 
   # 다중 AZ 백업은 대기 인스턴스에서 떠서 주 인스턴스 I/O에 영향이 없다. 시각은 개발과 같은 새벽(KST)에 둔다.
   backup_retention_period    = 14

@@ -47,7 +47,7 @@ envs/prod/                 운영 환경. 상태는 prod/terraform.tfstate
   network.tf               VPC 10.1.0.0/16, AZ 2a·2b의 퍼블릭·프라이빗 앱·프라이빗 데이터 서브넷, AZ마다 NAT, S3 게이트웨이 엔드포인트
   peering.tf               개발 VPC 피어링(관측 서버 공유), 양쪽 경로, 관측 서버 수집 포트에 운영 앱 서브넷 허용
   security_groups.tf       앱·감시용 서버, RDS, ElastiCache 보안 그룹
-  database.tf              RDS MySQL 8.4 다중 AZ(마스터 비밀번호는 Secrets Manager 관리), 느린 쿼리 로그
+  database.tf              RDS MySQL 8.4 다중 AZ(마스터 비밀번호는 Secrets Manager 관리), 느린 쿼리 로그, Enhanced Monitoring(평소 60초)
   cache.tf                 ElastiCache Valkey 7.2 주·복제(클러스터 모드 끔, noeviction, TLS, 앱·감시 사용자)
   parameters.tf            /cking/prod/·/cking/prod-monitor/ 중 비밀이 아닌 값(DB·Redis 주소와 사용자 이름, 댓글 필터 함수 URL)
   servers.tf               운영 서버 공통 값(개발 앱 서버와 같은 AMI·Docker 버전)
@@ -61,8 +61,8 @@ envs/prod/                 운영 환경. 상태는 prod/terraform.tfstate
   deploy_roles.tf          GitHub Actions 운영 배포 역할(BE: 배포 파일, 배포 태그, 앱 서버 교체 / FE: 프론트 버킷 동기화, 캐시 무효화 / 필터: 개발 CI가 올린 이미지에 prod- 태그, 운영 Lambda 교체·호출)
   templates/               서버 첫 부팅 스크립트(server-base.sh는 공통 준비)
   functions/               CloudFront Functions(www → cking.co.kr 이동)
-envs/prod-base/            운영 환경 EC2 역할과 인스턴스 프로필. 운영 서버보다 먼저 만들고 운영 환경을 지워도 남긴다. 상태는 prod-base/terraform.tfstate
-  iam.tf                   앱 서버·추천 배치 서버·감시용 서버 역할(SSM, 운영 비밀값·배포 파일·업로드 버킷, 수집기 설정 읽기, 댓글 필터 호출, 앱 서버 시작 대기 끝내기, 추천 배치 상태 디스크 붙이기)
+envs/prod-base/            운영 환경 EC2 역할·인스턴스 프로필과 RDS 모니터링 역할. 운영 서버보다 먼저 만들고 운영 환경을 지워도 남긴다. 상태는 prod-base/terraform.tfstate
+  iam.tf                   앱 서버·추천 배치 서버·감시용 서버·k6 서버 역할, RDS Enhanced Monitoring 역할(SSM, 운영 비밀값·배포 파일·업로드 버킷, 수집기 설정 읽기, 댓글 필터 호출, 앱 서버 시작 대기 끝내기, 추천 배치 상태 디스크 붙이기)
 modules/api-waf/           API(ALB) 앞단 WAF. 개발·운영이 같은 규칙을 쓴다(관리형 규칙, 본문 크기 예외, IP당 요청 상한, 로그)
 observability/             관측 서버 위의 프로그램 설정(compose, Prometheus, Loki, Alloy, Grafana, 쓰기 전용 nginx)
 ```
@@ -129,7 +129,7 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
    - 교체 뒤 ALB 경로 스모크가 실패하면 BE CI가 이전 태그로 한 번 자동 교체하고 다시 검사한다
    - 스모크가 잡지 못한 문제는 BE Actions의 `Deploy to prod` 워크플로를 `main`에서 예전 태그로 실행해 되돌린다
    - 이 절차는 `envs/prod-base`의 앱 역할(시작 대기 끝내기 권한)이 먼저 적용되어 있어야 한다
-7. 운영 부하 테스트: `envs/prod`에서 `terraform apply -var k6_enabled=true`로 k6 서버(`prod-cking-k6`)를 만들고, 끝나면 `k6_enabled` 없이 다시 apply해 지운다. 실행 절차는 BE `docs/operations/loadtest.md`의 "운영에서 실행"
+7. 운영 부하 테스트: `envs/prod`에서 `terraform apply -var k6_enabled=true -var rds_monitoring_interval=1`로 k6 서버(`prod-cking-k6`)를 만들고 RDS Enhanced Monitoring을 1초로 바꾼다. 끝나면 두 값 없이 다시 apply해 k6 서버를 지우고 60초로 되돌린다. 간격 변경은 재부팅 없이 적용된다. 1초를 켜 두면 수집 비용이 월 약 $16이라 반드시 되돌린다. 실행 절차는 BE `docs/operations/loadtest.md`의 "운영에서 실행"
 
 ## 요구 사항
 
