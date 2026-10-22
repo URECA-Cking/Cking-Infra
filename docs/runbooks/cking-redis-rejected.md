@@ -24,7 +24,7 @@ sudo docker logs --tail 50 cking-redis
 
 ### 1. 메모리 한도 도달
 
-`used_memory`가 `maxmemory`에 닿았다. Stream은 자르지 않아 기록이 계속 쌓인다.
+`used_memory`가 `maxmemory`에 닿았다. 무엇이 늘었는지는 [Redis 메모리](cking-redis-memory.md#원인별-대응)로 가른다.
 
 - 서버 여유 메모리를 확인한다(`free -m`). 여유가 있으면 임시로 한도를 올려 응모를 살린다. 재시작하면 원래 값(256MB)으로 돌아간다
 
@@ -33,11 +33,15 @@ sudo docker logs --tail 50 cking-redis
 sudo docker exec cking-redis redis-cli CONFIG SET maxmemory 384mb
 ```
 
-- 영구 조치는 BE 담당과 정한다: Stream 정리 방식(처리 끝난 메시지 자르기) 또는 `docker-compose.dev.yml`의 한도 변경
+- 영구 조치: 응모가 몰려 키가 늘어난 것이면 `docker-compose.dev.yml`의 한도를 BE PR로 올린다. Stream 정리가 멈춘 것이면 [Redis 메모리](cking-redis-memory.md#2-stream이-계속-길어짐)를 따른다
 
 ### 2. 메모리는 여유인데 거부됨
 
 `INFO commandstats`에서 어떤 명령이 거부됐는지 본다. 잘못된 명령·타입이면 앱 코드 문제라 BE 이슈를 만든다.
+
+## 해결 확인
+
+`INFO commandstats`의 `rejected_calls`가 더 늘지 않고, **크킹 Redis·Stream → 거부·실패한 명령**이 0으로 돌아온다.
 
 ## 하면 안 되는 것
 
