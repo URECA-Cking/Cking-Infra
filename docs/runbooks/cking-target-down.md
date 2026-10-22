@@ -8,9 +8,13 @@
 
 앱 서버의 서버·Redis·수집기 지표가 들어오지 않는다. 이 지표를 쓰는 다른 경보(서버 메모리, 디스크, Redis, Stream)가 조용해질 수 있다.
 
+세 지표는 앱 서버의 수집기가 서버 안에서 모아 보낸다. 수집기가 살아 있으면 `up`은 1이고, 수집기나 전송 경로가 끊기면 0이 아니라 셋이 함께 사라진다(지표 없음 경보, `job` 라벨 없음).
+
+Redis가 멈춘 것은 이 경보로 잡히지 않는다. 그때도 `up{job="redis"}`는 1이고 `redis_up`만 0이 된다(2026-10-22 Alloy v1.20.1·Redis 7.2.16으로 재현). 그 경우는 [Redis 연결 끊김](cking-redis-down.md)이 울린다.
+
 ## 먼저 볼 곳
 
-1. 경보 라벨 `job`: 하나만 빠졌는지, 전부 빠졌는지
+1. 경보 라벨 `job`: 있으면 그 수집만 0, 없으면 셋 다 끊겼다
 2. 앱 서버 수집기 상태
 
 ```bash
@@ -21,9 +25,9 @@ sudo docker logs --tail 100 app-agent-alloy-1
 
 ## 원인별 대응
 
-### 1. 하나만 0 (`redis` 등)
+### 1. 하나만 0
 
-수집기는 살아 있고 대상만 응답하지 않는다. `redis`면 `cking-redis` 컨테이너 상태를 본다.
+수집기는 살아 있고 그 수집만 실패한다. 위 수집기 로그에서 오류를 본다.
 
 ### 2. 전부 없음, 수집기 컨테이너는 떠 있음
 
@@ -43,6 +47,10 @@ sudo docker ps --format '{{.Names}} {{.Status}}'
 ### 4. 앱 서버 자체 문제
 
 SSM 접속이 안 되면 [인스턴스 상태 검사](ec2-instance-check.md).
+
+## 해결 확인
+
+Grafana Explore(Prometheus)에서 `up{instance="dev-cking-app"}`의 `node`·`redis`·`alloy`·`cking-be`가 모두 1이다.
 
 ## 하면 안 되는 것
 

@@ -211,6 +211,47 @@ groups:
         annotations:
           summary: "Redis가 명령을 거부했습니다. 메모리 한도에 닿으면 응모 XADD가 실패합니다."
           runbook_url: "https://github.com/URECA-Cking/Cking-Infra/blob/main/docs/runbooks/cking-redis-rejected.md"
+      - uid: "cking-redis-down"
+        title: "Redis 연결 끊김"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "min(redis_up{instance=\"dev-cking-app\"})"
+              instant: true
+          - refId: "B"
+            datasourceUid: "__expr__"
+            model:
+              refId: "B"
+              type: "reduce"
+              expression: "A"
+              reducer: "last"
+              settings:
+                mode: "dropNN"
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "B"
+              conditions:
+                - evaluator:
+                    type: "lt"
+                    params:
+                      - 1
+        noDataState: "OK"
+        execErrState: "Error"
+        for: "1m"
+        labels:
+          severity: "urgent"
+        annotations:
+          summary: "앱 서버 수집기가 1분째 Redis에 붙지 못합니다. Redis가 멈췄으면 응모·적립이 실패합니다."
+          runbook_url: "https://github.com/URECA-Cking/Cking-Infra/blob/main/docs/runbooks/cking-redis-down.md"
       - uid: "cking-stream-pending"
         title: "처리 실패 누적"
         condition: "C"
@@ -373,7 +414,7 @@ groups:
         labels:
           severity: "normal"
         annotations:
-          summary: "Redis 메모리가 한도의 70%를 넘었습니다. Stream은 자르지 않아 계속 늘어납니다."
+          summary: "Redis 메모리가 한도의 70%를 넘었습니다. 100%에 닿으면 응모 쓰기가 거부됩니다."
           runbook_url: "https://github.com/URECA-Cking/Cking-Infra/blob/main/docs/runbooks/cking-redis-memory.md"
       - uid: "cking-error-log"
         title: "ERROR 로그"
@@ -765,7 +806,7 @@ groups:
             datasourceUid: "prometheus"
             model:
               refId: "A"
-              expr: "max by (job, instance) (process_resident_memory_bytes{job=\"prometheus\"}) / 536870912 or max by (job, instance) (process_resident_memory_bytes{job=\"loki\"}) / 402653184 or max by (job, instance) (process_resident_memory_bytes{job=\"alloy\",instance=~\"dev-cking-.*|alloy:12345|grafana:3000|loki:3100|localhost:9090\"}) / 268435456"
+              expr: "max by (job, instance) (process_resident_memory_bytes{job=\"prometheus\"}) / 536870912 or max by (job, instance) (process_resident_memory_bytes{job=\"loki\"}) / 402653184 or max by (job, instance) (go_memstats_sys_bytes{job=\"alloy\",instance=~\"dev-cking-.*|alloy:12345|grafana:3000|loki:3100|localhost:9090\"} - go_memstats_heap_released_bytes{job=\"alloy\",instance=~\"dev-cking-.*|alloy:12345|grafana:3000|loki:3100|localhost:9090\"}) / 268435456"
               instant: true
           - refId: "B"
             datasourceUid: "__expr__"
@@ -793,7 +834,7 @@ groups:
         labels:
           team: "infra"
         annotations:
-          summary: "관측 프로그램 메모리가 컨테이너 상한의 95%를 넘었습니다."
+          summary: "관측 프로그램 메모리가 컨테이너 상한의 95%를 넘었습니다(수집기는 Go 런타임이 쓰는 메모리 기준)."
           runbook_url: "https://github.com/URECA-Cking/Cking-Infra/blob/main/docs/runbooks/cking-obs-memory.md"
       - uid: "cking-grafana-memory"
         title: "Grafana 메모리"
@@ -1593,7 +1634,7 @@ groups:
             datasourceUid: "prometheus"
             model:
               refId: "A"
-              expr: "min by (job) (up{instance=\"prod-cking-monitor\",job=~\"node|redis|alloy\"})"
+              expr: "min by (job) ({__name__=~\"up|redis_up\",instance=\"prod-cking-monitor\",job=~\"node|redis|alloy\"})"
               instant: true
           - refId: "B"
             datasourceUid: "__expr__"
@@ -1622,7 +1663,7 @@ groups:
           env: "prod"
           team: "infra"
         annotations:
-          summary: "감시용 서버의 서버·Redis·수집기 지표가 5분째 들어오지 않습니다. Stream·Redis 경보가 조용해질 수 있습니다."
+          summary: "감시용 서버의 서버·Redis·수집기 지표가 5분째 들어오지 않거나 ElastiCache에 붙지 못합니다. Stream·Redis 경보가 조용해질 수 있습니다."
           runbook_url: "https://github.com/URECA-Cking/Cking-Infra/blob/main/docs/runbooks/cking-prod-monitor-down.md"
       - uid: "cking-prod-remote-write-failed"
         title: "지표 전송 실패"
@@ -1722,7 +1763,7 @@ groups:
             datasourceUid: "prometheus"
             model:
               refId: "A"
-              expr: "max by (instance) (process_resident_memory_bytes{job=\"alloy\",instance=~\"prod-cking-.*\"}) / 268435456"
+              expr: "max by (instance) (go_memstats_sys_bytes{job=\"alloy\",instance=~\"prod-cking-.*\"} - go_memstats_heap_released_bytes{job=\"alloy\",instance=~\"prod-cking-.*\"}) / 268435456"
               instant: true
           - refId: "B"
             datasourceUid: "__expr__"
@@ -1751,7 +1792,7 @@ groups:
           env: "prod"
           team: "infra"
         annotations:
-          summary: "{{ $labels.instance }} 수집기 메모리가 컨테이너 상한(256MiB)의 95%를 넘었습니다."
+          summary: "{{ $labels.instance }} 수집기가 쓰는 메모리(Go 런타임)가 컨테이너 상한(256MiB)의 95%를 넘었습니다."
           runbook_url: "https://github.com/URECA-Cking/Cking-Infra/blob/main/docs/runbooks/cking-obs-memory.md"
       - uid: "cking-prod-memory-available"
         title: "서버 여유 메모리"
