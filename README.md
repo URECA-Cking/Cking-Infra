@@ -55,7 +55,7 @@ envs/prod/                 운영 환경. 상태는 prod/terraform.tfstate
   recommendation.tf        추천 배치 서버(1대짜리 서버 그룹, t4g.small 온디맨드, 앱 서브넷 2a, 상태 디스크, 시작 대기 자기 검사, 비밀이 아닌 값)와 추천 배치 저장소 GitHub Actions 운영 역할(개발 패키지 복사, 배포 버전 값, 서버 교체)
   buckets.tf               배포·업로드·ALB 접근 로그·웹·관리자 프론트 버킷
   alb.tf                   ALB(HTTPS, /readyz 외부 차단, 접근 로그), api.cking.co.kr, API 앞단 WAF(차단, 운영 NAT IP 허용)
-  app.tf                   앱 서버 오토스케일링 그룹(c6g.large 2~4대, CPU 35% 목표 추적, 1분 지표, 교체 배포, 시작 대기 중 자기 스모크 검사)
+  app.tf                   앱 서버 오토스케일링 그룹(c6g.large 2~4대, 서버당 분당 요청 6,300건 목표 추적, 교체 배포, 시작 대기 중 자기 스모크 검사)
   cdn.tf                   CloudFront(종량제, WAF 없음): cking.co.kr(www 이동)·admin.cking.co.kr 프론트, images.cking.co.kr 프로필 이미지
   comment_filter.tf        운영 댓글 필터 Lambda(arm64 이미지, 함수 URL IAM 인증, 예약 동시성 8, 이미지는 필터 저장소 main CI가 개발에서 확인한 이미지로 바꿈)
   alarms.tf                AWS 서비스 경보(ALB, 서버 띄우기 실패, ElastiCache, RDS) → SNS → 운영 채널(Amazon Q)·메일

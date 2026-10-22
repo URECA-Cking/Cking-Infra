@@ -1,4 +1,4 @@
-# 앱 서버 오토스케일링 그룹. 최소 2대(AZ마다 1대), 최대 4대, 평균 CPU 35%를 목표로 늘리고 줄인다.
+# 앱 서버 오토스케일링 그룹. 최소 2대(AZ마다 1대), 최대 4대, 서버당 분당 요청 6,300건을 목표로 늘리고 줄인다.
 # 배포는 서버 교체다. BE CI가 배포 태그(/cking/prod/RELEASE_TAG)를 바꾸고 인스턴스 교체를 시작하면,
 # 새 서버가 그 태그로 앱을 띄우고 스스로 스모크 테스트를 통과해야 ALB에 붙는다. 정상이 된 뒤 옛 서버가 빠진다.
 
@@ -111,15 +111,16 @@ resource "aws_autoscaling_group" "app" {
   }
 }
 
-resource "aws_autoscaling_policy" "app_cpu" {
-  name                   = "prod-cking-app-cpu"
+resource "aws_autoscaling_policy" "app_requests" {
+  name                   = "prod-cking-app-requests"
   autoscaling_group_name = aws_autoscaling_group.app.name
   policy_type            = "TargetTrackingScaling"
 
   target_tracking_configuration {
     predefined_metric_specification {
-      predefined_metric_type = "ASGAverageCPUUtilization"
+      predefined_metric_type = "ALBRequestCountPerTarget"
+      resource_label         = "${aws_lb.main.arn_suffix}/${aws_lb_target_group.app.arn_suffix}"
     }
-    target_value = 35
+    target_value = 6300
   }
 }
