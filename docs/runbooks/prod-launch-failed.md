@@ -36,7 +36,7 @@ aws ec2 get-console-output --region ap-northeast-2 --instance-id <서버> --late
 - **배포 직후**: [운영 앱 배포](deploy-failed.md#운영-앱-배포-cking-be-deploy-to-prod)
 - **`deploy.sh` 실패**(Parameter Store 값 없음, 이미지 받기 실패, `헬스체크 실패`): 빠진 값을 넣거나 GHCR 상태를 본다
 - **자기 검사 실패**: 같은 태그로 개발에서 `smoke.js`가 통과하는지 본다
-- **용량 부족**(`InsufficientInstanceCapacity`): AZ에 t4g.small 여유가 없다. 다른 AZ로 자동 재시도되므로 반복되는지만 본다
+- **용량 부족**(`InsufficientInstanceCapacity`): AZ에 c6g.large 여유가 없다. 다른 AZ로 자동 재시도되므로 반복되는지만 본다
 
 ## 해결 확인
 
