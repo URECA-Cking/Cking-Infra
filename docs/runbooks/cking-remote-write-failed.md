@@ -1,6 +1,6 @@
 # 지표 전송 실패
 
-> 전제: 앱 서버 수집기(Alloy) → 관측 서버(`dev-cking-observability`, Docker Compose)
+> 전제: 앱 서버·추천 배치 서버 수집기(Alloy) → 관측 서버(`dev-cking-observability`, Docker Compose). 관측 서버 자신의 수집기(`instance="alloy:12345"`)도 같은 경보로 본다
 
 `rate(prometheus_remote_storage_samples_failed_total[5m]) > 0`이 10분 지속될 때.
 
@@ -25,6 +25,10 @@ df -h /data
 - **디스크 가득**: [디스크 여유](cking-disk-available.md)
 - **시각이 너무 오래된 샘플**(`out of bounds`, `too old`): 수집기가 오래 끊겼다 이어 보낸 경우다. 허용 창은 8시간(`out_of_order_time_window`)이다. 그보다 오래된 샘플은 되살릴 수 없으므로 원인(끊김)만 확인한다
 - **Prometheus가 멈춤·재시작 중**: `sudo docker ps -a --filter name=observability-prometheus`. 메모리 부족이면 [관측 프로그램 메모리](cking-obs-memory.md)
+
+## 해결 확인
+
+**크킹 관측 파이프라인 → 지표 전송 실패 (초당 샘플)**이 0으로 돌아온다.
 
 ## 하면 안 되는 것
 

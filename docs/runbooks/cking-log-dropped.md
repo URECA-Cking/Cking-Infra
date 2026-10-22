@@ -1,6 +1,6 @@
 # 로그 버림
 
-> 전제: 앱 서버 수집기(Alloy) → 관측 서버(`dev-cking-observability`, Docker Compose)
+> 전제: 앱 서버·추천 배치 서버 수집기(Alloy) → 관측 서버(`dev-cking-observability`, Docker Compose). 관측 서버 자신의 수집기(`instance="alloy:12345"`)도 같은 경보로 본다
 
 `increase(loki_write_dropped_entries_total[5m]) > 0`일 때.
 
@@ -19,6 +19,10 @@
 - **Loki가 거부**(줄이 너무 김, 너무 오래된 로그, 유입 한도): 수집기 로그의 응답 내용으로 Loki 설정(`observability/loki/loki.yaml`) 또는 앱 로그 형식을 고친다
 - **`ingester_error`이면서 `status=-1`**: 응답을 받지 못한 경우다. Alloy가 그 밖의 오류를 이 이름으로 센다. 2026-10-11의 45건은 무한 재시도로 바꾸기 전 끊김 실험 중 연결 거부였다
 - **Loki가 멈춤**: `sudo docker ps -a --filter name=observability-loki`(관측 서버)
+
+## 해결 확인
+
+**크킹 관측 파이프라인 → 로그 전송 재시도·버림**에서 버림이 더 늘지 않는다. 경보는 5분 동안 새로 버린 것이 없으면 풀린다.
 
 ## 하면 안 되는 것
 

@@ -19,6 +19,10 @@ Grafana 본체가 메모리 목표치에 계속 붙어 있다. GC가 잦아져 �
 - 계속 붙어 있으면 관측 서버 사양 상향(t4g.small → t4g.medium)을 검토한다. 플러그인은 GOMEMLIMIT 밖이라 상한만 올리면 서버 전체가 모자란다
 - 강제 종료됐으면 `restart: unless-stopped`로 다시 뜬다. `sudo docker inspect observability-grafana-1 --format '{{.State.OOMKilled}}'`(관측 서버)
 
+## 해결 확인
+
+**크킹 관측 파이프라인 → 프로그램 메모리 (RSS)**에서 Grafana가 486MiB(GOMEMLIMIT의 95%) 아래로 내려온다.
+
 ## 하면 안 되는 것
 
 - GOMEMLIMIT만 올리지 않는다. 플러그인 몫(약 63MiB)이 상한 안에 들어가지 않게 된다(#74)

@@ -1,12 +1,12 @@
 # 서버 여유 메모리
 
-> 전제: 앱 서버 수집기(Alloy) → 관측 서버(`dev-cking-observability`, Docker Compose)
+> 전제: 앱 서버·관측 서버·추천 배치 서버의 수집기(Alloy) → 관측 서버(`dev-cking-observability`, Docker Compose)
 
-`node_memory_MemAvailable_bytes < 100MiB`가 10분 지속될 때. 앱 서버와 관측 서버 모두 해당.
+`node_memory_MemAvailable_bytes < 100MiB`가 10분 지속될 때. 앱 서버·관측 서버·추천 배치 서버 모두 해당.
 
 ## 뜻하는 것
 
-서버 여유 메모리가 바닥이다. 앱 서버는 swap(1GiB)으로 버티며 느려지고, 관측 서버는 swap이 없어 커널이 프로세스를 강제 종료한다. 앱 서버 7일 최저는 126MiB다.
+서버 여유 메모리가 바닥이다. 앱 서버·추천 배치 서버는 swap(1GiB)으로 버티며 느려지고, 관측 서버는 swap이 없어 커널이 프로세스를 강제 종료한다. 앱 서버 7일 최저는 126MiB, 추천 배치 서버는 2026-10-22 약 1.2GiB 남는다.
 
 ## 먼저 볼 곳
 
@@ -24,7 +24,12 @@ free -m
 
 - **앱 서버**: 앱 상한 1000MiB, 수집기 256MiB, Redis(상한 없음)를 합쳐 본다. 앱이 상한에 붙어 있으면 [앱 중단](cking-app-down.md#2-메모리-부족으로-종료)의 메모리 항목
 - **관측 서버**: 어느 프로그램이 늘었는지 보고 [관측 프로그램 메모리](cking-obs-memory.md), [Grafana 메모리](cking-grafana-memory.md)
+- **추천 배치 서버**: 작업자(`/opt/cking-llm/.venv/bin/python`, 1분 확인 1회 최대 약 58MB)와 수집기만 돈다. `ps aux --sort=-rss | head`로 작업자가 큰지 보고, 일일 작업(03:00)이 도는 중이면 끝난 뒤 내려오는지 본다
 - 컨테이너 밖 프로세스가 크면 `ps aux --sort=-rss | head`
+
+## 해결 확인
+
+**크킹 서버 → 여유 메모리**가 100MiB 위로 돌아온다.
 
 ## 하면 안 되는 것
 
@@ -32,5 +37,5 @@ free -m
 
 ## 운영에서 다른 점
 
-- 운영 앱 서버에는 Redis가 없다(앱 상한 1000MiB + 수집기 256MiB, swap 1GiB). 감시용 서버는 t4g.micro(1GiB)에 수집기만 돈다
+- 운영 앱 서버에는 Redis가 없다(앱 상한 1000MiB + 수집기 256MiB, swap 1GiB). 감시용 서버는 t4g.micro(1GiB, swap 1GiB)에 수집기만 돈다. 운영 추천 배치 서버는 개발과 같다
 - 원인을 본 뒤 고치기 어려우면 서버를 교체한다([운영](README.md#운영))
