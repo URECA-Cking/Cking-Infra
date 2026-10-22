@@ -214,7 +214,7 @@ resource "aws_iam_instance_profile" "recommendation" {
   role = aws_iam_role.recommendation.name
 }
 
-# 운영 서버와 같은 공통 준비(envs/prod/templates/server-base.sh)를 써서 개발에서 같은 부팅 과정을 확인한다.
+# 운영 서버와 같은 공통 준비(envs/prod/templates/server-base.sh)와 부팅 스크립트를 써서 개발에서 같은 부팅 과정을 확인한다.
 resource "aws_launch_template" "recommendation" {
   name          = local.recommendation_name
   image_id      = local.recommendation_ami
@@ -230,11 +230,12 @@ resource "aws_launch_template" "recommendation" {
     security_groups             = [aws_security_group.recommendation.id]
   }
 
-  user_data = base64encode(templatefile("${path.module}/templates/recommendation-init.sh", {
+  user_data = base64encode(templatefile("${path.module}/../prod/templates/recommendation-init.sh", {
     server_base          = templatefile("${path.module}/../prod/templates/server-base.sh", local.recommendation_docker_versions)
     asg_name             = local.recommendation_name
     lifecycle_hook       = local.recommendation_hook
     state_volume         = local.recommendation_state
+    param_path           = "/cking/dev-recommendation/"
     deploy_bucket        = "dev-cking-deploy-551372961758"
     observability_bucket = aws_s3_bucket.observability.bucket
   }))
