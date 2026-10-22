@@ -5,12 +5,13 @@ locals {
   db_app_username = "cking_app"
 
   plain_parameters = {
-    "/cking/prod/DB_HOST"                = aws_db_instance.main.address
-    "/cking/prod/DB_USERNAME"            = local.db_app_username
-    "/cking/prod/REDIS_HOST"             = aws_elasticache_replication_group.main.primary_endpoint_address
-    "/cking/prod/REDIS_USERNAME"         = aws_elasticache_user.app.user_name
-    "/cking/prod-monitor/REDIS_HOST"     = aws_elasticache_replication_group.main.primary_endpoint_address
-    "/cking/prod-monitor/REDIS_USERNAME" = aws_elasticache_user.monitor.user_name
+    "/cking/prod/DB_HOST"                 = aws_db_instance.main.address
+    "/cking/prod/DB_USERNAME"             = local.db_app_username
+    "/cking/prod/REDIS_HOST"              = aws_elasticache_replication_group.main.primary_endpoint_address
+    "/cking/prod/REDIS_USERNAME"          = aws_elasticache_user.app.user_name
+    "/cking/prod-monitor/REDIS_HOST"      = aws_elasticache_replication_group.main.primary_endpoint_address
+    "/cking/prod-monitor/REDIS_USERNAME"  = aws_elasticache_user.monitor.user_name
+    "/cking/prod/COMMENT_FILTER_BASE_URL" = trimsuffix(aws_lambda_function_url.comment_filter.function_url, "/")
   }
 }
 
