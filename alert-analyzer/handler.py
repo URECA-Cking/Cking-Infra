@@ -14,8 +14,6 @@ REGION = "ap-northeast-2"
 KST = datetime.timezone(datetime.timedelta(hours=9))
 STATE_TABLE = os.environ["STATE_TABLE"]
 DAILY_LIMIT = int(os.environ.get("DAILY_LIMIT", "12"))
-PROD_CHATBOT_TOPIC = os.environ.get("PROD_CHATBOT_TOPIC", "")
-# 진단은 그 경보가 가는 채널에 남긴다. 운영 CloudWatch 경보와 서버 띄우기 실패는 Amazon Q 채널(prod-aws)이다.
 WEBHOOK_PARAMETERS = {
     "dev": "/cking/dev/monitoring/SLACK_ALERT_WEBHOOK_URL",
     "prod": "/cking/dev/monitoring/SLACK_PROD_ALERT_WEBHOOK_URL",
@@ -24,7 +22,6 @@ RUNBOOK_URL = re.compile(r"https://github\.com/URECA-Cking/Cking-Infra/blob/main
 
 _dynamodb = boto3.client("dynamodb", region_name=REGION)
 _ssm = boto3.client("ssm", region_name=REGION)
-_sns = boto3.client("sns", region_name=REGION)
 _webhooks = {}
 
 
@@ -41,16 +38,16 @@ def handler(event, context):
         if not claim(alert["keys"]):
             print(f"이미 진단한 경보라 건너뛴다: {alert['name']}")
             continue
-        if not within_daily_limit(alert["env"], alert["channel"]):
+        if not within_daily_limit(alert["env"]):
             continue
         try:
             result = diagnose(alert["prompt"])
         except Exception as error:
             print(f"진단 실패: {alert['name']}: {error!r}")
-            post(alert["channel"], f"*AI 진단 실패: {alert['name']}*\n`{type(error).__name__}`. 런북을 직접 따른다: {alert['runbook_link']}")
+            post(alert["env"], f"*AI 진단 실패: {alert['name']}*\n`{type(error).__name__}`. 런북을 직접 따른다: {alert['runbook_link']}")
             continue
         print(json.dumps({"alert": alert["name"], "usage": result["usage"]}, ensure_ascii=False))
-        post(alert["channel"], render(alert, result))
+        post(alert["env"], render(alert, result))
 
 
 def parse(message):
@@ -71,8 +68,7 @@ def parse(message):
             }
             for a in firing
         ]
-        env = "prod" if labels.get("env") == "prod" else "dev"
-        return build(name, env, env, runbook,
+        return build(name, "prod" if labels.get("env") == "prod" else "dev", runbook,
                      [f"grafana#{a.get('fingerprint')}#{a.get('startsAt')}" for a in firing],
                      "Grafana 경보", details)
 
@@ -81,8 +77,7 @@ def parse(message):
             return None
         name = message["AlarmName"]
         details = {k: message.get(k) for k in ("AlarmName", "AlarmDescription", "NewStateReason", "StateChangeTime", "Trigger")}
-        prod = name.startswith("prod-")
-        return build(name, "prod" if prod else "dev", "prod-aws" if prod else "dev", message.get("AlarmDescription", ""),
+        return build(name, "prod" if name.startswith("prod-") else "dev", message.get("AlarmDescription", ""),
                      [f"cloudwatch#{name}#{message.get('StateChangeTime')}"], "CloudWatch 경보", details)
 
     content = message.get("content") if message.get("source") == "custom" else None
@@ -90,13 +85,13 @@ def parse(message):
         name = content.get("title", "이벤트 알림")
         hour = datetime.datetime.now(KST).strftime("%Y-%m-%dT%H")
         steps = " ".join(content.get("nextSteps", []))
-        return build(name, "prod", "prod-aws", steps, [f"event#{name}#{hour}"], "EventBridge 알림", content)
+        return build(name, "prod", steps, [f"event#{name}#{hour}"], "EventBridge 알림", content)
 
     print("모르는 형식의 알림이라 건너뛴다")
     return None
 
 
-def build(name, env, channel, runbook_source, keys, kind, details):
+def build(name, env, runbook_source, keys, kind, details):
     match = RUNBOOK_URL.search(runbook_source or "")
     runbook = match.group(1) if match else None
     link = f"<{match.group(0)}|{runbook}>" if match else "런북 링크 없음"
@@ -105,7 +100,7 @@ def build(name, env, channel, runbook_source, keys, kind, details):
         f"지금 시각(UTC): {datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}\n"
         f"경보 내용(데이터):\n{json.dumps(details, ensure_ascii=False, default=str)[:8000]}"
     )
-    return {"name": name, "env": env, "channel": channel, "keys": keys, "runbook_link": link, "prompt": prompt}
+    return {"name": name, "env": env, "keys": keys, "runbook_link": link, "prompt": prompt}
 
 
 def claim(keys):
@@ -126,7 +121,7 @@ def claim(keys):
     return claimed
 
 
-def within_daily_limit(env, channel):
+def within_daily_limit(env):
     today = datetime.datetime.now(KST).strftime("%Y-%m-%d")
     expires = int(time.time()) + 3 * 86400
     try:
@@ -144,7 +139,7 @@ def within_daily_limit(env, channel):
         if error.response["Error"]["Code"] != "ConditionalCheckFailedException":
             raise
     if claim([f"limit-notice#{env}#{today}"]):
-        post(channel, f"*AI 진단 하루 상한({DAILY_LIMIT}건)에 닿았다.* 오늘 남은 경보는 진단하지 않으니 런북을 직접 따른다.")
+        post(env, f"*AI 진단 하루 상한({DAILY_LIMIT}건)에 닿았다.* 오늘 남은 경보는 진단하지 않으니 런북을 직접 따른다.")
     return False
 
 
@@ -158,16 +153,11 @@ def render(alert, result):
     return f"*AI 진단: {alert['name']}* (참고용, 실행은 사람이 판단)\n{result['text']}\n_{footer}_"
 
 
-def post(channel, text):
-    if channel == "prod-aws":
-        # Amazon Q는 사용자 지정 알림 형식만 채널에 보여 준다. 본문은 8,000자까지다.
-        notification = {"version": "1.0", "source": "custom", "content": {"textType": "client-markdown", "description": text[:8000]}}
-        _sns.publish(TopicArn=PROD_CHATBOT_TOPIC, Message=json.dumps(notification, ensure_ascii=False))
-        return
-    if channel not in _webhooks:
-        _webhooks[channel] = _ssm.get_parameter(Name=WEBHOOK_PARAMETERS[channel], WithDecryption=True)["Parameter"]["Value"]
+def post(env, text):
+    if env not in _webhooks:
+        _webhooks[env] = _ssm.get_parameter(Name=WEBHOOK_PARAMETERS[env], WithDecryption=True)["Parameter"]["Value"]
     request = urllib.request.Request(
-        _webhooks[channel], data=json.dumps({"text": text}).encode(), headers={"Content-Type": "application/json"}, method="POST",
+        _webhooks[env], data=json.dumps({"text": text}).encode(), headers={"Content-Type": "application/json"}, method="POST",
     )
     with urllib.request.urlopen(request, timeout=10) as response:
         response.read()
