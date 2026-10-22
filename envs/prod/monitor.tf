@@ -71,4 +71,7 @@ resource "aws_autoscaling_group" "monitor" {
     value               = "prod-cking-monitor"
     propagate_at_launch = true
   }
+
+  # 부팅 스크립트가 Valkey 주소·사용자 값을 읽는다. 시작 대기 검사가 없어 값보다 먼저 뜨면 수집기 없이 InService가 된다.
+  depends_on = [aws_ssm_parameter.plain]
 }
