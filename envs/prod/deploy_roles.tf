@@ -100,6 +100,13 @@ resource "aws_iam_role_policy" "fe_deploy" {
         Action   = "cloudfront:CreateInvalidation"
         Resource = [for k in ["web", "admin"] : aws_cloudfront_distribution.this[k].arn]
       },
+      {
+        # 운영은 내렸다가 다시 만들 수 있어 배포 ID가 바뀐다. FE CI가 도메인으로 ID를 찾는다. 이 액션은 리소스를 좁힐 수 없다.
+        Sid      = "FindFrontendDistributions"
+        Effect   = "Allow"
+        Action   = "cloudfront:ListDistributions"
+        Resource = "*"
+      },
     ]
   })
 }
