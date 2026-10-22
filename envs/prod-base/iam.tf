@@ -231,3 +231,22 @@ resource "aws_iam_instance_profile" "k6" {
   name = "prod-cking-k6-role"
   role = aws_iam_role.k6.name
 }
+
+# RDS Enhanced Monitoring이 OS 지표를 CloudWatch Logs(RDSOSMetrics)로 보내는 역할. RDS와 같은 apply로 만들면
+# IAM 전파 전에 RDS가 역할을 검사해 실패할 수 있어 여기서 먼저 만든다.
+resource "aws_iam_role" "rds_monitoring" {
+  name = "prod-cking-rds-monitoring-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "monitoring.rds.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "rds_monitoring" {
+  role       = aws_iam_role.rds_monitoring.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole"
+}
