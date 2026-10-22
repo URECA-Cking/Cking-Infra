@@ -29,6 +29,20 @@ resource "aws_vpc_security_group_egress_rule" "monitor_all" {
   cidr_ipv4         = "0.0.0.0/0"
 }
 
+resource "aws_security_group" "recommendation" {
+  name        = "prod-cking-recommendation-sg"
+  description = "Prod recommendation batch server. No inbound, SSM only"
+  vpc_id      = aws_vpc.main.id
+  tags        = { Name = "prod-cking-recommendation-sg" }
+}
+
+resource "aws_vpc_security_group_egress_rule" "recommendation_all" {
+  security_group_id = aws_security_group.recommendation.id
+  description       = "Packages, AWS APIs, BE, OpenAI, DeepInfra, observability push"
+  ip_protocol       = "-1"
+  cidr_ipv4         = "0.0.0.0/0"
+}
+
 resource "aws_security_group" "db" {
   name        = "prod-cking-rds-sg"
   description = "Prod RDS"

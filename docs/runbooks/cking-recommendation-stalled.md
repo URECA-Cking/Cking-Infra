@@ -34,4 +34,4 @@ docker ps --filter name=app-agent-alloy
 
 ## 운영에서 다른 점
 
-- 운영 추천 배치 서버를 만들 때 운영 규칙을 추가한다
+- 운영 규칙 `cking-prod-recommendation-stalled`는 `instance="prod-cking-recommendation"`을 본다. 운영 서버는 온디맨드라 스팟 중단·자리 부족이 없고, 프라이빗 서브넷이라 바깥 연결은 NAT를 지난다

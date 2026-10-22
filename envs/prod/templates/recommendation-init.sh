@@ -37,7 +37,7 @@ mount /var/lib/cking-content
 
 # 실행 사용자와 배포 패키지. 패키지 안에 Python 3.12와 가상환경이 있어 서버 Python을 쓰지 않는다.
 id cking >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin cking
-release=$(param /cking/dev-recommendation/RELEASE)
+release=$(param ${param_path}RELEASE)
 work=$(mktemp -d)
 for f in cking-llm.tar.gz cking-llm.tar.gz.sha256; do
   aws s3 cp --region "$REGION" --only-show-errors "s3://${deploy_bucket}/recommendation/releases/$release/$f" "$work/$f"
@@ -52,7 +52,7 @@ systemctl daemon-reload
 names=(CKING_BE_URL CKING_CONTENT_TAG_ACCESS_TOKEN CKING_RECOMMENDATION_API_KEY OPENAI_API_KEY DEEPINFRA_API_KEY CKING_TAG_DAILY_CALLS)
 paths=()
 for name in "$${names[@]}"; do
-  paths+=("/cking/dev-recommendation/$name")
+  paths+=("${param_path}$name")
 done
 found=$(aws ssm get-parameters --region "$REGION" --names "$${paths[@]}" --with-decryption \
   --query 'Parameters[].[Name,Value]' --output text)

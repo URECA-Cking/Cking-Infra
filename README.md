@@ -33,7 +33,7 @@ envs/dev/                  개발 환경. 실행 위치
   comment_filter.tf        댓글 필터 이미지 저장소(ECR, 개발·운영 공용), 개발 Lambda(arm64 이미지, 함수 URL IAM 인증, 예약 동시성 2, 이미지는 필터 저장소 CI가 바꿈), 필터 저장소 GitHub Actions 개발 역할(모델 읽기, 이미지 푸시, 개발 Lambda 갱신·호출)
   recommendation.tf        개발 추천 배치 서버(1대짜리 서버 그룹, t4g.small 스팟, 상태 디스크, 시작 대기 자기 검사, 역할, 비밀이 아닌 값)와 추천 배치 저장소 GitHub Actions 개발 역할(배포 패키지 올리기, 배포 버전 값, 서버 교체)
   outputs.tf               읽어 온 값 출력
-  templates/               서버 첫 부팅 스크립트(추천 배치 서버는 운영 공통 준비 envs/prod/templates/server-base.sh를 함께 쓴다)
+  templates/               서버 첫 부팅 스크립트(추천 배치 서버는 운영의 공통 준비 server-base.sh와 부팅 스크립트 recommendation-init.sh를 함께 쓴다)
 envs/loadtest/             부하 테스트 환경. 측정 때 띄우고 끝나면 지운다. 상태는 loadtest/terraform.tfstate
   app_server.tf            앱 서버(개발 앱 서버와 같은 AMI·크기·Docker 버전·swap)
   rds.tf                   RDS(개발 RDS와 같은 사양, 빈 DB)
@@ -46,12 +46,13 @@ envs/loadtest-base/        부하 테스트 EC2 역할과 인스턴스 프로필
 envs/prod/                 운영 환경. 상태는 prod/terraform.tfstate
   network.tf               VPC 10.1.0.0/16, AZ 2a·2b의 퍼블릭·프라이빗 앱·프라이빗 데이터 서브넷, AZ마다 NAT, S3 게이트웨이 엔드포인트
   peering.tf               개발 VPC 피어링(관측 서버 공유), 양쪽 경로, 관측 서버 수집 포트에 운영 앱 서브넷 허용
-  security_groups.tf       앱·감시용 서버, RDS, ElastiCache 보안 그룹
+  security_groups.tf       앱·감시용·추천 배치 서버, RDS, ElastiCache 보안 그룹
   database.tf              RDS MySQL 8.4 다중 AZ(마스터 비밀번호는 Secrets Manager 관리), 느린 쿼리 로그, Enhanced Monitoring(평소 60초)
   cache.tf                 ElastiCache Valkey 7.2 주·복제(클러스터 모드 끔, noeviction, TLS, 앱·감시 사용자)
   parameters.tf            /cking/prod/·/cking/prod-monitor/ 중 비밀이 아닌 값(DB·Redis 주소와 사용자 이름, 댓글 필터 함수 URL)
   servers.tf               운영 서버 공통 값(개발 앱 서버와 같은 AMI·Docker 버전)
   monitor.tf               감시용 서버(오토스케일링 그룹 1대, t4g.micro, 앱 서브넷 2a·2b)
+  recommendation.tf        추천 배치 서버(1대짜리 서버 그룹, t4g.small 온디맨드, 앱 서브넷 2a, 상태 디스크, 시작 대기 자기 검사, 비밀이 아닌 값)와 추천 배치 저장소 GitHub Actions 운영 역할(개발 패키지 복사, 배포 버전 값, 서버 교체)
   buckets.tf               배포·업로드·ALB 접근 로그·웹·관리자 프론트 버킷
   alb.tf                   ALB(HTTPS, /readyz 외부 차단, 접근 로그), api.cking.co.kr, API 앞단 WAF(차단, 운영 NAT IP 허용)
   app.tf                   앱 서버 오토스케일링 그룹(t4g.small 2~4대, CPU 50% 목표 추적, 교체 배포, 시작 대기 중 자기 스모크 검사)
@@ -59,10 +60,10 @@ envs/prod/                 운영 환경. 상태는 prod/terraform.tfstate
   comment_filter.tf        운영 댓글 필터 Lambda(arm64 이미지, 함수 URL IAM 인증, 예약 동시성 8, 이미지는 필터 저장소 main CI가 개발에서 확인한 이미지로 바꿈)
   alarms.tf                AWS 서비스 경보(ALB, 서버 띄우기 실패, ElastiCache, RDS) → SNS → 운영 채널(Amazon Q)·메일
   deploy_roles.tf          GitHub Actions 운영 배포 역할(BE: 배포 파일, 배포 태그, 앱 서버 교체 / FE: 프론트 버킷 동기화, 캐시 무효화 / 필터: 개발 CI가 올린 이미지에 prod- 태그, 운영 Lambda 교체·호출)
-  templates/               서버 첫 부팅 스크립트(server-base.sh는 공통 준비)
+  templates/               서버 첫 부팅 스크립트(server-base.sh는 공통 준비, recommendation-init.sh는 개발·운영 추천 배치 서버가 같이 쓴다)
   functions/               CloudFront Functions(www → cking.co.kr 이동)
 envs/prod-base/            운영 환경 EC2 역할·인스턴스 프로필과 RDS 모니터링 역할. 운영 서버보다 먼저 만들고 운영 환경을 지워도 남긴다. 상태는 prod-base/terraform.tfstate
-  iam.tf                   앱 서버·추천 배치 서버·감시용 서버·k6 서버 역할, RDS Enhanced Monitoring 역할(SSM, 운영 비밀값·배포 파일·업로드 버킷, 수집기 설정 읽기, 댓글 필터 호출, 앱 서버 시작 대기 끝내기, 추천 배치 상태 디스크 붙이기)
+  iam.tf                   앱 서버·추천 배치 서버·감시용 서버·k6 서버 역할, RDS Enhanced Monitoring 역할(SSM, 운영 비밀값·배포 파일·업로드 버킷, 수집기 설정 읽기, 댓글 필터 호출, 앱·추천 배치 서버 시작 대기 끝내기, 추천 배치 상태 디스크 붙이기)
 modules/api-waf/           API(ALB) 앞단 WAF. 개발·운영이 같은 규칙을 쓴다(관리형 규칙, 본문 크기 예외, IP당 요청 상한, 로그)
 observability/             관측 서버 위의 프로그램 설정(compose, Prometheus, Loki, Alloy, Grafana, 쓰기 전용 nginx)
 ```
@@ -105,7 +106,8 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
    - `envs/prod` plan 전에 Redis 비밀번호 두 개가 있어야 한다(Terraform이 읽어 ElastiCache 사용자에 넣고 상태 파일에는 남기지 않는다): `/cking/prod/REDIS_PASSWORD`, `/cking/prod-monitor/REDIS_PASSWORD`. 16~128자, `,` `"` `/` `@` 제외
    - RDS 마스터 비밀번호는 RDS가 Secrets Manager에 만들고 교체하므로 넣지 않는다
 3. `envs/prod`에서 `terraform plan -out=tfplan` → `terraform apply tfplan`. 비밀이 아닌 값(`DB_HOST`, `DB_USERNAME`, `REDIS_HOST`, `REDIS_USERNAME`)은 Terraform이 만든다
-4. 앱 DB 계정(`cking_app`, `cking` 스키마 권한만)을 처음 한 번 만든다. 앱은 마스터가 아닌 이 계정으로 접속한다. Mac에 Session Manager 플러그인과 `mysql` 클라이언트가 필요하다
+   - 추천 배치 서버는 배치 저장소 main의 첫 운영 배포 전까지 배포 버전 값이 없어 시작 대기에서 버려지기를 반복한다. 켜는 순서는 [추천 배치 서버](docs/runbooks/recommendation-batch.md#운영에서-다른-점)
+4. 앱 DB 계정(`cking_app`, `cking` 스키마 권한만)을 처음 한 번 만든다. 앱은 마스터가 아닌 이 계정으로 접속한다. Mac에 Session Manager 플러그인, `mysql` 클라이언트, `python3`가 필요하다
    - `/cking/prod/DB_PASSWORD`에 앱 계정 비밀번호를 SecureString으로 넣는다
    - 감시용 서버를 거쳐 RDS로 포트 포워딩한다(Mac 터미널 1):
      ```bash
@@ -116,7 +118,7 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
    - 마스터 비밀번호(RDS가 만든 Secrets Manager 비밀)와 앱 계정 비밀번호를 변수로 읽어 SQL을 표준 입력으로 보낸다. 비밀번호가 화면·명령 인자·셸 기록에 남지 않는다(Mac 터미널 2):
      ```bash
      SECRET_ARN=$(aws rds describe-db-instances --region ap-northeast-2 --db-instance-identifier prod-cking-mysql --query 'DBInstances[0].MasterUserSecret.SecretArn' --output text)
-     MYSQL_PWD=$(aws secretsmanager get-secret-value --region ap-northeast-2 --secret-id "$SECRET_ARN" --query SecretString --output text | jq -r .password)
+     MYSQL_PWD=$(aws secretsmanager get-secret-value --region ap-northeast-2 --secret-id "$SECRET_ARN" --query SecretString --output text | python3 -c 'import json,sys; print(json.load(sys.stdin)["password"])')
      APP_PW=$(aws ssm get-parameter --region ap-northeast-2 --name /cking/prod/DB_PASSWORD --with-decryption --query Parameter.Value --output text)
      printf "CREATE USER 'cking_app'@'%%' IDENTIFIED BY '%s';\nGRANT ALL PRIVILEGES ON cking.* TO 'cking_app'@'%%';\n" "$APP_PW" \
        | MYSQL_PWD="$MYSQL_PWD" MYSQL_HISTFILE=/dev/null mysql -h 127.0.0.1 -P 13306 -u admin

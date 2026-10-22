@@ -153,6 +153,12 @@ resource "aws_iam_role_policy" "recommendation" {
         Resource  = "${local.ec2_arn}:instance/*"
         Condition = { StringEquals = { "aws:ResourceTag/Name" = "prod-cking-recommendation" } }
       },
+      {
+        Sid      = "CompleteOwnLaunch"
+        Effect   = "Allow"
+        Action   = "autoscaling:CompleteLifecycleAction"
+        Resource = "arn:aws:autoscaling:ap-northeast-2:551372961758:autoScalingGroup:*:autoScalingGroupName/prod-cking-recommendation"
+      },
     ], local.app_agent_statements)
   })
 }

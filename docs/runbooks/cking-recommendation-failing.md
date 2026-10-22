@@ -39,4 +39,4 @@ Grafana Explore(Loki)에서 작업자가 남긴 실패 코드를 본다.
 
 ## 운영에서 다른 점
 
-- 운영 추천 배치 서버를 만들 때 운영 규칙을 추가한다
+- 운영 규칙 `cking-prod-recommendation-failing`은 `instance="prod-cking-recommendation"`을 본다. 서버와 값 경로는 [추천 배치 서버](recommendation-batch.md#운영에서-다른-점)
