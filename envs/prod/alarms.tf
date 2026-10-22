@@ -1,5 +1,5 @@
 # AWS 관리형 서비스(ALB, 서버 그룹, ElastiCache, RDS) 경보. 앱 경보는 Grafana가 맡고, 이 경보는 관측 서버·피어링이 죽어도 울리도록
-# CloudWatch에 둔다. 받는 곳은 Grafana 운영 경보와 같은 운영 채널(Amazon Q)이고, 그 경로가 끊겨도 알 수 있게 메일로도 받는다.
+# CloudWatch에 둔다. 받는 곳은 운영 AWS 경보 채널(Amazon Q, Grafana 운영 경보와 다른 채널)이고, 그 경로가 끊겨도 알 수 있게 메일로도 받는다.
 
 locals {
   alarm_runbook  = "https://github.com/URECA-Cking/Cking-Infra/blob/main/docs/runbooks"
@@ -97,7 +97,7 @@ resource "aws_chatbot_slack_channel_configuration" "alerts" {
   iam_role_arn          = aws_iam_role.chatbot.arn
   slack_team_id         = local.slack_team_id
   slack_channel_id      = local.slack_channel
-  sns_topic_arns        = [aws_sns_topic.alerts.arn]
+  sns_topic_arns        = [aws_sns_topic.alerts.arn, aws_sns_topic.ai_diagnosis.arn]
   guardrail_policy_arns = [aws_iam_policy.chatbot_notifications.arn]
   logging_level         = "ERROR"
 }
