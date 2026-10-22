@@ -133,6 +133,7 @@ aws autoscaling terminate-instance-in-auto-scaling-group --region ap-northeast-2
 - 교체 전에 그 서버의 로그·지표를 먼저 본다. 서버가 사라지면 컨테이너 안 상태도 함께 사라진다
 - 정상 서버가 2대 미만이면 교체하지 않는다. 새 서버가 들어올 때까지 남은 서버가 모든 요청을 받는다
 - 원인이 코드·설정이면 교체해도 새 서버가 같은 상태로 뜬다. 되돌리기를 먼저 본다
+- 컨테이너만 다시 띄워도(`deploy.sh` 재실행 등) 다시 뜨는 수십 초 동안 ALB 상태 검사에 실패해, 서버 그룹(상태 검사 ELB)이 그 서버를 교체한다(2026-10-22 운영 부하 테스트). 앱만 다시 띄워야 하면 먼저 서버 그룹의 `HealthCheck`·`ReplaceUnhealthy`를 멈추고, ALB 대상이 다시 `healthy`가 된 뒤 재개한다
 
 ### Grafana: 운영 팀 경보 (운영 채널)
 
