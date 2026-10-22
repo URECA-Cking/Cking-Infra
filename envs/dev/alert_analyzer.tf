@@ -1,5 +1,6 @@
-# 경보 AI 진단. Grafana(분석용 SNS)와 CloudWatch(dev-cking-alerts) 경보를 받아 Claude가 런북대로 읽기 전용 조회를 하고
-# 그 경보가 가는 Slack 채널에 제안을 남긴다. 조치는 사람이 한다.
+# 경보 AI 진단. Grafana(분석용 SNS), CloudWatch(dev-cking-alerts), 운영 경보 주제(prod-cking-alerts, 구독은 envs/prod) 경보를 받아
+# Claude가 런북대로 읽기 전용 조회를 하고 그 경보가 가는 Slack 채널에 제안을 남긴다. 조치는 사람이 한다.
+# 운영 CloudWatch 경보와 서버 띄우기 실패는 Amazon Q 채널로 가므로 진단도 운영 진단 주제(envs/prod)로 Amazon Q에 보낸다.
 # 개발 VPC에는 NAT가 없어 Lambda는 VPC 밖에 두고, 관측 서버 Prometheus·Loki 조회는 고정 SSM 문서로만 한다.
 # 모델은 Claude API로 부른다. 이 계정은 Bedrock의 Anthropic 모델이 막혀 있다(403 not available for this account).
 # 함수 코드는 alert-analyzer/ 배포 워크플로가 바꾸므로 Terraform은 비교하지 않는다. 처음 apply 전에 build.sh로 만든 묶음을
@@ -8,6 +9,7 @@
 locals {
   alert_analyzer_name = "dev-cking-alert-analyzer"
   alert_analyzer_arn  = "arn:aws:lambda:ap-northeast-2:551372961758:function:${local.alert_analyzer_name}"
+  alert_analyzer_prod = "arn:aws:sns:ap-northeast-2:551372961758:prod-cking-ai-diagnosis"
 }
 
 # Grafana가 관측 서버 역할로 발행한다(observability.tf).
@@ -131,11 +133,17 @@ resource "aws_iam_role_policy" "alert_analyzer" {
         Action   = ["dynamodb:PutItem", "dynamodb:UpdateItem"]
         Resource = aws_dynamodb_table.alert_analyzer.arn
       },
+      {
+        Sid      = "PostProdDiagnosis"
+        Effect   = "Allow"
+        Action   = "sns:Publish"
+        Resource = local.alert_analyzer_prod
+      },
     ]
   })
 }
 
-# 실행 상한은 측정 전이라 넉넉히 둔다(조회 20번 × SSM 왕복과 모델 응답). 첫 실측 뒤 줄인다.
+# 경보 1건은 26~36초였다. 응답이 멈춘 호출이 실행 상한까지 가도 0.5GB×600초로 $0.004라 넉넉히 둔다.
 # 동시에 여러 경보가 와도 두 개까지만 진단해 비용이 한꺼번에 늘지 않게 한다.
 resource "aws_lambda_function" "alert_analyzer" {
   function_name = local.alert_analyzer_name
@@ -156,6 +164,7 @@ resource "aws_lambda_function" "alert_analyzer" {
       DAILY_LIMIT               = "12"
       OBSERVABILITY_INSTANCE_ID = aws_instance.observability.id
       QUERY_DOCUMENT            = aws_ssm_document.observability_query.name
+      PROD_CHATBOT_TOPIC        = local.alert_analyzer_prod
     }
   }
 
