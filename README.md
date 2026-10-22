@@ -12,8 +12,9 @@
 ## 구조
 
 ```text
-.github/workflows/         PR 검사(ci.yml), 관측 설정·수집기 배포 워크플로(앱 서버는 바로 적용, 추천 배치 서버는 교체)
+.github/workflows/         PR 검사(ci.yml), 관측 설정·수집기 배포 워크플로(앱 서버는 바로 적용, 추천 배치 서버는 교체), 경보 AI 진단 Lambda 코드 배포
 .github/dependabot.yml     컨테이너 이미지·GitHub Actions 갱신 PR
+alert-analyzer/            경보 AI 진단 Lambda(Python). 경보를 받아 Claude(Bedrock)가 런북대로 읽기 전용 조회를 하고 Slack에 제안. build.sh가 배포 묶음을 만든다
 app-agent/                 서버 수집기(Alloy) 설정. agent.alloy(서버 지표·로그·전송)는 항상, app.alloy(앱 지표)·redis.alloy(Redis 지표)·cadvisor.alloy(컨테이너 지표, 부하 테스트 서버)·journal.alloy(systemd 서비스 journald 로그, 추천 배치 서버)는 apply.sh가 서버 역할에 따라 켠다
 bootstrap/                 Terraform보다 먼저 만든 상태 버킷 기록
 docs/runbooks/             경보별 대응 절차와 댓글 필터 차단·해제, 추천 배치 서버 절차(런북)
@@ -30,6 +31,7 @@ envs/dev/                  개발 환경. 실행 위치
   observability.tf         관측 서버(EC2, 데이터 디스크, 스냅샷, 버킷, IAM, 앱·추천 배치 서버 수집 포트)
   alerts.tf                서버 상태 검사 경보와 메일 주제
   observability_deploy.tf  관측 설정·수집기 설정을 배포하는 GitHub Actions 역할(앱 서버 적용, 추천 배치 서버 교체)
+  alert_analyzer.tf        경보 AI 진단(분석용 SNS, Lambda와 읽기 전용 역할, 관측 서버 조회 SSM 문서, 같은 경보 묶기·하루 상한 DynamoDB, CI 코드 배포 권한)
   comment_filter.tf        댓글 필터 이미지 저장소(ECR, 개발·운영 공용), 개발 Lambda(arm64 이미지, 함수 URL IAM 인증, 예약 동시성 2, 이미지는 필터 저장소 CI가 바꿈), 필터 저장소 GitHub Actions 개발 역할(모델 읽기, 이미지 푸시, 개발 Lambda 갱신·호출)
   recommendation.tf        개발 추천 배치 서버(1대짜리 서버 그룹, t4g.small 스팟, 상태 디스크, 시작 대기 자기 검사, 역할, 비밀이 아닌 값)와 추천 배치 저장소 GitHub Actions 개발 역할(배포 패키지 올리기, 배포 버전 값, 서버 교체)
   outputs.tf               읽어 온 값 출력
@@ -65,7 +67,7 @@ envs/prod/                 운영 환경. 상태는 prod/terraform.tfstate
 envs/prod-base/            운영 환경 EC2 역할·인스턴스 프로필과 RDS 모니터링 역할. 운영 서버보다 먼저 만들고 운영 환경을 지워도 남긴다. 상태는 prod-base/terraform.tfstate
   iam.tf                   앱 서버·추천 배치 서버·감시용 서버·k6 서버 역할, RDS Enhanced Monitoring 역할(SSM, 운영 비밀값·배포 파일·업로드 버킷, 수집기 설정 읽기, 댓글 필터 호출, 앱·추천 배치 서버 시작 대기 끝내기, 추천 배치 상태 디스크 붙이기)
 modules/api-waf/           API(ALB) 앞단 WAF. 개발·운영이 같은 규칙을 쓴다(관리형 규칙, 본문 크기 예외, IP당 요청 상한, 로그)
-observability/             관측 서버 위의 프로그램 설정(compose, Prometheus, Loki, Alloy, Grafana, 쓰기 전용 nginx)
+observability/             관측 서버 위의 프로그램 설정(compose, Prometheus, Loki, Alloy, Grafana, 쓰기 전용 nginx)과 AI 진단용 읽기 전용 조회(query.py)
 ```
 
 Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙는다. 이 태그가 없는 리소스는 콘솔에서 관리한다.
