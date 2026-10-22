@@ -59,7 +59,7 @@ envs/prod/                 운영 환경. 상태는 prod/terraform.tfstate
   cdn.tf                   CloudFront(종량제, WAF 없음): cking.co.kr(www 이동)·admin.cking.co.kr 프론트, images.cking.co.kr 프로필 이미지
   comment_filter.tf        운영 댓글 필터 Lambda(arm64 이미지, 함수 URL IAM 인증, 예약 동시성 8, 이미지는 필터 저장소 main CI가 개발에서 확인한 이미지로 바꿈)
   alarms.tf                AWS 서비스 경보(ALB, 서버 띄우기 실패, ElastiCache, RDS) → SNS → 운영 채널(Amazon Q)·메일
-  deploy_roles.tf          GitHub Actions 운영 배포 역할(BE: 배포 파일, 배포 태그, 앱 서버 교체 / FE: 프론트 버킷 동기화, 캐시 무효화 / 필터: 개발 CI가 올린 이미지에 prod- 태그, 운영 Lambda 교체·호출)
+  deploy_roles.tf          GitHub Actions 운영 배포 역할(BE: 배포 파일, 배포 태그, 앱 서버 교체 / FE: 프론트 버킷 동기화, 도메인으로 배포 찾기, 캐시 무효화 / 필터: 개발 CI가 올린 이미지에 prod- 태그, 운영 Lambda 교체·호출)
   templates/               서버 첫 부팅 스크립트(server-base.sh는 공통 준비, recommendation-init.sh는 개발·운영 추천 배치 서버가 같이 쓴다)
   functions/               CloudFront Functions(www → cking.co.kr 이동)
 envs/prod-base/            운영 환경 EC2 역할·인스턴스 프로필과 RDS 모니터링 역할. 운영 서버보다 먼저 만들고 운영 환경을 지워도 남긴다. 상태는 prod-base/terraform.tfstate
@@ -125,7 +125,7 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
      unset MYSQL_PWD APP_PW
      ```
 5. BE `main`에 머지해 운영 배포를 실행한다. BE CI가 배포 파일을 운영 배포 버킷에 올리고 `/cking/prod/RELEASE_TAG`를 바꾼 뒤 앱 서버 교체를 시작한다. 그 전까지 앱 서버는 배포 태그나 DB 계정이 없어 시작 대기에서 버려지고 다시 뜨기를 반복한다. 그래서 3단계의 Terraform은 앱 서버가 정상이 되기를 기다리지 않는다
-   - 프론트는 FE `main`에 머지해 배포한다. FE CI가 운영 주소로 웹·관리자를 빌드해 각 버킷에 동기화하고 캐시를 무효화한다. 버킷 이름과 배포 ID는 `terraform output cdn`
+   - 프론트는 FE `main`에 머지해 배포한다. FE CI가 운영 주소로 웹·관리자를 빌드해 각 버킷에 동기화하고 캐시를 무효화한다. 배포 ID는 FE CI가 도메인(`cking.co.kr`, `admin.cking.co.kr`)으로 찾으므로 운영을 다시 만들어도 FE를 고치지 않는다. 버킷 이름과 배포 ID는 `terraform output cdn`
 6. 배포 실패와 되돌리기
    - 새 서버는 시작 대기 동안 같은 태그의 `smoke.js`로 자기 자신을 검사하고 통과해야 ALB에 붙는다. 실패하면 버려지고 교체가 실패하며, 옛 서버가 남고 배포 태그가 자동으로 되돌아간다
    - 교체 뒤 ALB 경로 스모크가 실패하면 BE CI가 이전 태그로 한 번 자동 교체하고 다시 검사한다
