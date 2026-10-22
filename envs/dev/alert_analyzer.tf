@@ -206,10 +206,11 @@ resource "aws_iam_role_policy" "alert_analyzer_deploy" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
+      # UpdateFunctionCode는 호출한 쪽 자격으로 S3 묶음을 읽는다.
       {
-        Sid      = "UploadPackage"
+        Sid      = "Package"
         Effect   = "Allow"
-        Action   = "s3:PutObject"
+        Action   = ["s3:PutObject", "s3:GetObject"]
         Resource = "${local.deploy_bucket_arn}/alert-analyzer/*"
       },
       {
