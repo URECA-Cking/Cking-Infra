@@ -26,7 +26,7 @@ aws autoscaling describe-scaling-activities --region ap-northeast-2 --auto-scali
 
 ### 1. 서버가 실제로 2대보다 적음
 
-활동 기록에 실패(`Failed`, `Cancelled`)가 이어지면 새 서버가 부팅이나 자기 검사에서 버려지고 있다. 직전 배포·설정 변경을 보고 [운영 앱 배포](deploy-failed.md#운영-앱-배포-cking-be-deploy-to-prod)의 되돌리기를 따른다.
+활동 기록에 실패(`Failed`, `Cancelled`)가 이어지면 새 서버가 부팅이나 자기 검사에서 버려지고 있다. 버려진 이유는 [운영 서버 띄우기 실패](prod-launch-failed.md#먼저-볼-곳)의 콘솔 출력으로 본다. 직전 배포·설정 변경 뒤면 [운영 앱 배포](deploy-failed.md#운영-앱-배포-cking-be-deploy-to-prod)의 되돌리기를 따른다.
 
 ### 2. 서버는 2대 이상, 지표만 없음
 
@@ -37,6 +37,10 @@ aws autoscaling describe-scaling-activities --region ap-northeast-2 --auto-scali
 sudo docker ps -a --filter name=app-agent-alloy --format '{{.Status}}'
 sudo docker logs --tail 100 app-agent-alloy-1
 ```
+
+## 해결 확인
+
+Grafana Explore(Prometheus)에서 `count(up{job="node",instance=~"prod-cking-app-.*"} == 1)`이 2 이상이다.
 
 ## 하면 안 되는 것
 

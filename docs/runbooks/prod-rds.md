@@ -14,7 +14,7 @@
 
 ## 먼저 볼 곳
 
-1. AWS 콘솔 RDS → 모니터링(CPU, 연결 수, IOPS), 이벤트
+1. AWS 콘솔 RDS → 모니터링(CPU, 연결 수, IOPS), Enhanced Monitoring(OS 지표·프로세스 목록, 60초 간격), 이벤트
 2. 느린 쿼리 로그(CloudWatch Logs `/aws/rds/instance/prod-cking-mysql/slowquery`)
 3. Grafana [DB 연결 대기](cking-hikari-pending.md), [Stream 밀림](cking-stream-lag.md)
 
@@ -23,6 +23,10 @@
 - **CPU, 느린 쿼리가 있음**: 쿼리로 BE 이슈를 만든다. 급하면 원인 기능의 켜기 값을 끈다
 - **CPU, 요청이 몰림**: 지나가는지 본다. 반복되면 인스턴스 크기 상향을 검토한다(다중 AZ라 대기 노드를 먼저 바꾸고 장애 조치한다)
 - **저장 공간**: 무엇이 늘었는지 테이블 크기로 본다. 상한에 닿았으면 Terraform `max_allocated_storage`를 올린다
+
+## 해결 확인
+
+CloudWatch 경보가 OK로 돌아온다(운영 채널에 OK 알림이 온다).
 
 ## 하면 안 되는 것
 

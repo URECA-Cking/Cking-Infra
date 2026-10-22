@@ -22,7 +22,7 @@ Stream에 아직 읽지 않은 메시지가 5분째 남아 있다. DB 반영이 
 
 ### 2. 소비자는 읽는데 처리가 느림
 
-idle은 짧은데 lag가 줄지 않는다. 소비자는 Stream마다 1개(동시 처리 1)라 메시지마다 DB 쓰기 시간이 그대로 쌓인다.
+idle은 짧은데 lag가 줄지 않는다. 소비자는 서버마다 응모 Stream 4개(한 번에 10건), 적립 Stream 1개다. 서버 1대의 응모 반영 한계는 초당 200~250건이고, 그 위에서는 앱 서버 CPU와 DB 연결 10개가 먼저 바닥난다(부하 테스트 2차).
 
 - 요청이 몰린 직후라 lag가 줄어드는 중이면 지켜본다
 - DB가 느리면 [DB 연결 대기](cking-hikari-pending.md)
@@ -32,11 +32,15 @@ idle은 짧은데 lag가 줄지 않는다. 소비자는 Stream마다 1개(동시
 
 로그에 처리 실패가 반복되고 pending도 늘어난다 → [처리 실패 누적](cking-stream-pending.md).
 
+## 해결 확인
+
+**크킹 Redis·Stream → lag**가 0으로 돌아온다.
+
 ## 하면 안 되는 것
 
 [공통](stream.md#공통으로-하면-안-되는-것)과 같다.
 
 ## 운영에서 다른 점
 
-- 소비자는 서버마다 하나라, 처리가 느릴 때 서버 대수를 늘리면 동시 처리가 는다. DB가 병목이면 효과가 없으므로 RDS CPU(CloudWatch)를 먼저 본다
+- 소비자가 서버마다 있으므로, 처리가 느릴 때 서버 대수를 늘리면 동시 처리가 는다. DB가 병목이면 효과가 없으므로 RDS CPU(CloudWatch)를 먼저 본다
 - 대수 조정: `aws autoscaling set-desired-capacity --region ap-northeast-2 --auto-scaling-group-name prod-cking-app --desired-capacity 3` (최대 4). 목표 추적 정책이 CPU 기준으로 다시 줄일 수 있다

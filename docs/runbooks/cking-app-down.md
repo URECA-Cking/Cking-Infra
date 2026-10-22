@@ -39,12 +39,14 @@ sudo docker logs --tail 200 cking-app
 
 → **크킹 앱 → 힙·힙 밖**에서 종료 직전 추세를 보고, 로그에서 종료 직전 요청을 찾아 BE 이슈를 만든다. 힙(460MiB)·컨테이너 상한 조정은 BE `docker-compose.dev.yml` PR로 한다.
 
-### 3. DB·Redis 연결 실패로 준비 안 됨
+### 3. DB·Redis 연결 실패로 기동 실패
 
-컨테이너는 떠 있고 `/readyz`가 `DOWN`. 로그에 `Connection refused`, `Communications link failure`.
+직전 배포가 없는데 `Restarts`가 오르고, 로그에 `Connection refused`, `Communications link failure`가 보인다.
 
-- Redis: `sudo docker ps --filter name=cking-redis`. 멈췄으면 `sudo docker start cking-redis` (compose 명령은 앱 환경변수가 없어 실패한다)
+- Redis: `sudo docker ps -a --filter name=cking-redis`. 멈췄으면 `sudo docker start cking-redis` (compose 명령은 앱 환경변수가 없어 실패한다)
 - RDS: **크킹 서버 → RDS CPU·RDS 연결 수**, AWS 콘솔 RDS 이벤트(재부팅·유지 관리)
+
+컨테이너가 떠 있고 `/readyz`만 `DOWN`이면 앱 지표는 들어오므로 이 경보는 울리지 않는다. 그 상태는 [서버 오류 증가](cking-5xx.md#3-전체-uri가-실패)로 본다.
 
 ### 4. 앱 서버 또는 수집기 문제
 
@@ -52,6 +54,10 @@ sudo docker logs --tail 200 cking-app
 
 - SSM 접속이 안 됨 → 서버 자체 문제. [인스턴스 상태 검사](ec2-instance-check.md)
 - 접속되고 `curl localhost:8080/readyz`가 `UP` → 앱은 정상, 수집 경로 문제. [수집 대상 끊김](cking-target-down.md)
+
+## 해결 확인
+
+**크킹 서비스 개요 → 수집 대상**에 앱이 돌아오고, 앱 서버에서 `curl -s localhost:8080/readyz`가 `{"status":"UP"}`이다.
 
 ## 하면 안 되는 것
 

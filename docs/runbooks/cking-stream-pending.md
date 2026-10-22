@@ -31,6 +31,10 @@
 - 직전 배포 뒤 시작됐으면 이전 버전으로 되돌린다([배포 실패](deploy-failed.md#이전-버전으로-되돌리기)). 되돌리면 PEL 회수가 다시 처리한다
 - 원인을 고치기 전에는 메시지가 하나씩 Dead Stream으로 옮겨진다. Dead Stream 메시지는 고친 뒤 다시 적용할 수 있다
 
+## 해결 확인
+
+`XPENDING`의 건수가 0이 된다. 5회 넘게 실패한 메시지는 Dead Stream으로 옮겨져 pending에서 빠지므로 [Dead Stream 이동](cking-dead-stream.md)의 대응을 이어서 한다.
+
 ## 하면 안 되는 것
 
 [공통](stream.md#공통으로-하면-안-되는-것)과 같다. 특히 pending을 `XACK`로 지우지 않는다.

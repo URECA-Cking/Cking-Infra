@@ -1,6 +1,6 @@
 # 추천 배치 실패 반복
 
-> 전제: [개발 추천 배치 서버](recommendation-batch.md)의 전제와 같다. 1분 확인은 실행이 끝나고 60초 뒤 다시 돈다. 같은 입력의 공급자 호출은 최대 3번
+> 전제: [추천 배치 서버](recommendation-batch.md)의 전제와 같다. 1분 확인은 실행이 끝나고 60초 뒤 다시 돈다. 같은 입력의 공급자 호출은 최대 3번
 
 10분 안에 실패 알림 로그(`{instance="dev-cking-recommendation", unit=~"cking-content-alert@.*", level="error"}`)가 3건 이상일 때(Loki).
 
@@ -18,7 +18,14 @@ Grafana Explore(Loki)에서 작업자가 남긴 실패 코드를 본다.
 {instance="dev-cking-recommendation", unit=~"cking-content-(event|daily).service"} |= "content-worker:"
 ```
 
-`content-worker: partial failure (<코드>)`는 일부 크리에이터만, `content-worker: failed (<코드>)`는 실행 전체가 실패한 것이다. 크리에이터별 코드는 서버의 `/var/lib/cking-content/summary.json`(`stages.tags.rows[].code`)에 있다. 접속은 [개발 추천 배치 서버](recommendation-batch.md#먼저-볼-곳)를 따른다.
+`content-worker: partial failure (<코드>)`는 일부 크리에이터만, `content-worker: failed (<코드>)`는 실행 전체가 실패한 것이다.
+
+크리에이터별 행(`stages.tags.rows[]`의 `creatorId`·`recordKey`·`code`)은 서버의 `/var/lib/cking-content/summary.json`에 있다. 이 파일은 실행마다(작업 없는 1분 확인도) 덮어써지므로 실패가 이어지는 동안만 남는다. 지난 실패는 위 로그 줄의 코드로 본다. 접속은 [추천 배치 서버](recommendation-batch.md#먼저-볼-곳)를 따른다.
+
+```bash
+# 추천 배치 서버
+sudo jq '{status, source, stages}' /var/lib/cking-content/summary.json
+```
 
 ## 원인별 대응
 
@@ -32,6 +39,10 @@ Grafana Explore(Loki)에서 작업자가 남긴 실패 코드를 본다.
 - `RECOMMENDATION_FAILED`: 태그 다음 단계인 추천 계산·적재가 실패했다. 임베딩 공급자(DeepInfra) 상태와 지출 한도(월 $5)를 본다
 - `WORKER_STARTUP_FAILED`: 환경 파일이나 패키지 문제다. 서버의 부팅 로그(`/var/log/cloud-init-output.log`)를 본다
 
+## 해결 확인
+
+실패 알림 로그가 멈추고 `sudo jq . /var/lib/cking-content/last-success.json`의 `completedAt`(유닉스 초)이 최근으로 바뀐다. 작업 없는 1분 확인도 이 시각을 갱신한다.
+
 ## 하면 안 되는 것
 
 - 실패를 없애려고 상태 디스크의 기록(`records/`, `budget-*.json`, `models*.json`)을 지우지 않는다. 같은 입력을 다시 호출해 비용이 들고 BE 적재 기록과 갈라진다
@@ -40,3 +51,4 @@ Grafana Explore(Loki)에서 작업자가 남긴 실패 코드를 본다.
 ## 운영에서 다른 점
 
 - 운영 규칙 `cking-prod-recommendation-failing`은 `instance="prod-cking-recommendation"`을 본다. 서버와 값 경로는 [추천 배치 서버](recommendation-batch.md#운영에서-다른-점)
+- `BACKEND_AUTHORIZATION_FAILED`의 BE 해시는 `/cking/prod/CKING_CONTENT_TAG_TOKEN_HASH`, `/cking/prod/CKING_RECOMMENDATION_API_KEY_HASHES`다. 해시를 바꿨으면 BE `Deploy to prod`를 지금 태그로 다시 실행해야 반영된다

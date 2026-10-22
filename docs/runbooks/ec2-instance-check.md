@@ -21,8 +21,8 @@ OS가 응답하지 않는다. 흔한 원인은 메모리 고갈(관측 서버는
 
 ```bash
 # 해당 서버
-journalctl -k -b -1 --no-pager | tail -50
-journalctl -b -1 --no-pager | grep -iE 'out of memory|oom|killed process' | tail
+sudo journalctl -k -b -1 --no-pager | tail -50
+sudo journalctl -b -1 --no-pager | grep -iE 'out of memory|oom|killed process' | tail
 ```
 
 ## 대응
@@ -37,3 +37,8 @@ journalctl -b -1 --no-pager | grep -iE 'out of memory|oom|killed process' | tail
 
 - 인스턴스를 종료(terminate)하지 않는다
 - 원인을 확인하지 않고 반복 재부팅만 하지 않는다. 재부팅 전 로그(`-b -1`)는 다음 재부팅 뒤에는 찾기 어려워진다
+
+## 운영에서 다른 점
+
+- 운영 서버(앱·감시용·추천 배치)에는 이 경보가 없다. 서버 그룹이 상태 검사에 실패한 서버를 새로 띄운다(앱 서버는 ALB 헬스체크도 본다). 교체가 반복되면 서버 그룹 활동을 본다([운영 서버 띄우기 실패](prod-launch-failed.md#먼저-볼-곳))
+- 추천 배치 서버 개발·운영에도 이 경보가 없다. 같은 방식으로 서버 그룹이 교체한다

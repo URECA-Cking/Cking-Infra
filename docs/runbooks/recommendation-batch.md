@@ -28,10 +28,18 @@ aws autoscaling describe-instance-refreshes --region ap-northeast-2 --auto-scali
 ## 먼저 볼 곳
 
 ```bash
-# Mac: 서버 그룹 활동. 시작 대기에서 버려진 서버, 스팟 중단으로 바뀐 서버가 여기 남는다
+# Mac: 서버 그룹 활동. 시작 대기에서 버려진 서버, 띄우기 실패, 종료된 서버가 여기 남는다
 aws autoscaling describe-scaling-activities --region ap-northeast-2 --auto-scaling-group-name dev-cking-recommendation \
   --max-items 10 --query 'Activities[].[StartTime,StatusCode,Description,Cause]' --output table
+# Mac: 종료 활동만. 띄우기 실패가 이어지면 위 10건에 밀려 보이지 않는다
+aws autoscaling describe-scaling-activities --region ap-northeast-2 --auto-scaling-group-name dev-cking-recommendation \
+  --query 'Activities[?starts_with(Description, `Terminating`)]|[:5].[StartTime,Description,Cause]' --output table
+# Mac: 종료된 서버가 스팟 회수였는지(Server.SpotInstanceTermination). 종료 뒤 약 1시간만 조회된다
+aws ec2 describe-instances --region ap-northeast-2 --instance-ids <종료된 서버> \
+  --query 'Reservations[].Instances[].StateReason.Message' --output text
 ```
+
+종료 활동의 `Cause`가 `an instance refresh`면 배포(서버 교체), `an EC2 health check indicating it has been terminated or stopped`면 서버가 밖에서 종료된 것이다. 스팟 회수는 후자로만 남으므로 위 `StateReason`으로 가른다.
 
 ```bash
 # 추천 배치 서버(SSM 세션, 인스턴스 이름표 dev-cking-recommendation)
@@ -47,9 +55,14 @@ Grafana Explore(Loki)에서 작업자 로그는 `{instance="dev-cking-recommenda
 ## 원인별 대응
 
 - **서버가 계속 버려짐**(활동에 시작 대기 실패가 반복): 버려진 서버는 곧 종료돼 들어갈 수 없다. 부팅 출력은 EC2 콘솔 출력(`aws ec2 get-console-output --region ap-northeast-2 --instance-id <서버> --output text`, 종료 때도 올라온다)으로 본다. 흔한 원인은 배포 버전 값이나 그 패키지(`s3://dev-cking-deploy-551372961758/recommendation/releases/<버전>/`)가 없는 것, 상태 디스크가 다른 서버에 붙어 있는 것이다
-- **스팟 중단**: 활동의 `Cause`에 중단이 적혀 있다. 새 서버가 디스크를 다시 붙이고 이어서 돈다. 처리 중이던 작업은 lease(900초)가 끝나면 BE가 다시 넘긴다
+- **스팟 회수**(`StateReason`이 `Server.SpotInstanceTermination`): 그룹이 바로 새 서버를 띄우고, 새 서버가 디스크를 다시 붙여 이어서 돈다. 1분 확인 로그는 3\~4분 끊긴다. 처리 중이던 작업은 lease(900초)가 끝나면 BE가 다시 넘긴다
+- **스팟 자리 부족**(활동에 `Could not launch Spot Instances. UnfulfillableCapacity`·`InsufficientInstanceCapacity` 실패가 반복): 서버가 2a 한 곳·t4g.small 한 종류라 다른 가용 영역·유형으로 넘어가지 않는다. 그룹이 처음에는 10초, 이어서 1\~2분 간격으로 다시 띄우므로 기다린다. 처리 기록은 상태 디스크에 남고 처리 중이던 작업은 lease(900초)가 끝나면 BE가 다시 넘기므로 잃지 않는다. 2026-10-22에는 9분·13분 뒤에 떴다. 풀리면 활동에 `Successful`·`Launching a new EC2 instance: <서버>`가 남는다
 - **타이머가 꺼져 있음**: 부팅 로그에 `추천 배치 값이 n/6개만 있어 타이머를 켜지 않는다`가 있다. 빠진 값을 넣고 서버를 교체한다
-- **작업자가 실패함**(`last-success.json`이 오래됨, 실패 알림 로그): `/var/lib/cking-content/summary.json`의 `code`로 [콘텐츠 작업자 운영](https://github.com/URECA-Cking/Cking-LLM-Benchmark/blob/develop/docs/guides/content-worker.md)의 복구 절차를 따른다
+- **작업자가 실패함**(`last-success.json`이 오래됨, 실패 알림 로그): 실패 코드로 [추천 배치 실패 반복](cking-recommendation-failing.md#원인별-대응)과 [콘텐츠 작업자 운영](https://github.com/URECA-Cking/Cking-LLM-Benchmark/blob/develop/docs/guides/content-worker.md)의 복구 절차를 따른다. `summary.json`은 실행마다 덮어써지므로 지난 실패의 코드는 Loki 로그로 본다
+
+## 해결 확인
+
+그룹에 `InService` 서버가 있고, `systemctl list-timers 'cking-content-*'`에 다음 실행 시각이 보이며, Grafana Explore(Loki)에 1분 확인 로그가 이어진다.
 
 ## 하면 안 되는 것
 
@@ -58,7 +71,9 @@ Grafana Explore(Loki)에서 작업자 로그는 `{instance="dev-cking-recommenda
 
 ## 운영에서 다른 점
 
-- 서버 그룹 `prod-cking-recommendation`(1대, t4g.small 온디맨드, 프라이빗 앱 서브넷 2a, 바깥으로는 NAT), 상태 디스크 `prod-cking-recommendation-state`, 값 `/cking/prod-recommendation/`, 배포 버전 `/cking/prod-recommendation/RELEASE`, 패키지 `s3://prod-cking-deploy-551372961758-ap-northeast-2-an/recommendation/releases/<버전>/`. 서버 교체 명령은 서버 그룹 이름만 바꾼다
+- 서버 그룹 `prod-cking-recommendation`(1대, t4g.small 온디맨드, 프라이빗 앱 서브넷 2a, 바깥으로는 NAT), 상태 디스크 `prod-cking-recommendation-state`, 값 `/cking/prod-recommendation/`, 배포 버전 `/cking/prod-recommendation/RELEASE`, 패키지 `s3://prod-cking-deploy-551372961758-ap-northeast-2-an/recommendation/releases/<버전>/`. 서버 교체·활동 조회 명령은 서버 그룹 이름만 바꾼다
+- 스팟 회수는 없다. 2a 한 곳이라 온디맨드 자리 부족(`InsufficientInstanceCapacity`)은 생길 수 있고 대응은 위 스팟 자리 부족과 같다
+- 운영 서버 띄우기 실패 알림(`prod-cking-launch-failed`)은 이 그룹을 보지 않는다. 버려지는 서버는 활동과 [추천 배치 멈춤](cking-recommendation-stalled.md) 경보로 안다
 - 배포: 배치 저장소 main 머지 때 CI가 개발에서 확인한 같은 패키지를 운영 배포 버킷에 복사하고 배포 버전 값을 바꾼 뒤 서버를 교체한다. 첫 운영 배포 전에는 서버가 시작 대기에서 버려지기를 반복한다
 - 서버 역할(`envs/prod-base`)이 시작 대기 끝내기 권한을 가져야 한다. `envs/prod`보다 먼저 apply한다
 - 켜는 순서: 운영 데이터를 부하 테스트 뒤 되돌리므로 그 전에는 타이머를 켜지 않는다(값 6개 중 4개만 넣음)

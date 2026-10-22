@@ -38,11 +38,15 @@
 sudo docker restart cking-app
 ```
 
-재시작 뒤 idle이 2초 이하로 돌아오고 lag가 줄어드는지 본다. 원인(로그)은 BE 이슈로 남긴다.
+원인(로그)은 BE 이슈로 남긴다.
 
 ### 3. Redis가 멈춤
 
-`sudo docker ps --filter name=cking-redis`가 멈춤이면 `sudo docker start cking-redis`. 이때 응모도 실패하고 있었다.
+`sudo docker ps -a --filter name=cking-redis`가 멈춤이면 `sudo docker start cking-redis`. 이때 응모도 실패하고 있었다.
+
+## 해결 확인
+
+`XINFO CONSUMERS`의 idle이 2초 이하로 돌아오고, **크킹 Redis·Stream → lag**가 줄어든다.
 
 ## 하면 안 되는 것
 
@@ -50,7 +54,7 @@ sudo docker restart cking-app
 
 ## 운영에서 다른 점
 
-- 지표는 감시용 서버가 ElastiCache에서 읽어 보낸다. 감시용 서버가 끊기면 이 경보가 조용해진다([감시용 서버 끊김](cking-prod-monitor-down.md))
+- 지표는 감시용 서버가 ElastiCache에서 읽어 보낸다. 감시용 서버가 끊기거나 ElastiCache에 붙지 못하면 이 경보가 조용해지고 [감시용 서버 끊김](cking-prod-monitor-down.md)이 울린다
 - 소비자가 모든 앱 서버에 있으므로 전부 멈췄다는 뜻이다. 원인은 서버 하나가 아니라 공통(ElastiCache, 배포된 코드)일 가능성이 크다
 - 상태 확인은 [운영 상태 확인](stream.md#운영-상태-확인). Redis 멈춤은 AWS 콘솔 ElastiCache → 이벤트(장애 조치·유지 관리)로 본다. 장애 조치가 끝나면 앱이 같은 기본 엔드포인트로 다시 연결한다
 - 앱 재시작이 필요하면 서버를 하나씩 교체한다([운영](README.md#운영)). 정상 서버 2대 이상을 유지한다
