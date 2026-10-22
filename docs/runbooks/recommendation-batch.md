@@ -1,4 +1,4 @@
-# 개발 추천 배치 서버
+# 추천 배치 서버
 
 > 전제: 서버 그룹 `dev-cking-recommendation`(1대, t4g.small 스팟, 2a), 상태 디스크 `dev-cking-recommendation-state`(`/var/lib/cking-content`), 배포 버전 `/cking/dev-recommendation/RELEASE`, 콘텐츠 작업자 타이머 `cking-content-event.timer`(1분)·`cking-content-daily.timer`(03:00). 작업자 동작과 복구는 [콘텐츠 작업자 운영](https://github.com/URECA-Cking/Cking-LLM-Benchmark/blob/develop/docs/guides/content-worker.md)
 
@@ -55,3 +55,15 @@ Grafana Explore(Loki)에서 작업자 로그는 `{instance="dev-cking-recommenda
 
 - 상태 디스크를 지우거나 다른 서버에 붙이지 않는다. 작업자는 상태 폴더 하나·서버 하나만 지원한다. 잃으면 작업자 운영 문서의 복구 절차(BE의 최대 applicationSequence와 결과 세대 확인부터)를 따라야 한다
 - 그룹의 서버 수를 2 이상으로 늘리지 않는다. 같은 이유로 작업자가 둘이 되면 안 된다
+
+## 운영에서 다른 점
+
+- 서버 그룹 `prod-cking-recommendation`(1대, t4g.small 온디맨드, 프라이빗 앱 서브넷 2a, 바깥으로는 NAT), 상태 디스크 `prod-cking-recommendation-state`, 값 `/cking/prod-recommendation/`, 배포 버전 `/cking/prod-recommendation/RELEASE`, 패키지 `s3://prod-cking-deploy-551372961758-ap-northeast-2-an/recommendation/releases/<버전>/`. 서버 교체 명령은 서버 그룹 이름만 바꾼다
+- 배포: 배치 저장소 main 머지 때 CI가 개발에서 확인한 같은 패키지를 운영 배포 버킷에 복사하고 배포 버전 값을 바꾼 뒤 서버를 교체한다. 첫 운영 배포 전에는 서버가 시작 대기에서 버려지기를 반복한다
+- 서버 역할(`envs/prod-base`)이 시작 대기 끝내기 권한을 가져야 한다. `envs/prod`보다 먼저 apply한다
+- 켜는 순서: 운영 데이터를 부하 테스트 뒤 되돌리므로 그 전에는 타이머를 켜지 않는다(값 6개 중 4개만 넣음)
+  1. 첫 BE 운영 배포 전: 배치 키·태그 토큰 원문(`/cking/prod-recommendation/CKING_RECOMMENDATION_API_KEY`, `CKING_CONTENT_TAG_ACCESS_TOKEN`)과 BE 쪽 해시(`/cking/prod/CKING_RECOMMENDATION_API_KEY_HASHES`, `CKING_CONTENT_TAG_TOKEN_HASH`)
+  2. 운영 데이터를 되돌린 뒤: 운영 DB `creator_content_taxonomy`에 승인 taxonomy 등록 → `OPENAI_API_KEY`·`DEEPINFRA_API_KEY`(개발 값) → 서버 교체(타이머 켜짐)
+- 운영 경보 `cking-prod-recommendation-failing`·`cking-prod-recommendation-stalled`는 운영을 열 때까지 멈춰 있다(`isPaused`)
+- 운영 데이터를 되돌릴 때 배치를 이미 켰다면 타이머를 멈추고 taxonomy를 다시 등록한 뒤 상태 폴더를 비운다. 작업자는 BE를 주소로만 구분해 예전 DB에 보낸 기록을 새 DB에도 보낸 것으로 본다
+- 운영을 내릴 때는 상태 디스크의 `prevent_destroy`를 먼저 뺀다

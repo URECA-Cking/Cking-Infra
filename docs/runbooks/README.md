@@ -94,7 +94,7 @@ aws ec2 describe-instances --filters Name=tag:Name,Values=dev-cking-app Name=ins
 
 | 상황 | 런북 |
 | --- | --- |
-| 개발 추천 배치 서버를 처음 띄우거나 값을 바꿀 때, 작업자가 돌지 않을 때, 스팟 중단 확인 | [recommendation-batch](recommendation-batch.md) |
+| 추천 배치 서버(개발·운영)를 처음 띄우거나 값을 바꿀 때, 작업자가 돌지 않을 때, 스팟 중단 확인 | [recommendation-batch](recommendation-batch.md) |
 
 ## 운영
 
@@ -108,6 +108,7 @@ aws ec2 describe-instances --filters Name=tag:Name,Values=dev-cking-app Name=ins
 | 배포·되돌리기 | `Deploy to dev server` | `Deploy to prod`([배포 실패](deploy-failed.md#운영-앱-배포-cking-be-deploy-to-prod)) |
 | 서버 하나의 고장 | 그 서버를 고친다 | 원인을 본 뒤 서버를 교체한다. 새 서버는 자기 검사를 통과해야 요청을 받는다 |
 | 대시보드 | `환경` 개발 | `환경` 운영. `서버` 전체가 앱 서버 합계, 한 대를 고르면 그 서버만 |
+| 추천 배치 | `dev-cking-recommendation` 스팟 1대(퍼블릭 2a) | `prod-cking-recommendation` 온디맨드 1대(프라이빗 2a, NAT) |
 
 서버 찾기:
 
@@ -146,6 +147,8 @@ aws autoscaling terminate-instance-in-auto-scaling-group --region ap-northeast-2
 | Dead Stream 이동 | 서버별 이동 로그 5분 안에 1건 이상 | | [cking-dead-stream](cking-dead-stream.md) |
 | 댓글 필터 호출 실패 지속 | 운영 앱 서버 전체 필터 호출 실패 로그 10분 동안 5건 이상 | | [cking-comment-filter-failing](cking-comment-filter-failing.md) |
 | 댓글 판정 대기열 쌓임 | 서버별 판정 대기열 최댓값 50건 이상 5분 | | [cking-comment-filter-queue](cking-comment-filter-queue.md) |
+| 추천 배치 실패 반복 | 운영 추천 배치 서버 실패 알림 로그 10분 동안 3건 이상 | | [cking-recommendation-failing](cking-recommendation-failing.md) |
+| 추천 배치 멈춤 | 운영 추천 배치 서버 1분 확인 실행 로그 15분 없음 | | [cking-recommendation-stalled](cking-recommendation-stalled.md) |
 
 개발의 앱 중단·Redis 메모리는 운영에서 CloudWatch(ALB 정상 대상 수, ElastiCache 메모리 사용률)가 맡는다.
 
