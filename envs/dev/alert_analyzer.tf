@@ -1,16 +1,13 @@
 # 경보 AI 진단. Grafana(분석용 SNS)와 CloudWatch(dev-cking-alerts) 경보를 받아 Claude가 런북대로 읽기 전용 조회를 하고
 # 그 경보가 가는 Slack 채널에 제안을 남긴다. 조치는 사람이 한다.
 # 개발 VPC에는 NAT가 없어 Lambda는 VPC 밖에 두고, 관측 서버 Prometheus·Loki 조회는 고정 SSM 문서로만 한다.
+# 모델은 Claude API로 부른다. 이 계정은 Bedrock의 Anthropic 모델이 막혀 있다(403 not available for this account).
 # 함수 코드는 alert-analyzer/ 배포 워크플로가 바꾸므로 Terraform은 비교하지 않는다. 처음 apply 전에 build.sh로 만든 묶음을
 # s3://dev-cking-deploy-551372961758/alert-analyzer/initial.zip 에 올려 둔다.
 
 locals {
   alert_analyzer_name = "dev-cking-alert-analyzer"
   alert_analyzer_arn  = "arn:aws:lambda:ap-northeast-2:551372961758:function:${local.alert_analyzer_name}"
-
-  # 진단 모델과 거절될 때 대신 쓰는 모델. global 추론 프로필은 서울에서 받아 다른 리전으로도 보낸다.
-  alert_analyzer_models   = ["anthropic.claude-opus-5-5", "anthropic.claude-opus-4-8"]
-  alert_analyzer_profiles = [for m in local.alert_analyzer_models : "arn:aws:bedrock:ap-northeast-2:551372961758:inference-profile/global.${m}"]
 }
 
 # Grafana가 관측 서버 역할로 발행한다(observability.tf).
@@ -93,25 +90,6 @@ resource "aws_iam_role_policy" "alert_analyzer" {
         Resource = "${aws_cloudwatch_log_group.alert_analyzer.arn}:*"
       },
       {
-        Sid      = "InvokeClaudeProfile"
-        Effect   = "Allow"
-        Action   = "bedrock:InvokeModel"
-        Resource = local.alert_analyzer_profiles
-      },
-      # global 프로필은 서울 모델과 리전 없는 모델 ARN 둘 다 검사한다. 위 프로필을 거친 호출만 허용한다.
-      {
-        Sid    = "InvokeClaudeModel"
-        Effect = "Allow"
-        Action = "bedrock:InvokeModel"
-        Resource = flatten([for m in local.alert_analyzer_models : [
-          "arn:aws:bedrock:ap-northeast-2::foundation-model/${m}",
-          "arn:aws:bedrock:::foundation-model/${m}",
-        ]])
-        Condition = {
-          StringEquals = { "bedrock:InferenceProfileArn" = local.alert_analyzer_profiles }
-        }
-      },
-      {
         Sid      = "QueryObservability"
         Effect   = "Allow"
         Action   = "ssm:SendCommand"
@@ -124,10 +102,11 @@ resource "aws_iam_role_policy" "alert_analyzer" {
         Resource = "*"
       },
       {
-        Sid    = "ReadSlackWebhooks"
+        Sid    = "ReadParameters"
         Effect = "Allow"
         Action = "ssm:GetParameter"
         Resource = [
+          "arn:aws:ssm:ap-northeast-2:551372961758:parameter/cking/dev/monitoring/ANTHROPIC_API_KEY",
           "arn:aws:ssm:ap-northeast-2:551372961758:parameter/cking/dev/monitoring/SLACK_ALERT_WEBHOOK_URL",
           "arn:aws:ssm:ap-northeast-2:551372961758:parameter/cking/dev/monitoring/SLACK_PROD_ALERT_WEBHOOK_URL",
         ]

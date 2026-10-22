@@ -14,7 +14,7 @@
 ```text
 .github/workflows/         PR 검사(ci.yml), 관측 설정·수집기 배포 워크플로(앱 서버는 바로 적용, 추천 배치 서버는 교체), 경보 AI 진단 Lambda 코드 배포
 .github/dependabot.yml     컨테이너 이미지·GitHub Actions 갱신 PR
-alert-analyzer/            경보 AI 진단 Lambda(Python). 경보를 받아 Claude(Bedrock)가 런북대로 읽기 전용 조회를 하고 Slack에 제안. build.sh가 배포 묶음을 만든다
+alert-analyzer/            경보 AI 진단 Lambda(Python). 경보를 받아 Claude(Claude API)가 런북대로 읽기 전용 조회를 하고 Slack에 제안. build.sh가 배포 묶음을 만든다
 app-agent/                 서버 수집기(Alloy) 설정. agent.alloy(서버 지표·로그·전송)는 항상, app.alloy(앱 지표)·redis.alloy(Redis 지표)·cadvisor.alloy(컨테이너 지표, 부하 테스트 서버)·journal.alloy(systemd 서비스 journald 로그, 추천 배치 서버)는 apply.sh가 서버 역할에 따라 켠다
 bootstrap/                 Terraform보다 먼저 만든 상태 버킷 기록
 docs/runbooks/             경보별 대응 절차와 댓글 필터 차단·해제, 추천 배치 서버 절차(런북)
