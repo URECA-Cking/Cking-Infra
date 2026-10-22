@@ -26,6 +26,21 @@ aws ec2 describe-instances --region ap-northeast-2 --filters Name=tag:Name,Value
 
 대시보드는 맨 위 `환경`에서 개발·운영·부하 테스트를 고르고, `서버`는 그 환경의 서버를 여러 대·전체로 고른다. 요청·응답 패널은 고른 서버를 합치고, 스레드·연결·메모리·CPU는 서버별 선으로 본다. Redis·RDS 패널은 서버 선택과 관계없이 그 환경의 것을 본다.
 
+## AI 진단
+
+개발 경보(Grafana 팀·관측 경보, CloudWatch 서버 상태 검사)가 울리면 같은 채널에 `AI 진단: <경보 이름>` 메시지가 뒤따른다. Claude(Claude API)가 그 경보의 런북을 읽고 먼저 볼 곳을 읽기 전용으로 조회해 원인과 할 일을 제안한 것이다(`alert-analyzer/`, `envs/dev/alert_analyzer.tf`).
+
+- 참고용이다. 조치는 런북과 대조해 사람이 판단한다. 서버 안(SSM 세션)에서만 보이는 것은 조회하지 못한다
+- 같은 경보는 한 번만 진단하고, 하루 12건을 넘으면 그날은 멈춘다(한 번 알린다). 메시지 끝에 조회 횟수·토큰·대략 비용이 붙는다
+- 데드맨과 운영 경보는 진단하지 않는다
+- 진단이 실패하면 `AI 진단 실패` 메시지가 온다. Claude API 크레딧이 떨어지거나 키(`/cking/dev/monitoring/ANTHROPIC_API_KEY`)가 만료돼도 같다. 로그는 CloudWatch Logs `/aws/lambda/dev-cking-alert-analyzer`
+- 끄기: Grafana는 `policies.yaml`의 `AI 진단` 경로, CloudWatch는 `alert_analyzer.tf`의 구독을 지우는 PR. 바로 멈춰야 하면 예약 동시성을 0으로 둔다(다음 `envs/dev` apply가 2로 되돌린다)
+
+```bash
+# Mac
+aws lambda put-function-concurrency --region ap-northeast-2 --function-name dev-cking-alert-analyzer --reserved-concurrent-executions 0
+```
+
 ## 경보 목록
 
 ### Grafana: 팀 경보 (Slack)

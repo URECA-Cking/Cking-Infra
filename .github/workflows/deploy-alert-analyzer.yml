@@ -1,0 +1,50 @@
+name: Deploy alert analyzer
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "alert-analyzer/**"
+      - ".github/workflows/deploy-alert-analyzer.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-alert-analyzer
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-northeast-2
+  AWS_ROLE_ARN: arn:aws:iam::551372961758:role/dev-cking-infra-github-actions-role
+  BUCKET: dev-cking-deploy-551372961758
+  FUNCTION: dev-cking-alert-analyzer
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5.1.1
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Lambda(arm64, Python 3.13)용 묶음. 러너의 Python과 관계없이 대상 플랫폼 wheel을 받는다
+      - name: 묶음 만들기
+        run: |
+          python3 -m venv "$RUNNER_TEMP/venv"
+          PATH="$RUNNER_TEMP/venv/bin:$PATH" alert-analyzer/build.sh "$RUNNER_TEMP/alert-analyzer.zip"
+
+      - name: 함수 코드 바꾸기
+        run: |
+          KEY="alert-analyzer/${GITHUB_SHA}.zip"
+          aws s3 cp --only-show-errors "$RUNNER_TEMP/alert-analyzer.zip" "s3://$BUCKET/$KEY"
+          aws lambda update-function-code --function-name "$FUNCTION" --s3-bucket "$BUCKET" --s3-key "$KEY" \
+            --query LastUpdateStatus --output text
+          aws lambda wait function-updated-v2 --function-name "$FUNCTION"

@@ -56,3 +56,16 @@ contactPoints:
         settings:
           url: "$DEADMAN_PING_URL"
           httpMethod: "POST"
+  # AI 진단(envs/dev/alert_analyzer.tf). 관측 서버 역할로 분석용 SNS에 경보를 JSON으로 보낸다. SNS 제목은 ASCII만 받는다
+  - orgId: 1
+    name: "AI 진단"
+    receivers:
+      - uid: "cking-ai-diagnosis"
+        type: "sns"
+        disableResolveMessage: true
+        settings:
+          topic_arn: "arn:aws:sns:ap-northeast-2:551372961758:dev-cking-alert-analysis"
+          sigv4:
+            region: "ap-northeast-2"
+          subject: "cking-alert"
+          message: '{{ coll.Dict "source" "grafana" "status" .Status "alerts" .Alerts.Firing | data.ToJSON }}'
