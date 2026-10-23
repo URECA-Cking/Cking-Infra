@@ -127,7 +127,7 @@ def within_daily_limit(env):
     try:
         _dynamodb.update_item(
             TableName=STATE_TABLE,
-            Key={"key": {"S": f"day#{today}"}},
+            Key={"key": {"S": f"day#{env}#{today}"}},
             UpdateExpression="SET #c = if_not_exists(#c, :zero) + :one, expires_at = :exp",
             ConditionExpression="attribute_not_exists(#c) OR #c < :limit",
             ExpressionAttributeNames={"#c": "count"},
@@ -138,7 +138,7 @@ def within_daily_limit(env):
     except ClientError as error:
         if error.response["Error"]["Code"] != "ConditionalCheckFailedException":
             raise
-    if claim([f"limit-notice#{today}"]):
+    if claim([f"limit-notice#{env}#{today}"]):
         post(env, f"*AI 진단 하루 상한({DAILY_LIMIT}건)에 닿았다.* 오늘 남은 경보는 진단하지 않으니 런북을 직접 따른다.")
     return False
 

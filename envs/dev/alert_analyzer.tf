@@ -1,5 +1,5 @@
-# 경보 AI 진단. Grafana(분석용 SNS)와 CloudWatch(dev-cking-alerts) 경보를 받아 Claude가 런북대로 읽기 전용 조회를 하고
-# 그 경보가 가는 Slack 채널에 제안을 남긴다. 조치는 사람이 한다.
+# 경보 AI 진단. Grafana(분석용 SNS), CloudWatch(dev-cking-alerts), 운영 경보 주제(prod-cking-alerts, 구독은 envs/prod) 경보를 받아
+# Claude가 런북대로 읽기 전용 조회를 하고 그 경보가 가는 Slack 채널(개발·운영 경보 채널 웹훅)에 제안을 남긴다. 조치는 사람이 한다.
 # 개발 VPC에는 NAT가 없어 Lambda는 VPC 밖에 두고, 관측 서버 Prometheus·Loki 조회는 고정 SSM 문서로만 한다.
 # 모델은 Claude API로 부른다. 이 계정은 Bedrock의 Anthropic 모델이 막혀 있다(403 not available for this account).
 # 함수 코드는 alert-analyzer/ 배포 워크플로가 바꾸므로 Terraform은 비교하지 않는다. 처음 apply 전에 build.sh로 만든 묶음을
@@ -135,7 +135,7 @@ resource "aws_iam_role_policy" "alert_analyzer" {
   })
 }
 
-# 실행 상한은 측정 전이라 넉넉히 둔다(조회 20번 × SSM 왕복과 모델 응답). 첫 실측 뒤 줄인다.
+# 경보 1건은 26~36초였다. 응답이 멈춘 호출이 실행 상한까지 가도 0.5GB×600초로 $0.004라 넉넉히 둔다.
 # 동시에 여러 경보가 와도 두 개까지만 진단해 비용이 한꺼번에 늘지 않게 한다.
 resource "aws_lambda_function" "alert_analyzer" {
   function_name = local.alert_analyzer_name

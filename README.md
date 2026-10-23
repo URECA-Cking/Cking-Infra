@@ -61,6 +61,7 @@ envs/prod/                 운영 환경. 상태는 prod/terraform.tfstate
   cdn.tf                   CloudFront(종량제, WAF 없음): cking.co.kr(www 이동)·admin.cking.co.kr 프론트, images.cking.co.kr 프로필 이미지
   comment_filter.tf        운영 댓글 필터 Lambda(arm64 이미지, 함수 URL IAM 인증, 예약 동시성 8, 이미지는 필터 저장소 main CI가 개발에서 확인한 이미지로 바꿈)
   alarms.tf                AWS 서비스 경보(ALB, 서버 띄우기 실패, ElastiCache, RDS) → SNS → 운영 채널(Amazon Q)·메일
+  alert_analyzer.tf        경보 AI 진단의 운영 경보 주제 구독과 호출 허용. 함수는 envs/dev
   deploy_roles.tf          GitHub Actions 운영 배포 역할(BE: 배포 파일, 배포 태그, 앱 서버 교체 / FE: 프론트 버킷 동기화, 도메인으로 배포 찾기, 캐시 무효화 / 필터: 개발 CI가 올린 이미지에 prod- 태그, 운영 Lambda 교체·호출)
   templates/               서버 첫 부팅 스크립트(server-base.sh는 공통 준비, recommendation-init.sh는 개발·운영 추천 배치 서버가 같이 쓴다)
   functions/               CloudFront Functions(www → cking.co.kr 이동)

@@ -10,12 +10,11 @@ policies:
     group_interval: "5m"
     repeat_interval: "4h"
     routes:
-      # 개발 경보는 Slack과 함께 AI 진단으로도 보낸다(continue). 데드맨과 운영은 뺀다
+      # 경보는 Slack과 함께 AI 진단으로도 보낸다(continue). 데드맨은 뺀다
       - receiver: "AI 진단"
         continue: true
         object_matchers:
           - ["route", "!=", "deadman"]
-          - ["env", "!=", "prod"]
       - receiver: "데드맨"
         object_matchers:
           - ["route", "=", "deadman"]
