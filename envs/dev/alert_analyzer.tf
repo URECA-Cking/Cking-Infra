@@ -83,7 +83,7 @@ resource "aws_iam_role_policy" "alert_analyzer" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
+    Statement = concat(local.alert_action_reads, [
       {
         Sid      = "WriteLogs"
         Effect   = "Allow"
@@ -110,6 +110,8 @@ resource "aws_iam_role_policy" "alert_analyzer" {
           "arn:aws:ssm:ap-northeast-2:551372961758:parameter/cking/dev/monitoring/ANTHROPIC_API_KEY",
           "arn:aws:ssm:ap-northeast-2:551372961758:parameter/cking/dev/monitoring/SLACK_ALERT_WEBHOOK_URL",
           "arn:aws:ssm:ap-northeast-2:551372961758:parameter/cking/dev/monitoring/SLACK_PROD_ALERT_WEBHOOK_URL",
+          "arn:aws:ssm:ap-northeast-2:551372961758:parameter/cking/dev/monitoring/SLACK_BOT_TOKEN",
+          "arn:aws:ssm:ap-northeast-2:551372961758:parameter/cking/prod/RELEASE_TAG",
         ]
       },
       {
@@ -132,7 +134,7 @@ resource "aws_iam_role_policy" "alert_analyzer" {
         Action   = ["dynamodb:PutItem", "dynamodb:UpdateItem"]
         Resource = aws_dynamodb_table.alert_analyzer.arn
       },
-    ]
+    ])
   })
 }
 
@@ -157,6 +159,8 @@ resource "aws_lambda_function" "alert_analyzer" {
       DAILY_LIMIT               = "12"
       OBSERVABILITY_INSTANCE_ID = aws_instance.observability.id
       QUERY_DOCUMENT            = aws_ssm_document.observability_query.name
+      SLACK_CHANNELS            = jsonencode(local.alert_channels)
+      DEV_APP_INSTANCE_ID       = data.aws_instance.app.id
     }
   }
 
@@ -218,7 +222,7 @@ resource "aws_iam_role_policy" "alert_analyzer_deploy" {
         Sid      = "UpdateFunction"
         Effect   = "Allow"
         Action   = ["lambda:UpdateFunctionCode", "lambda:GetFunction", "lambda:GetFunctionConfiguration"]
-        Resource = local.alert_analyzer_arn
+        Resource = [local.alert_analyzer_arn, aws_lambda_function.alert_actions[local.alert_approvals_name].arn, aws_lambda_function.alert_actions[local.alert_executor_name].arn]
       },
     ]
   })
