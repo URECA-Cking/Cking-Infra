@@ -115,7 +115,7 @@ aws lambda put-function-concurrency --region ap-northeast-2 --function-name dev-
 
 ## 운영
 
-운영 경보는 Grafana 폴더 **크킹 운영 경보**에 있고 운영 경보 채널로 간다(급함은 `@channel`, 관측 경보는 인프라 담당 멘션). 규칙 uid는 `cking-prod-<개발 uid>`이며, 같은 이름의 개발 런북과 그 런북의 `운영에서 다른 점`을 함께 본다. 운영에만 있는 경보는 uid 이름의 파일이다. 운영 규칙은 운영을 열 때까지 멈춰 있다(`isPaused`).
+운영 경보는 Grafana 폴더 **크킹 운영 경보**에 있고 운영 경보 채널로 간다(급함은 `@channel`, 관측 경보는 인프라 담당 멘션). 규칙 uid는 `cking-prod-<개발 uid>`이며, 같은 이름의 개발 런북과 그 런북의 `운영에서 다른 점`을 함께 본다. 운영에만 있는 경보는 uid 이름의 파일이다.
 
 | | 개발 | 운영 |
 | --- | --- | --- |

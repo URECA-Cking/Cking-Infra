@@ -79,6 +79,5 @@ Grafana Explore(Loki)에서 작업자 로그는 `{instance="dev-cking-recommenda
 - 켜는 순서: 운영 데이터를 부하 테스트 뒤 되돌리므로 그 전에는 타이머를 켜지 않는다(값 6개 중 4개만 넣음)
   1. 첫 BE 운영 배포 전: 배치 키·태그 토큰 원문(`/cking/prod-recommendation/CKING_RECOMMENDATION_API_KEY`, `CKING_CONTENT_TAG_ACCESS_TOKEN`)과 BE 쪽 해시(`/cking/prod/CKING_RECOMMENDATION_API_KEY_HASHES`, `CKING_CONTENT_TAG_TOKEN_HASH`)
   2. 운영 데이터를 되돌린 뒤: 운영 DB `creator_content_taxonomy`에 승인 taxonomy 등록 → `OPENAI_API_KEY`·`DEEPINFRA_API_KEY`(개발 값) → 서버 교체(타이머 켜짐)
-- 운영 경보 `cking-prod-recommendation-failing`·`cking-prod-recommendation-stalled`는 운영을 열 때까지 멈춰 있다(`isPaused`)
 - 운영 데이터를 되돌릴 때 배치를 이미 켰다면 타이머를 멈추고 taxonomy를 다시 등록한 뒤 상태 폴더를 비운다. 작업자는 BE를 주소로만 구분해 예전 DB에 보낸 기록을 새 DB에도 보낸 것으로 본다
 - 운영을 내릴 때는 상태 디스크의 `prevent_destroy`를 먼저 뺀다

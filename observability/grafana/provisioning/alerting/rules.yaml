@@ -1,4 +1,4 @@
-# 생성 파일. 경보 기준과 근거는 Infra #80, 운영 규칙(크킹 운영 경보)은 #121. 운영 규칙은 운영을 열 때 isPaused를 지운다
+# 생성 파일. 경보 기준과 근거는 Infra #80, 운영 규칙(크킹 운영 경보)은 #121. 운영 규칙은 #185에서 켰다
 apiVersion: 1
 groups:
   - orgId: 1
@@ -1013,7 +1013,6 @@ groups:
       - uid: "cking-prod-5xx"
         title: "서버 오류 증가"
         condition: "C"
-        isPaused: true
         data:
           - refId: "A"
             relativeTimeRange:
@@ -1056,7 +1055,6 @@ groups:
       - uid: "cking-prod-stream-stopped"
         title: "Stream 소비 멈춤"
         condition: "C"
-        isPaused: true
         data:
           - refId: "A"
             relativeTimeRange:
@@ -1099,7 +1097,6 @@ groups:
       - uid: "cking-prod-stream-lag"
         title: "Stream 밀림"
         condition: "C"
-        isPaused: true
         data:
           - refId: "A"
             relativeTimeRange:
@@ -1142,7 +1139,6 @@ groups:
       - uid: "cking-prod-redis-rejected"
         title: "응모 실패 (Redis 쓰기 거부)"
         condition: "C"
-        isPaused: true
         data:
           - refId: "A"
             relativeTimeRange:
@@ -1185,7 +1181,6 @@ groups:
       - uid: "cking-prod-stream-pending"
         title: "처리 실패 누적"
         condition: "C"
-        isPaused: true
         data:
           - refId: "A"
             relativeTimeRange:
@@ -1228,7 +1223,6 @@ groups:
       - uid: "cking-prod-p95"
         title: "응답 지연"
         condition: "C"
-        isPaused: true
         data:
           - refId: "A"
             relativeTimeRange:
@@ -1271,7 +1265,6 @@ groups:
       - uid: "cking-prod-hikari-pending"
         title: "DB 연결 대기"
         condition: "C"
-        isPaused: true
         data:
           - refId: "A"
             relativeTimeRange:
@@ -1314,7 +1307,6 @@ groups:
       - uid: "cking-prod-error-log"
         title: "ERROR 로그"
         condition: "C"
-        isPaused: true
         data:
           - refId: "A"
             relativeTimeRange:
@@ -1357,7 +1349,6 @@ groups:
       - uid: "cking-prod-dead-stream"
         title: "Dead Stream 이동"
         condition: "C"
-        isPaused: true
         data:
           - refId: "A"
             relativeTimeRange:
@@ -1400,7 +1391,6 @@ groups:
       - uid: "cking-prod-comment-filter-failing"
         title: "댓글 필터 호출 실패 지속"
         condition: "C"
-        isPaused: true
         data:
           - refId: "A"
             relativeTimeRange:
@@ -1443,7 +1433,6 @@ groups:
       - uid: "cking-prod-comment-filter-queue"
         title: "댓글 판정 대기열 쌓임"
         condition: "C"
-        isPaused: true
         data:
           - refId: "A"
             relativeTimeRange:
@@ -1491,7 +1480,6 @@ groups:
       - uid: "cking-prod-recommendation-failing"
         title: "추천 배치 실패 반복"
         condition: "C"
-        isPaused: true
         data:
           - refId: "A"
             relativeTimeRange:
@@ -1534,7 +1522,6 @@ groups:
       - uid: "cking-prod-recommendation-stalled"
         title: "추천 배치 멈춤"
         condition: "C"
-        isPaused: true
         data:
           - refId: "A"
             relativeTimeRange:
@@ -1582,7 +1569,6 @@ groups:
       - uid: "cking-prod-app-targets"
         title: "앱 서버 지표 부족"
         condition: "C"
-        isPaused: true
         data:
           - refId: "A"
             relativeTimeRange:
@@ -1625,7 +1611,6 @@ groups:
       - uid: "cking-prod-monitor-down"
         title: "감시용 서버 끊김"
         condition: "C"
-        isPaused: true
         data:
           - refId: "A"
             relativeTimeRange:
@@ -1668,7 +1653,6 @@ groups:
       - uid: "cking-prod-remote-write-failed"
         title: "지표 전송 실패"
         condition: "C"
-        isPaused: true
         data:
           - refId: "A"
             relativeTimeRange:
@@ -1711,7 +1695,6 @@ groups:
       - uid: "cking-prod-log-dropped"
         title: "로그 버림"
         condition: "C"
-        isPaused: true
         data:
           - refId: "A"
             relativeTimeRange:
@@ -1754,7 +1737,6 @@ groups:
       - uid: "cking-prod-agent-memory"
         title: "수집기 메모리"
         condition: "C"
-        isPaused: true
         data:
           - refId: "A"
             relativeTimeRange:
@@ -1797,7 +1779,6 @@ groups:
       - uid: "cking-prod-memory-available"
         title: "서버 여유 메모리"
         condition: "C"
-        isPaused: true
         data:
           - refId: "A"
             relativeTimeRange:
@@ -1840,7 +1821,6 @@ groups:
       - uid: "cking-prod-disk-available"
         title: "디스크 여유"
         condition: "C"
-        isPaused: true
         data:
           - refId: "A"
             relativeTimeRange:
