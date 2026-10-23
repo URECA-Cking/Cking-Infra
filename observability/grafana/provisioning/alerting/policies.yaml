@@ -38,3 +38,5 @@ policies:
       - receiver: "Slack 관측"
         object_matchers:
           - ["team", "=", "infra"]
+      # AI 진단 경로가 모든 경보에 맞아 루트 수신처로 떨어지지 않으므로 나머지 개발 경보를 여기서 받는다
+      - receiver: "Slack"
