@@ -1,3 +1,8 @@
+locals {
+  grafana_host        = "monitoring.cking.co.kr"
+  grafana_legacy_host = "dev-monitoring.cking.co.kr"
+}
+
 data "aws_ssm_parameter" "google_oauth_client_id" {
   name = "/cking/dev/monitoring/GOOGLE_OAUTH_CLIENT_ID"
 }
@@ -62,14 +67,42 @@ resource "aws_lb_listener_rule" "grafana" {
 
   condition {
     host_header {
-      values = ["dev-monitoring.cking.co.kr"]
+      values = [local.grafana_host]
     }
   }
 }
 
+# 개발·운영을 함께 보므로 주소에서 dev-를 뺐다. 옛 주소는 북마크·지난 경보 링크를 위해 새 주소로 넘긴다
+resource "aws_lb_listener_rule" "grafana_legacy_redirect" {
+  listener_arn = data.aws_lb_listener.https.arn
+  priority     = 101
+
+  action {
+    type = "redirect"
+
+    redirect {
+      host        = local.grafana_host
+      status_code = "HTTP_301"
+    }
+  }
+
+  condition {
+    host_header {
+      values = [local.grafana_legacy_host]
+    }
+  }
+}
+
+moved {
+  from = aws_route53_record.grafana
+  to   = aws_route53_record.grafana["dev-monitoring.cking.co.kr"]
+}
+
 resource "aws_route53_record" "grafana" {
+  for_each = toset([local.grafana_host, local.grafana_legacy_host])
+
   zone_id = data.aws_route53_zone.main.zone_id
-  name    = "dev-monitoring.cking.co.kr"
+  name    = each.value
   type    = "A"
 
   alias {

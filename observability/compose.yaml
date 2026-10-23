@@ -85,7 +85,7 @@ services:
       - "127.0.0.1:3000:3000"
       - "10.0.21.245:3000:3000"
     environment:
-      GF_SERVER_ROOT_URL: https://dev-monitoring.cking.co.kr
+      GF_SERVER_ROOT_URL: https://monitoring.cking.co.kr
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD가 지정되지 않았습니다}
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_AUTH_GOOGLE_ENABLED: "true"

@@ -22,7 +22,7 @@ aws ec2 describe-instances --region ap-northeast-2 --filters Name=tag:Name,Value
   --query 'Reservations[0].Instances[0].InstanceId' --output text
 ```
 
-관측 서버는 `Values=dev-cking-observability`, 추천 배치 서버는 `Values=dev-cking-recommendation`. Grafana는 `https://dev-monitoring.cking.co.kr`.
+관측 서버는 `Values=dev-cking-observability`, 추천 배치 서버는 `Values=dev-cking-recommendation`. Grafana는 `https://monitoring.cking.co.kr`.
 
 대시보드는 맨 위 `환경`에서 개발·운영·부하 테스트를 고르고, `서버`는 그 환경의 서버를 여러 대·전체로 고른다. 요청·응답 패널은 고른 서버를 합치고, 스레드·연결·메모리·CPU는 서버별 선으로 본다. Redis·RDS 패널은 서버 선택과 관계없이 그 환경의 것을 본다.
 

@@ -10,7 +10,7 @@ Grafana 경보 경로가 멈췄다. 이 동안에는 **다른 모든 Grafana 경
 
 ## 먼저 볼 곳
 
-1. `https://dev-monitoring.cking.co.kr` 접속
+1. `https://monitoring.cking.co.kr` 접속
 2. 접속이 안 되면 관측 서버 SSM 접속
 
 ```bash
