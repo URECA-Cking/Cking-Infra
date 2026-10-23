@@ -18,6 +18,7 @@ WEBHOOK_PARAMETERS = {
     "dev": "/cking/dev/monitoring/SLACK_ALERT_WEBHOOK_URL",
     "prod": "/cking/dev/monitoring/SLACK_PROD_ALERT_WEBHOOK_URL",
 }
+ENV_LABELS = {"dev": "개발", "prod": "운영"}
 RUNBOOK_URL = re.compile(r"https://github\.com/URECA-Cking/Cking-Infra/blob/main/docs/runbooks/([A-Za-z0-9-]+)\.md")
 
 _dynamodb = boto3.client("dynamodb", region_name=REGION)
@@ -44,7 +45,7 @@ def handler(event, context):
             result = diagnose(alert["prompt"])
         except Exception as error:
             print(f"진단 실패: {alert['name']}: {error!r}")
-            post(alert["env"], f"*AI 진단 실패: {alert['name']}*\n`{type(error).__name__}`. 런북을 직접 따른다: {alert['runbook_link']}")
+            post(alert["env"], f"*[AI 진단 실패] {alert['name']}* · {ENV_LABELS[alert['env']]}\n`{type(error).__name__}`. 런북을 직접 따른다: {alert['runbook_link']}")
             continue
         print(json.dumps({"alert": alert["name"], "usage": result["usage"]}, ensure_ascii=False))
         post(alert["env"], render(alert, result))
@@ -139,18 +140,14 @@ def within_daily_limit(env):
         if error.response["Error"]["Code"] != "ConditionalCheckFailedException":
             raise
     if claim([f"limit-notice#{env}#{today}"]):
-        post(env, f"*AI 진단 하루 상한({DAILY_LIMIT}건)에 닿았다.* 오늘 남은 경보는 진단하지 않으니 런북을 직접 따른다.")
+        post(env, f"*[AI 진단] 하루 상한({DAILY_LIMIT}건)에 닿았다* · {ENV_LABELS[env]}\n오늘 남은 경보는 진단하지 않는다. 런북을 직접 따른다.")
     return False
 
 
 def render(alert, result):
     usage = result["usage"]
-    footer = (
-        f"런북: {alert['runbook_link']} · 조회 {usage['tool_calls']}번 · "
-        f"토큰 입력 {usage['input'] + usage['cache_read'] + usage['cache_write']:,}(캐시 읽기 {usage['cache_read']:,})·출력 {usage['output']:,} · "
-        f"약 ${usage['cost']:.2f}"
-    )
-    return f"*AI 진단: {alert['name']}* (참고용, 실행은 사람이 판단)\n{result['text']}\n_{footer}_"
+    footer = f"런북: {alert['runbook_link']} · 조회 {usage['tool_calls']}번 · ${usage['cost']:.2f}"
+    return f"*[AI 진단] {alert['name']}* · {ENV_LABELS[alert['env']]} · 참고용\n{result['text']}\n_{footer}_"
 
 
 def post(env, text):
