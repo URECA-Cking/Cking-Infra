@@ -30,7 +30,7 @@ aws ec2 describe-instances --region ap-northeast-2 --filters Name=tag:Name,Value
 
 경보가 울리면 그 경보가 가는 채널에 `[AI 진단] <경보 이름>` 메시지가 뒤따른다. Claude(Claude API)가 그 경보의 런북을 읽고 먼저 볼 곳을 읽기 전용으로 조회해 원인과 할 일을 제안한 것이다(`alert-analyzer/`, `envs/dev/alert_analyzer.tf`, `envs/prod/alert_analyzer.tf`). 개발 경보(Grafana, CloudWatch 서버 상태 검사)는 개발 경보 채널, 운영 경보(Grafana, CloudWatch, 서버 띄우기 실패)는 운영 경보 채널로 온다.
 
-- 참고용이다. 조치는 런북과 대조해 사람이 판단한다. 서버 안(SSM 세션)에서만 보이는 것은 조회하지 못한다
+- 참고용이다. 조치는 런북과 대조해 사람이 판단한다. 서버 안(SSM 세션)에서만 보이는 것은 조회하지 못한다. 서버에 들어온 SSM 명령·세션 기록(무엇을, 누가, 언제)은 조회한다
 - 같은 경보는 한 번만 진단하고(서버 띄우기 실패는 서버 그룹마다 한 시간에 한 번), 개발·운영 각각 하루 12건을 넘으면 그날은 멈춘다(한 번 알린다). 메시지 끝에 조회 횟수·비용이 붙는다
 - 데드맨은 진단하지 않는다
 - 진단이 실패하면 `AI 진단 실패` 메시지가 온다. Claude API 크레딧이 떨어지거나 키(`/cking/dev/monitoring/ANTHROPIC_API_KEY`)가 만료돼도 같다. 로그는 CloudWatch Logs `/aws/lambda/dev-cking-alert-analyzer`
