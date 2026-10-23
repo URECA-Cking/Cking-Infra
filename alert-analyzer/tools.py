@@ -22,6 +22,7 @@ _elbv2 = boto3.client("elbv2", region_name=REGION)
 _cloudwatch = boto3.client("cloudwatch", region_name=REGION)
 _s3 = boto3.client("s3", region_name=REGION)
 _ssm = boto3.client("ssm", region_name=REGION)
+_cloudtrail = boto3.client("cloudtrail", region_name=REGION)
 
 # 진단 한 번에 제안된 조치. diagnose가 진단마다 비운다.
 PROPOSAL = {}
@@ -190,6 +191,58 @@ def get_console_output(instance_id: str) -> str:
 
 
 @beta_tool
+def list_server_operations(instance_id: str, since: str, until: str = "") -> str:
+    """서버에 들어온 SSM 명령(Run Command)과 접속 세션(Session Manager)을 시간순으로 돌려준다.
+    명령은 문서·명령 줄·요청자, 세션은 접속한 사람과 시작·끝 시각이 나온다. 서비스·타이머가 멈췄거나 설정이 바뀐 것이 사람의 조작인지 가른다.
+    명령은 최근 25건과 문서별 건수(commands_by_document)를 준다. 세션 안에서 입력한 명령은 남지 않는다.
+    요청자는 CloudTrail에 아직 반영되지 않았거나 범위 안 SendCommand가 500건을 넘어 찾지 못하면 비어 있다.
+
+    Args:
+        instance_id: 서버 ID(i-로 시작).
+        since: 범위 시작(UTC, 예: 2026-10-23T01:30:00Z). 경보 시작 1~2시간 전부터 본다.
+        until: 범위 끝(UTC). 비우면 지금.
+    """
+    if not re.fullmatch(r"i-[0-9a-f]{8,17}", instance_id):
+        return "서버 ID 형식이 아니다"
+    start = _utc_time(since)
+    end = _utc_time(until) if until else datetime.datetime.now(datetime.timezone.utc)
+    window = [{"key": "InvokedAfter", "value": _default(start)}, {"key": "InvokedBefore", "value": _default(end)}]
+    items = [item for page in _ssm.get_paginator("list_commands").paginate(InstanceId=instance_id, Filters=window)
+             for item in page["Commands"]]
+    requesters = {}
+    if items:
+        pages = _cloudtrail.get_paginator("lookup_events").paginate(
+            LookupAttributes=[{"AttributeKey": "EventName", "AttributeValue": "SendCommand"}],
+            StartTime=start, EndTime=end, PaginationConfig={"MaxItems": 500},
+        )
+        for page in pages:
+            for event in page["Events"]:
+                detail = json.loads(event["CloudTrailEvent"])
+                command_id = ((detail.get("responseElements") or {}).get("command") or {}).get("commandId")
+                requesters[command_id] = detail["userIdentity"].get("arn", "").split(":", 5)[-1]
+    commands = [{
+        "time": item["RequestedDateTime"],
+        "document": item["DocumentName"],
+        "parameters": json.dumps(item.get("Parameters", {}), ensure_ascii=False)[:200],
+        "status": item["Status"],
+        "requester": requesters.get(item["CommandId"]),
+    } for item in items]
+    documents = {}
+    for item in items:
+        documents[item["DocumentName"]] = documents.get(item["DocumentName"], 0) + 1
+    sessions = []
+    for state in ("Active", "History"):
+        for page in _ssm.get_paginator("describe_sessions").paginate(
+                State=state, Filters=[{"key": "Target", "value": instance_id}, *window]):
+            for item in page["Sessions"]:
+                sessions.append({"start": item["StartDate"], "end": item.get("EndDate"), "owner": item["Owner"].split(":", 5)[-1],
+                                 "status": item["Status"]})
+    commands.sort(key=lambda c: c["time"])
+    sessions.sort(key=lambda s: s["start"])
+    return _json({"command_total": len(commands), "commands_by_document": documents, "commands": commands[-25:], "sessions": sessions[-20:]})
+
+
+@beta_tool
 def describe_target_health(target_group: str) -> str:
     """ALB 대상 그룹의 대상별 상태와 비정상 사유를 돌려준다.
 
@@ -295,6 +348,6 @@ def propose_action(
 
 TOOLS = [
     read_runbook, query_prometheus, query_loki, describe_scaling_activities, describe_instances,
-    get_console_output, describe_target_health, get_cloudwatch_metric, describe_alarm_history,
+    get_console_output, list_server_operations, describe_target_health, get_cloudwatch_metric, describe_alarm_history,
     list_release_tags, propose_action,
 ]

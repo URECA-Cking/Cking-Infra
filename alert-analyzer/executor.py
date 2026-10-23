@@ -56,7 +56,7 @@ def handler(event, context):
 
     mark = "실행함" if ok else "실행하지 못함"
     channel, ts = item.get("channel", {}).get("S"), item.get("ts", {}).get("S")
-    slack.post(env, f"*[AI 조치] {title}* · {actions.ENV_LABELS[env]} · {mark}\n승인: <@{approver}> · {elapsed}초\n{result}", thread_ts=ts)
+    slack.post(env, f"*[AI 조치] {title}* · {actions.ENV_LABELS[env]} 환경 · {mark}\n승인: <@{approver}> · {elapsed}초\n{result}", thread_ts=ts)
     if channel and ts:
         base = json.loads(item["base_blocks"]["S"])
         stamp = datetime.datetime.now(KST).strftime("%H:%M")

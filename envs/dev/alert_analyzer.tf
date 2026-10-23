@@ -125,6 +125,9 @@ resource "aws_iam_role_policy" "alert_analyzer" {
           "elasticloadbalancing:DescribeTargetHealth",
           "cloudwatch:GetMetricStatistics",
           "cloudwatch:DescribeAlarmHistory",
+          "ssm:ListCommands",
+          "ssm:DescribeSessions",
+          "cloudtrail:LookupEvents",
         ]
         Resource = "*"
       },
