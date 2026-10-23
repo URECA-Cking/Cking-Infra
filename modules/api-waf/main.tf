@@ -1,10 +1,13 @@
 # API(ALB) 앞단 WAF. 개발과 운영이 같은 규칙을 쓰도록 모듈로 둔다.
 # Core rule set의 본문 8KB 차단은 multipart 업로드와 이벤트 등록·수정을 막으므로, 그 요청만 빼고 직접 막는다.
+# 본문 XSS 판정은 이미지 바이트에서 오탐이 나므로 multipart 요청만 빼고 직접 막는다.
 
 locals {
   managed_rule_groups = ["AWSManagedRulesCommonRuleSet", "AWSManagedRulesKnownBadInputsRuleSet"]
+  counted_core_rules  = ["SizeRestrictions_BODY", "CrossSiteScripting_BODY"]
   body_size_label     = "awswaf:managed:aws:core-rule-set:SizeRestrictions_Body"
   body_size_exempt    = "body-size-exempt"
+  xss_body_label      = "awswaf:managed:aws:core-rule-set:CrossSiteScripting_Body"
 }
 
 resource "aws_wafv2_ip_set" "allow" {
@@ -125,7 +128,7 @@ resource "aws_wafv2_web_acl" "this" {
           name        = rule.value
 
           dynamic "rule_action_override" {
-            for_each = rule.value == "AWSManagedRulesCommonRuleSet" ? ["SizeRestrictions_BODY"] : []
+            for_each = rule.value == "AWSManagedRulesCommonRuleSet" ? local.counted_core_rules : []
 
             content {
               name = rule_action_override.value
@@ -319,6 +322,61 @@ resource "aws_wafv2_web_acl" "this" {
       cloudwatch_metrics_enabled = true
       sampled_requests_enabled   = true
       metric_name                = "${var.name}-body-size"
+    }
+  }
+
+  rule {
+    name     = "xss-body"
+    priority = 32
+
+    action {
+      dynamic "count" {
+        for_each = var.mode == "count" ? [1] : []
+        content {}
+      }
+      dynamic "block" {
+        for_each = var.mode == "block" ? [1] : []
+        content {}
+      }
+    }
+
+    statement {
+      and_statement {
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = local.xss_body_label
+          }
+        }
+
+        statement {
+          not_statement {
+            statement {
+              byte_match_statement {
+                search_string         = "multipart/form-data"
+                positional_constraint = "STARTS_WITH"
+
+                field_to_match {
+                  single_header {
+                    name = "content-type"
+                  }
+                }
+
+                text_transformation {
+                  priority = 0
+                  type     = "LOWERCASE"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      sampled_requests_enabled   = true
+      metric_name                = "${var.name}-xss-body"
     }
   }
 
