@@ -26,6 +26,11 @@ DOCUMENTS = {
 }
 GITHUB_TOKEN_PARAMETER = "/cking/dev/monitoring/GITHUB_ACTIONS_TOKEN"
 PROD_DEPLOY_WORKFLOW = "https://api.github.com/repos/URECA-Cking/Cking-BE/actions/workflows/deploy-prod.yml"
+# 운영 배포는 수동 실행(deploy-prod.yml)과 main push의 CI/CD(deploy-prod.yml을 불러 씀) 두 곳에서 돈다
+PROD_DEPLOY_RUNS = [
+    f"{PROD_DEPLOY_WORKFLOW}/runs?",
+    "https://api.github.com/repos/URECA-Cking/Cking-BE/actions/workflows/cicd.yml/runs?branch=main&event=push&",
+]
 REDIS_RAISE_MIN_AVAILABLE_MIB = 256
 REFRESH_BUSY = ("Pending", "InProgress", "Cancelling", "RollbackInProgress", "Baking")
 
@@ -149,9 +154,10 @@ def app_rollback(params, stage):
         if tag == current:
             raise Refused(f"{tag}는 지금 운영에 배포된 태그다")
         if stage == "run":
-            for status in ("in_progress", "queued"):
-                if _github("GET", f"{PROD_DEPLOY_WORKFLOW}/runs?status={status}&per_page=1").get("total_count"):
-                    raise Refused("Deploy to prod가 실행 중이다. 끝난 뒤 다시 본다")
+            for runs in PROD_DEPLOY_RUNS:
+                for status in ("in_progress", "queued"):
+                    if _github("GET", f"{runs}status={status}&per_page=1").get("total_count"):
+                        raise Refused("운영 배포(Deploy to prod 또는 main CI/CD)가 실행 중이다. 끝난 뒤 다시 본다")
     if stage == "check":
         branch = "main" if env == "prod" else "develop"
         warning = "보안 수정 앞 태그로 되돌리지 않는다. " if env == "prod" else ""
