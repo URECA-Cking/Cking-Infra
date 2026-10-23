@@ -76,8 +76,9 @@ Grafana Explore(Loki)에서 작업자 로그는 `{instance="dev-cking-recommenda
 - 운영 서버 띄우기 실패 알림(`prod-cking-launch-failed`)은 이 그룹을 보지 않는다. 버려지는 서버는 활동과 [추천 배치 멈춤](cking-recommendation-stalled.md) 경보로 안다
 - 배포: 배치 저장소 main 머지 때 CI가 개발에서 확인한 같은 패키지를 운영 배포 버킷에 복사하고 배포 버전 값을 바꾼 뒤 서버를 교체한다. 첫 운영 배포 전에는 서버가 시작 대기에서 버려지기를 반복한다
 - 서버 역할(`envs/prod-base`)이 시작 대기 끝내기 권한을 가져야 한다. `envs/prod`보다 먼저 apply한다
-- 켜는 순서: 운영 데이터를 부하 테스트 뒤 되돌리므로 그 전에는 타이머를 켜지 않는다(값 6개 중 4개만 넣음)
+- 켜는 순서(운영을 새로 만들 때): 값 6개가 다 있어야 부팅 때 타이머가 켜진다. 운영 데이터를 되돌릴 예정이면(부하 테스트) 2를 되돌린 뒤로 미룬다
   1. 첫 BE 운영 배포 전: 배치 키·태그 토큰 원문(`/cking/prod-recommendation/CKING_RECOMMENDATION_API_KEY`, `CKING_CONTENT_TAG_ACCESS_TOKEN`)과 BE 쪽 해시(`/cking/prod/CKING_RECOMMENDATION_API_KEY_HASHES`, `CKING_CONTENT_TAG_TOKEN_HASH`)
-  2. 운영 데이터를 되돌린 뒤: 운영 DB `creator_content_taxonomy`에 승인 taxonomy 등록 → `OPENAI_API_KEY`·`DEEPINFRA_API_KEY`(개발 값) → 서버 교체(타이머 켜짐)
+  2. 운영 DB `creator_content_taxonomy`에 승인 taxonomy 등록 → `OPENAI_API_KEY`·`DEEPINFRA_API_KEY`(개발 값) → 서버 교체(타이머 켜짐). taxonomy 없이 키만 넣으면 타이머가 켜져 입력 조회가 막히고 [추천 배치 실패 반복](cking-recommendation-failing.md)이 울린다
+  - taxonomy 행은 배포 패키지의 taxonomy 파일·해시 계산 코드와 생성 설정 해시가 개발 등록 때와 같으면 개발 DB의 행과 같다. 넣은 뒤 배치 서버에서 배치 토큰으로 `GET /api/internal/content-tags/inputs`가 200·`taxonomyApproved: true`이고 해시가 패키지와 같은지 본다
 - 운영 데이터를 되돌릴 때 배치를 이미 켰다면 타이머를 멈추고 taxonomy를 다시 등록한 뒤 상태 폴더를 비운다. 작업자는 BE를 주소로만 구분해 예전 DB에 보낸 기록을 새 DB에도 보낸 것으로 본다
 - 운영을 내릴 때는 상태 디스크의 `prevent_destroy`를 먼저 뺀다

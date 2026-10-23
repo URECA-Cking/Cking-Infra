@@ -93,7 +93,7 @@ aws lambda put-function-concurrency --region ap-northeast-2 --function-name dev-
 
 | 경보 | 조건 | 받는 곳 | 런북 |
 | --- | --- | --- | --- |
-| `cking-monthly` 예산 (AWS Budgets, 콘솔 관리) | 월 $150의 실제 85%($127.5)·100%, 예측 100% | 인프라 담당 메일 | [aws-budget](aws-budget.md) |
+| `cking-monthly` 예산 (AWS Budgets, 콘솔 관리) | 예산(평소 월 $150, 운영을 띄운 동안 $250)의 실제 85%·100%, 예측 100% | 인프라 담당 메일 | [aws-budget](aws-budget.md) |
 
 ### 배포
 
