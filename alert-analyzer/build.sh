@@ -9,6 +9,6 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 python3 -m pip install --quiet --target "$work" --platform manylinux2014_aarch64 --implementation cp \
   --python-version 3.13 --only-binary=:all: -r requirements.txt
-cp handler.py diagnose.py tools.py prompt.md "$work/"
+cp ./*.py prompt.md "$work/"
 rm -f "$out"
 (cd "$work" && zip -qr "$out" .)

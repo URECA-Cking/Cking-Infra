@@ -3,27 +3,24 @@ import json
 import os
 import re
 import time
-import urllib.request
+import uuid
 
 import boto3
 from botocore.exceptions import ClientError
 
+import slack
 from diagnose import diagnose
 
 REGION = "ap-northeast-2"
 KST = datetime.timezone(datetime.timedelta(hours=9))
 STATE_TABLE = os.environ["STATE_TABLE"]
 DAILY_LIMIT = int(os.environ.get("DAILY_LIMIT", "12"))
-WEBHOOK_PARAMETERS = {
-    "dev": "/cking/dev/monitoring/SLACK_ALERT_WEBHOOK_URL",
-    "prod": "/cking/dev/monitoring/SLACK_PROD_ALERT_WEBHOOK_URL",
-}
+ACTION_VALID_SECONDS = 15 * 60
+ACTION_NEEDED = re.compile(r"^\*판단\*:\s*지금 조치 필요")
 ENV_LABELS = {"dev": "개발", "prod": "운영"}
 RUNBOOK_URL = re.compile(r"https://github\.com/URECA-Cking/Cking-Infra/blob/main/docs/runbooks/([A-Za-z0-9-]+)\.md")
 
 _dynamodb = boto3.client("dynamodb", region_name=REGION)
-_ssm = boto3.client("ssm", region_name=REGION)
-_webhooks = {}
 
 
 def handler(event, context):
@@ -45,10 +42,10 @@ def handler(event, context):
             result = diagnose(alert["prompt"])
         except Exception as error:
             print(f"진단 실패: {alert['name']}: {error!r}")
-            post(alert["env"], f"*[AI 진단 실패] {alert['name']}* · {ENV_LABELS[alert['env']]}\n`{type(error).__name__}`. 런북을 직접 따른다: {alert['runbook_link']}")
+            slack.post(alert["env"], f"*[AI 진단 실패] {alert['name']}* · {ENV_LABELS[alert['env']]}\n`{type(error).__name__}`. 런북을 직접 따른다: {alert['runbook_link']}")
             continue
-        print(json.dumps({"alert": alert["name"], "usage": result["usage"]}, ensure_ascii=False))
-        post(alert["env"], render(alert, result))
+        print(json.dumps({"alert": alert["name"], "usage": result["usage"], "proposal": result["proposal"]}, ensure_ascii=False))
+        publish(alert, result)
 
 
 def parse(message):
@@ -140,21 +137,60 @@ def within_daily_limit(env):
         if error.response["Error"]["Code"] != "ConditionalCheckFailedException":
             raise
     if claim([f"limit-notice#{env}#{today}"]):
-        post(env, f"*[AI 진단] 하루 상한({DAILY_LIMIT}건)에 닿았다* · {ENV_LABELS[env]}\n오늘 남은 경보는 진단하지 않는다. 런북을 직접 따른다.")
+        slack.post(env, f"*[AI 진단] 하루 상한({DAILY_LIMIT}건)에 닿았다* · {ENV_LABELS[env]}\n오늘 남은 경보는 진단하지 않는다. 런북을 직접 따른다.")
     return False
 
 
 def render(alert, result):
+    """(웹훅용 글자, 버튼을 뺀 블록)을 돌려준다."""
     usage = result["usage"]
-    footer = f"런북: {alert['runbook_link']} · 조회 {usage['tool_calls']}번 · ${usage['cost']:.2f}"
-    return f"*[AI 진단] {alert['name']}* · {ENV_LABELS[alert['env']]} · 참고용\n{result['text']}\n_{footer}_"
+    head = f"*[AI 진단] {alert['name']}* · {ENV_LABELS[alert['env']]} · 참고용\n{result['text']}"
+    foot = f"런북: {alert['runbook_link']} · 조회 {usage['tool_calls']}번 · ${usage['cost']:.2f}"
+    return f"{head}\n_{foot}_", slack.sections(head) + [slack.context(foot)]
 
 
-def post(env, text):
-    if env not in _webhooks:
-        _webhooks[env] = _ssm.get_parameter(Name=WEBHOOK_PARAMETERS[env], WithDecryption=True)["Parameter"]["Value"]
-    request = urllib.request.Request(
-        _webhooks[env], data=json.dumps({"text": text}).encode(), headers={"Content-Type": "application/json"}, method="POST",
-    )
-    with urllib.request.urlopen(request, timeout=10) as response:
-        response.read()
+def button(record_id, title, impact):
+    return {"type": "actions", "block_id": "ai_action", "elements": [{
+        "type": "button", "action_id": "approve_action", "style": "danger", "value": record_id,
+        "text": {"type": "plain_text", "text": f"승인하고 실행: {title}"[:75]},
+        "confirm": {
+            "title": {"type": "plain_text", "text": "조치 실행 확인"},
+            "text": {"type": "mrkdwn", "text": impact[:300]},
+            "confirm": {"type": "plain_text", "text": "실행"},
+            "deny": {"type": "plain_text", "text": "취소"},
+        },
+    }]}
+
+
+def publish(alert, result):
+    text, blocks = render(alert, result)
+    proposal = result.get("proposal")
+    if not proposal or not ACTION_NEEDED.match(result["text"]):
+        slack.post(alert["env"], text, blocks)
+        return
+    if not proposal["ok"]:
+        blocks.append(slack.context(f"조치 버튼 없음({proposal['title']}): {proposal['note']}"))
+        slack.post(alert["env"], text, blocks)
+        return
+    record_id = uuid.uuid4().hex
+    now = int(time.time())
+    _dynamodb.put_item(TableName=STATE_TABLE, Item={
+        "key": {"S": f"action#{record_id}"},
+        "action": {"S": proposal["action"]},
+        "params": {"S": json.dumps(proposal["params"], ensure_ascii=False)},
+        "title": {"S": proposal["title"]},
+        "env": {"S": alert["env"]},
+        "alert": {"S": alert["name"]},
+        "base_blocks": {"S": json.dumps(blocks, ensure_ascii=False)},
+        "status": {"S": "pending"},
+        "valid_until": {"N": str(now + ACTION_VALID_SECONDS)},
+        "expires_at": {"N": str(now + 7 * 86400)},
+    })
+    note = slack.context("승인자만 누를 수 있다. 15분이 지나면 실행하지 않는다.")
+    channel, ts = slack.post(alert["env"], text, blocks[:-1] + [button(record_id, proposal["title"], proposal["note"]), note, blocks[-1]])
+    if channel:
+        _dynamodb.update_item(
+            TableName=STATE_TABLE, Key={"key": {"S": f"action#{record_id}"}},
+            UpdateExpression="SET #c = :c, #t = :t", ExpressionAttributeNames={"#c": "channel", "#t": "ts"},
+            ExpressionAttributeValues={":c": {"S": channel}, ":t": {"S": ts}},
+        )

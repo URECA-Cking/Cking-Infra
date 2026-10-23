@@ -28,10 +28,10 @@ aws ec2 describe-instances --region ap-northeast-2 --filters Name=tag:Name,Value
 
 ## AI 진단
 
-경보가 울리면 그 경보가 가는 채널에 `AI 진단: <경보 이름>` 메시지가 뒤따른다. Claude(Claude API)가 그 경보의 런북을 읽고 먼저 볼 곳을 읽기 전용으로 조회해 원인과 할 일을 제안한 것이다(`alert-analyzer/`, `envs/dev/alert_analyzer.tf`, `envs/prod/alert_analyzer.tf`). 개발 경보(Grafana, CloudWatch 서버 상태 검사)는 개발 경보 채널, 운영 경보(Grafana, CloudWatch, 서버 띄우기 실패)는 운영 경보 채널로 온다.
+경보가 울리면 그 경보가 가는 채널에 `[AI 진단] <경보 이름>` 메시지가 뒤따른다. Claude(Claude API)가 그 경보의 런북을 읽고 먼저 볼 곳을 읽기 전용으로 조회해 원인과 할 일을 제안한 것이다(`alert-analyzer/`, `envs/dev/alert_analyzer.tf`, `envs/prod/alert_analyzer.tf`). 개발 경보(Grafana, CloudWatch 서버 상태 검사)는 개발 경보 채널, 운영 경보(Grafana, CloudWatch, 서버 띄우기 실패)는 운영 경보 채널로 온다.
 
 - 참고용이다. 조치는 런북과 대조해 사람이 판단한다. 서버 안(SSM 세션)에서만 보이는 것은 조회하지 못한다
-- 같은 경보는 한 번만 진단하고(서버 띄우기 실패는 서버 그룹마다 한 시간에 한 번), 개발·운영 각각 하루 12건을 넘으면 그날은 멈춘다(한 번 알린다). 메시지 끝에 조회 횟수·토큰·대략 비용이 붙는다
+- 같은 경보는 한 번만 진단하고(서버 띄우기 실패는 서버 그룹마다 한 시간에 한 번), 개발·운영 각각 하루 12건을 넘으면 그날은 멈춘다(한 번 알린다). 메시지 끝에 조회 횟수·비용이 붙는다
 - 데드맨은 진단하지 않는다
 - 진단이 실패하면 `AI 진단 실패` 메시지가 온다. Claude API 크레딧이 떨어지거나 키(`/cking/dev/monitoring/ANTHROPIC_API_KEY`)가 만료돼도 같다. 로그는 CloudWatch Logs `/aws/lambda/dev-cking-alert-analyzer`
 - 끄기: Grafana는 `policies.yaml`의 `AI 진단` 경로, CloudWatch는 `envs/dev`·`envs/prod`의 `alert_analyzer.tf` 구독을 지우는 PR. 바로 멈춰야 하면 예약 동시성을 0으로 둔다(다음 `envs/dev` apply가 2로 되돌린다)
@@ -39,6 +39,34 @@ aws ec2 describe-instances --region ap-northeast-2 --filters Name=tag:Name,Value
 ```bash
 # Mac
 aws lambda put-function-concurrency --region ap-northeast-2 --function-name dev-cking-alert-analyzer --reserved-concurrent-executions 0
+```
+
+### 조치 버튼
+
+판단이 "지금 조치 필요"이고 아래 목록의 조치가 실행 직전 검사를 통과하면 메시지에 `승인하고 실행` 버튼이 붙는다(`envs/dev/alert_actions.tf`, `alert-analyzer/actions.py`). 검사를 통과하지 못하면 `조치 버튼 없음`과 이유가 붙는다.
+
+- 누를 수 있는 사람은 승인자 목록(`alert_actions.tf`의 `alert_action_approvers`, Parameter Store `AI_ACTION_APPROVERS`)뿐이다. 바꾸려면 PR
+- 15분 안에 한 번만 실행된다. 확인 창에 영향이 보이고, 실행 직전에 같은 검사를 다시 한다. 결과는 메시지 스레드에 남고, 버튼은 `실행함`·`실행하지 못함`과 누른 사람·시각으로 바뀐다. 로그는 `/aws/lambda/dev-cking-alert-approvals`, `/aws/lambda/dev-cking-alert-executor`
+- 운영 되돌리기는 GitHub 토큰(`/cking/dev/monitoring/GITHUB_ACTIONS_TOKEN`, Cking-BE Actions 읽기·쓰기)으로 `Deploy to prod`를 실행한다. 토큰이 없거나 만료되면 `실행하지 못함`
+- 런북에 조치가 새로 생기면 `actions.py`와 이 표에 함께 넣는다
+
+| 조치 | 런북 | 실행 직전 검사 |
+| --- | --- | --- |
+| 추천 배치 서버 교체(개발·운영) | [recommendation-batch](recommendation-batch.md) | 교체가 진행 중이 아니다 |
+| 운영 앱 서버 1대 교체 | [운영](#운영) | 운영 앱 서버 그룹의 서버, 정상 서버 2대 이상 |
+| 운영 앱 서버 대수 조정 | [cking-stream-lag](cking-stream-lag.md) | 2\~4대 안, 지금 대수와 다르다 |
+| 댓글 필터 차단·해제(개발·운영) | [comment-filter](comment-filter.md) | 이미 그 상태가 아니다 |
+| 앱 이전 버전 되돌리기(개발 `deploy.sh`, 운영 `Deploy to prod`) | [deploy-failed](deploy-failed.md) | 그 태그의 배포 파일이 있다. 운영은 지금 태그가 아니고 배포가 실행 중이 아니다 |
+| 개발 앱 컨테이너 재시작 | [cking-stream-stopped](cking-stream-stopped.md) | 없음 |
+| 개발 Redis 한도 임시 상향(384MB) | [cking-redis-rejected](cking-redis-rejected.md) | 서버 여유 메모리 256MiB 이상(올리는 폭의 2배) |
+| 운영 ElastiCache 노드 한 단계 상향 | [cking-redis-rejected](cking-redis-rejected.md#운영에서-다른-점) | 복제 그룹이 `available`, 다음 크기가 정해져 있다 |
+| 개발 EC2 중지·시작 | [ec2-system-check](ec2-system-check.md) | 시스템 상태 검사가 `impaired` |
+
+버튼만 끄려면 실행 함수의 예약 동시성을 0으로 둔다. 누른 조치는 실행되지 않고 15분 뒤 버려진다(다음 `envs/dev` apply가 1로 되돌린다).
+
+```bash
+# Mac
+aws lambda put-function-concurrency --region ap-northeast-2 --function-name dev-cking-alert-executor --reserved-concurrent-executions 0
 ```
 
 ## 경보 목록
