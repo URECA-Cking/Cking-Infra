@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """경보 진단 Lambda가 SSM 문서(dev-cking-observability-query)로 실행하는 읽기 전용 조회.
 
-인자: 종류(prometheus, prometheus_range, loki), base64로 감싼 쿼리, 조회 범위(분).
+인자: 종류(prometheus, prometheus_range, loki), base64로 감싼 쿼리, 조회 범위(분), 끝 시각(epoch 초, 비우면 지금).
 """
 import base64
 import datetime
@@ -63,13 +63,15 @@ def streams(result):
 
 def main():
     kind, encoded, minutes = sys.argv[1], sys.argv[2], int(sys.argv[3])
+    end_arg = sys.argv[4] if len(sys.argv) > 4 else ""
     query = base64.b64decode(encoded).decode()
-    end = int(time.time())
+    now = int(time.time())
+    end = min(int(end_arg), now) if end_arg else now
     start = end - max(minutes, 1) * 60
     step = max(15, (end - start) // MAX_POINTS)
 
     if kind == "prometheus":
-        url = "http://prometheus:9090/api/v1/query?" + urllib.parse.urlencode({"query": query})
+        url = "http://prometheus:9090/api/v1/query?" + urllib.parse.urlencode({"query": query, "time": end})
     elif kind == "prometheus_range":
         url = "http://prometheus:9090/api/v1/query_range?" + urllib.parse.urlencode(
             {"query": query, "start": start, "end": end, "step": step})
