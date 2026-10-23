@@ -37,7 +37,7 @@ aws lambda put-function-concurrency --region ap-northeast-2 --function-name prod
 
 ## 판정 상태 보기
 
-Grafana(`https://dev-monitoring.cking.co.kr`) → Explore. 운영은 `instance="dev-cking-app"`을 `instance=~"prod-cking-app.*"`로 바꾼다.
+Grafana(`https://monitoring.cking.co.kr`) → Explore. 운영은 `instance="dev-cking-app"`을 `instance=~"prod-cking-app.*"`로 바꾼다.
 
 - 판정·실패 로그(Loki):
   ```
