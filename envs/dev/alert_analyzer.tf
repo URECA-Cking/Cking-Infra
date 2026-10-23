@@ -28,13 +28,14 @@ resource "aws_ssm_document" "observability_query" {
       kind    = { type = "String", allowedValues = ["prometheus", "prometheus_range", "loki"] }
       query   = { type = "String", allowedPattern = "^[A-Za-z0-9+/=]+$" }
       minutes = { type = "String", allowedPattern = "^[0-9]{1,5}$", default = "30" }
+      end     = { type = "String", allowedPattern = "^[0-9]{0,10}$", default = "" }
     }
     mainSteps = [{
       action = "aws:runShellScript"
       name   = "query"
       inputs = {
         timeoutSeconds = "90"
-        runCommand     = ["python3 /opt/observability/query.py '{{ kind }}' '{{ query }}' '{{ minutes }}'"]
+        runCommand     = ["python3 /opt/observability/query.py '{{ kind }}' '{{ query }}' '{{ minutes }}' '{{ end }}'"]
       }
     }]
   })
