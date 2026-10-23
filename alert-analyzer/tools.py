@@ -1,26 +1,30 @@
-import base64
 import datetime
 import json
-import os
 import re
-import time
 import urllib.request
+from typing import Literal
 
 import boto3
 from anthropic import beta_tool
 
+import actions
+from commands import observability_query as _observability_query
+from commands import utc_time as _utc_time
+
 REGION = "ap-northeast-2"
 RUNBOOK_BASE = "https://raw.githubusercontent.com/URECA-Cking/Cking-Infra/main/docs/runbooks/"
-OBSERVABILITY_INSTANCE = os.environ.get("OBSERVABILITY_INSTANCE_ID", "")
-QUERY_DOCUMENT = os.environ.get("QUERY_DOCUMENT", "dev-cking-observability-query")
 MAX_RESULT_CHARS = 12000
 NAME_PATTERN = re.compile(r"^(dev|prod|loadtest)-cking-[a-z0-9-]+$")
 
-_ssm = boto3.client("ssm", region_name=REGION)
 _ec2 = boto3.client("ec2", region_name=REGION)
 _autoscaling = boto3.client("autoscaling", region_name=REGION)
 _elbv2 = boto3.client("elbv2", region_name=REGION)
 _cloudwatch = boto3.client("cloudwatch", region_name=REGION)
+_s3 = boto3.client("s3", region_name=REGION)
+_ssm = boto3.client("ssm", region_name=REGION)
+
+# 진단 한 번에 제안된 조치. diagnose가 진단마다 비운다.
+PROPOSAL = {}
 
 
 def _default(value):
@@ -32,37 +36,6 @@ def _default(value):
 def _json(value):
     text = json.dumps(value, ensure_ascii=False, default=_default)
     return text if len(text) <= MAX_RESULT_CHARS else text[:MAX_RESULT_CHARS] + "…(잘림)"
-
-
-def _utc_time(value):
-    parsed = datetime.datetime.fromisoformat(value)
-    return parsed.replace(tzinfo=datetime.timezone.utc) if parsed.tzinfo is None else parsed.astimezone(datetime.timezone.utc)
-
-
-def _observability_query(kind, query, minutes, end):
-    parameters = {
-        "kind": [kind],
-        "query": [base64.b64encode(query.encode()).decode()],
-        "minutes": [str(max(1, min(minutes, 10080)))],
-    }
-    if end:
-        parameters["end"] = [str(int(_utc_time(end).timestamp()))]
-    command = _ssm.send_command(
-        InstanceIds=[OBSERVABILITY_INSTANCE],
-        DocumentName=QUERY_DOCUMENT,
-        Parameters=parameters,
-        TimeoutSeconds=60,
-    )["Command"]["CommandId"]
-    for _ in range(60):
-        time.sleep(1)
-        try:
-            result = _ssm.get_command_invocation(CommandId=command, InstanceId=OBSERVABILITY_INSTANCE)
-        except _ssm.exceptions.InvocationDoesNotExist:
-            continue
-        if result["Status"] in ("Pending", "InProgress", "Delayed"):
-            continue
-        return result["StandardOutputContent"] or result["StandardErrorContent"] or result["Status"]
-    return "조회가 60초 안에 끝나지 않았다"
 
 
 @beta_tool
@@ -270,7 +243,58 @@ def describe_alarm_history(alarm_name: str) -> str:
     return _json([{"time": i["Timestamp"], "summary": i["HistorySummary"]} for i in items])
 
 
+@beta_tool
+def list_release_tags(env: str) -> str:
+    """앱 배포 태그를 최근 것부터 10개 돌려준다. 운영은 지금 배포된 태그(RELEASE_TAG)도 함께 준다. 되돌리기를 제안하기 전에 본다.
+
+    Args:
+        env: dev 또는 prod.
+    """
+    if env not in actions.DEPLOY_BUCKETS:
+        return "env는 dev나 prod다"
+    pages = _s3.get_paginator("list_objects_v2").paginate(Bucket=actions.DEPLOY_BUCKETS[env], Prefix="releases/", Delimiter="/")
+    tags = sorted((p["Prefix"].split("/")[1] for page in pages for p in page.get("CommonPrefixes", [])), reverse=True)
+    result = {"tags": tags[:10]}
+    if env == "prod":
+        result["current"] = _ssm.get_parameter(Name="/cking/prod/RELEASE_TAG")["Parameter"]["Value"]
+    return _json(result)
+
+
+@beta_tool
+def propose_action(
+    action: Literal["batch_server_replace", "app_server_replace", "app_capacity_set", "comment_filter", "app_rollback",
+                    "dev_app_restart", "dev_redis_maxmemory", "prod_redis_scale_up", "dev_ec2_stop_start"],
+    env: str = "", instance_id: str = "", desired_capacity: int = 0, tag: str = "", blocked: bool = True, target: str = "",
+) -> str:
+    """판단이 "지금 조치 필요"이고 런북의 조치가 아래 목록에 있을 때 그 조치 하나를 승인 버튼으로 제안한다.
+    실행은 승인자가 버튼을 누를 때 한다. 도구가 실행 직전 검사(런북의 하면 안 되는 것)를 하고, 통과하면 버튼이 붙는다.
+    batch_server_replace(env): 추천 배치 서버 교체. app_server_replace(instance_id): 운영 앱 서버 1대 교체.
+    app_capacity_set(desired_capacity): 운영 앱 서버 대수. comment_filter(env, blocked): 댓글 필터 차단(true)·해제(false).
+    app_rollback(env, tag): 앱 이전 버전 되돌리기(태그는 list_release_tags로 고른다). dev_app_restart: 개발 앱 컨테이너 재시작.
+    dev_redis_maxmemory: 개발 Redis 한도 256→384MB. prod_redis_scale_up: 운영 ElastiCache 노드 한 단계 상향.
+    dev_ec2_stop_start(target): 개발 EC2(dev-cking-app, dev-cking-observability) 중지·시작.
+
+    Args:
+        action: 조치 이름.
+        env: dev 또는 prod(필요한 조치만).
+        instance_id: app_server_replace의 서버 ID.
+        desired_capacity: app_capacity_set의 대수.
+        tag: app_rollback의 태그.
+        blocked: comment_filter에서 차단이면 true, 해제면 false.
+        target: dev_ec2_stop_start의 서버 이름.
+    """
+    params = {"env": env, "instance_id": instance_id, "desired_capacity": desired_capacity, "tag": tag, "blocked": blocked, "target": target}
+    params = {k: v for k, v in params.items() if v not in ("", 0) or k == "blocked"}
+    ok, note = actions.check(action, params)
+    PROPOSAL.clear()
+    PROPOSAL.update({"action": action, "params": params, "ok": ok, "note": note, "title": actions.title(action, params)})
+    if ok:
+        return f"제안을 기록했다. 버튼이 붙는다. 영향: {note}"
+    return f"실행 직전 검사를 통과하지 못해 버튼이 붙지 않는다: {note}. 이 이유를 *사람이 볼 것*에 적는다"
+
+
 TOOLS = [
     read_runbook, query_prometheus, query_loki, describe_scaling_activities, describe_instances,
     get_console_output, describe_target_health, get_cloudwatch_metric, describe_alarm_history,
+    list_release_tags, propose_action,
 ]

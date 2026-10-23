@@ -3,6 +3,7 @@ from pathlib import Path
 import boto3
 from anthropic import Anthropic
 
+import tools
 from tools import TOOLS
 
 API_KEY_PARAMETER = "/cking/dev/monitoring/ANTHROPIC_API_KEY"
@@ -41,6 +42,7 @@ def _add_usage(usage, message):
 def diagnose(alert_text):
     usage = {"input": 0, "output": 0, "cache_read": 0, "cache_write": 0, "tool_calls": 0, "cost": 0.0}
     last = None
+    tools.PROPOSAL.clear()
     # 조회할 때마다 앞선 대화 전체를 다시 보내므로 자동 캐시로 이전 부분을 캐시 읽기 단가로 받는다.
     runner = _client.beta.messages.tool_runner(
         model=MODEL,
@@ -60,11 +62,12 @@ def diagnose(alert_text):
         _add_usage(usage, message)
         usage["tool_calls"] += sum(1 for block in message.content if block.type == "tool_use")
 
+    proposal = dict(tools.PROPOSAL) or None
     if last is None:
-        return {"text": "응답이 없었다", "usage": usage, "ok": False}
+        return {"text": "응답이 없었다", "usage": usage, "ok": False, "proposal": None}
     if last.stop_reason == "refusal":
-        return {"text": "모델이 분석을 거절했다", "usage": usage, "ok": False}
+        return {"text": "모델이 분석을 거절했다", "usage": usage, "ok": False, "proposal": None}
     text = "\n".join(block.text for block in last.content if block.type == "text").strip()
     if last.stop_reason == "tool_use":
         text = (text + "\n" if text else "") + "_조회 횟수 상한(20번)에 닿아 중간에 멈췄다_"
-    return {"text": text or "결과 문장이 없었다", "usage": usage, "ok": bool(text)}
+    return {"text": text or "결과 문장이 없었다", "usage": usage, "ok": bool(text), "proposal": proposal}
