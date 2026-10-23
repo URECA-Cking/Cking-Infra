@@ -17,7 +17,7 @@ STATE_TABLE = os.environ["STATE_TABLE"]
 DAILY_LIMIT = int(os.environ.get("DAILY_LIMIT", "12"))
 ACTION_VALID_SECONDS = 15 * 60
 ACTION_NEEDED = re.compile(r"^\*판단\*:\s*지금 조치 필요")
-ENV_LABELS = {"dev": "개발", "prod": "운영"}
+ENV_LABELS = {"dev": "개발 환경", "prod": "운영 환경"}
 RUNBOOK_URL = re.compile(r"https://github\.com/URECA-Cking/Cking-Infra/blob/main/docs/runbooks/([A-Za-z0-9-]+)\.md")
 
 _dynamodb = boto3.client("dynamodb", region_name=REGION)
@@ -144,7 +144,7 @@ def within_daily_limit(env):
 def render(alert, result):
     """(웹훅용 글자, 버튼을 뺀 블록)을 돌려준다."""
     usage = result["usage"]
-    head = f"*[AI 진단] {alert['name']}* · {ENV_LABELS[alert['env']]} · 참고용\n{result['text']}"
+    head = f"*[AI 진단] {alert['name']}* · {ENV_LABELS[alert['env']]}\n{result['text']}"
     foot = f"런북: {alert['runbook_link']} · 조회 {usage['tool_calls']}번 · ${usage['cost']:.2f}"
     return f"{head}\n_{foot}_", slack.sections(head) + [slack.context(foot)]
 
