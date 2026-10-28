@@ -9,7 +9,8 @@ locals {
 }
 
 resource "aws_s3_bucket" "audit" {
-  bucket = local.audit_bucket
+  bucket           = local.audit_bucket
+  bucket_namespace = "account-regional"
 }
 
 resource "aws_s3_bucket_public_access_block" "audit" {
