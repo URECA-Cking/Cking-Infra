@@ -1,6 +1,6 @@
 # 추천 배치 서버
 
-> 전제: 서버 그룹 `dev-cking-recommendation`(1대, t4g.small 스팟, 2a), 상태 디스크 `dev-cking-recommendation-state`(`/var/lib/cking-content`), 배포 버전 `/cking/dev-recommendation/RELEASE`, 콘텐츠 작업자 타이머 `cking-content-event.timer`(1분)·`cking-content-daily.timer`(03:00). 작업자 동작과 복구는 [콘텐츠 작업자 운영](https://github.com/URECA-Cking/Cking-LLM-Benchmark/blob/develop/docs/guides/content-worker.md)
+> 전제: 서버 그룹 `dev-cking-recommendation`(1대, arm64 스팟 6개 유형 중 하나(t4g.small 등), 2a), 상태 디스크 `dev-cking-recommendation-state`(`/var/lib/cking-content`), 배포 버전 `/cking/dev-recommendation/RELEASE`, 콘텐츠 작업자 타이머 `cking-content-event.timer`(1분)·`cking-content-daily.timer`(03:00). 작업자 동작과 복구는 [콘텐츠 작업자 운영](https://github.com/URECA-Cking/Cking-LLM-Benchmark/blob/develop/docs/guides/content-worker.md)
 
 서버를 처음 띄울 때, 값을 넣거나 바꿀 때, 작업자가 돌지 않을 때 쓴다. 경보 [추천 배치 실패 반복](cking-recommendation-failing.md)·[추천 배치 멈춤](cking-recommendation-stalled.md)이 함께 보는 확인 방법도 여기에 둔다.
 
@@ -56,7 +56,7 @@ Grafana Explore(Loki)에서 작업자 로그는 `{instance="dev-cking-recommenda
 
 - **서버가 계속 버려짐**(활동에 시작 대기 실패가 반복): 버려진 서버는 곧 종료돼 들어갈 수 없다. 부팅 출력은 EC2 콘솔 출력(`aws ec2 get-console-output --region ap-northeast-2 --instance-id <서버> --output text`, 종료 때도 올라온다)으로 본다. 흔한 원인은 배포 버전 값이나 그 패키지(`s3://dev-cking-deploy-551372961758/recommendation/releases/<버전>/`)가 없는 것, 상태 디스크가 다른 서버에 붙어 있는 것이다
 - **스팟 회수**(`StateReason`이 `Server.SpotInstanceTermination`): 그룹이 바로 새 서버를 띄우고, 새 서버가 디스크를 다시 붙여 이어서 돈다. 1분 확인 로그는 3\~4분 끊긴다. 처리 중이던 작업은 lease(900초)가 끝나면 BE가 다시 넘긴다
-- **스팟 자리 부족**(활동에 `Could not launch Spot Instances. UnfulfillableCapacity`·`InsufficientInstanceCapacity` 실패가 반복): 서버가 2a 한 곳·t4g.small 한 종류라 다른 가용 영역·유형으로 넘어가지 않는다. 그룹이 처음에는 10초, 이어서 1\~2분 간격으로 다시 띄우므로 기다린다. 처리 기록은 상태 디스크에 남고 처리 중이던 작업은 lease(900초)가 끝나면 BE가 다시 넘기므로 잃지 않는다. 2026-10-22에는 9분·13분 뒤에 떴다. 풀리면 활동에 `Successful`·`Launching a new EC2 instance: <서버>`가 남는다
+- **스팟 자리 부족**(활동에 `Could not launch Spot Instances. UnfulfillableCapacity`·`InsufficientInstanceCapacity` 실패가 반복): 서버가 2a 한 곳이라 다른 가용 영역으로 넘어가지 않는다. 2026-10-29부터 유형은 6개 중 자리가 있는 것을 고른다(Infra #235, 2a 스팟 배치 점수 3 → 9). 그룹이 처음에는 10초, 이어서 1\~2분 간격으로 다시 띄우므로 기다린다. 처리 기록은 상태 디스크에 남고 처리 중이던 작업은 lease(900초)가 끝나면 BE가 다시 넘기므로 잃지 않는다. 2026-10-22에는 9분·13분 뒤에 떴다. 풀리면 활동에 `Successful`·`Launching a new EC2 instance: <서버>`가 남는다
 - **타이머가 꺼져 있음**: 부팅 로그에 `추천 배치 값이 n/6개만 있어 타이머를 켜지 않는다`가 있다. 빠진 값을 넣고 서버를 교체한다
 - **작업자가 실패함**(`last-success.json`이 오래됨, 실패 알림 로그): 실패 코드로 [추천 배치 실패 반복](cking-recommendation-failing.md#원인별-대응)과 [콘텐츠 작업자 운영](https://github.com/URECA-Cking/Cking-LLM-Benchmark/blob/develop/docs/guides/content-worker.md)의 복구 절차를 따른다. `summary.json`은 실행마다 덮어써지므로 지난 실패의 코드는 Loki 로그로 본다
 
