@@ -75,6 +75,7 @@ envs/security/             계정 보안 기준선. 환경과 상관없이 계�
   detection.tf             GuardDuty, 심각도 7 이상 발견 → 운영 경보 SNS(Slack), IAM Access Analyzer(계정)
   posture.tf               AWS Config 기록(서울, 전역 리소스 포함)과 Security Hub FSBP 표준
   hardening.tf             EBS 기본 암호화·스냅샷 퍼블릭 차단, S3 계정 퍼블릭 차단, IAM 비밀번호 정책, 모든 VPC 기본 보안 그룹 규칙 비우기, 개발·운영 VPC 흐름 로그, Inspector(EC2·ECR·Lambda)
+  triage.tf                Security Hub 자동화 규칙. 받아들이기로 한 지적을 억제하고 이유를 메모로 남긴다
 modules/api-waf/           API(ALB) 앞단 WAF. 개발·운영이 같은 규칙을 쓴다(관리형 규칙, 본문 크기 예외, IP당 요청 상한, 로그)
 observability/             관측 서버 위의 프로그램 설정(compose, Prometheus, Loki, Alloy, Grafana, 쓰기 전용 nginx)과 AI 진단용 읽기 전용 조회(query.py)
 ```
@@ -160,7 +161,7 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
 
 1. `envs/prod`를 먼저 적용한다. 운영 경보 SNS가 `rule/cking-security-*` 이벤트 규칙의 발행을 허용해야 GuardDuty 경보가 들어간다
 2. `envs/security`에서 `terraform plan -out=tfplan` → `terraform apply tfplan`
-3. Security Hub 검사 결과는 켠 뒤 하루 안에 채워진다. 지적 사항은 심각도 순으로 정리해 따로 고친다
+3. Security Hub 검사 결과는 켠 뒤 하루 안에 채워진다. 지적 사항은 고칠 것과 받아들일 것으로 나눈다. 받아들인 것은 이유와 함께 `triage.tf`에 넣어 억제한다. 새 리소스는 이름·이름표로 좁힌 규칙에 걸리지 않으면 다시 판단한다
 4. 비용: GuardDuty·Security Hub는 처음 30일 무료 체험이고, 그 뒤 금액은 체험 기간 사용량으로 확인한다. CloudTrail 첫 관리 이벤트 추적은 무료(버킷 저장 비용만), Config는 기록한 설정 항목 수에 비례한다
 
 ## 요구 사항
