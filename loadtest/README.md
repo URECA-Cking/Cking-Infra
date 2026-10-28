@@ -95,10 +95,9 @@ env = { RATE = "80", DURATION = "20m" }
 
 ## 운영 대상
 
-`lt.sh start <시나리오> prod`. 운영 DB를 지우므로 정식 오픈 전에만 쓴다. 되돌리기는 BE 문서 "운영 데이터 되돌리기"의 순서(그룹 자동 교체 정지 → 전 서버 앱 정지 → Redis·DB 비우기 → 한 대씩 배포 → 대상 healthy → 재개)를 실행기가 그대로 하고, 실패하면 그룹 자동 교체를 멈춘 채 둔다. 아직 실행해 보지 않았다. 운영 k6 역할(`prod-cking-k6-role`, `envs/prod-base`)에 더해야 하는 것:
+`lt.sh start <시나리오> prod`. 운영 DB를 지우므로 정식 오픈 전에만 쓴다. 되돌리기는 BE 문서 "운영 데이터 되돌리기"의 순서(그룹 자동 교체 정지 → 전 서버 앱 정지 → Redis·DB 비우기 → 한 대씩 배포 → 대상 healthy → 재개)를 실행기가 그대로 하고, 실패하면 그룹 자동 교체를 멈춘 채 둔다.
 
-- `ssm:SendCommand`: `AWS-RunShellScript` + 이름표 `aws:autoscaling:groupName = prod-cking-app` 서버
-- `ssm:GetCommandInvocation`, `ec2:DescribeInstances`, `autoscaling:DescribeAutoScalingGroups`, `autoscaling:SuspendProcesses`·`ResumeProcesses`(prod-cking-app), `elasticloadbalancing:DescribeTargetGroups`·`DescribeTargetHealth`
-- `sts:AssumeRole` → `loadtest-cking-query`(이미 운영 k6 역할을 믿는다), 결과 버킷 `prod/*` 쓰기·읽기와 목록(같은 계정이라 역할 정책만), `/cking/dev/monitoring/SLACK_PROD_ALERT_WEBHOOK_URL` 읽기
-- 끝난 뒤 JWT_SECRET 교체(BE 문서 1·4·8단계)는 실행기가 하지 않는다
-- 운영 API는 비밀 쿠키 게이트(WAF 차단 모드)가 있다. k6 요청에 `x-cking-gate` 헤더(`/cking/prod/GATE_SECRET`)를 붙여야 하고, k6 역할에 그 값 읽기 권한이 필요하다. BE `loadtest/*.js`는 아직 헤더를 보내지 않는다
+- 운영 k6 서버는 평소에 없다. `envs/prod`에서 `-var k6_enabled=true`로 apply하고, 끝나면 false로 되돌린다
+- 운영 k6 역할(`prod-cking-k6-role`, `envs/prod-base`): 운영 앱 서버(그룹 이름표 `prod-cking-app`)에만 `AWS-RunShellScript`, 명령 결과·서버·그룹·대상 조회, 그룹 자동 교체 멈춤·재개, `loadtest-cking-query`로 넘어가기, 결과 버킷 `prod/` 읽기·쓰기, 운영 경보 Slack 웹훅. 앱 서버에서 root 명령이 되는 권한이라 k6 서버를 평소에 두지 않는다
+- 비밀 쿠키 게이트: 운영 k6 서버는 프라이빗 서브넷이라 NAT 공인 IP로 나가고, WAF는 NAT IP를 게이트보다 먼저 허용한다(`allow-internal`, 우선순위 0). 그래서 헤더 없이 통과한다. 운영 경보·감시 서버와 같은 경로다
+- 끝난 뒤 운영 데이터 되돌리기(관리자만 남김)와 JWT_SECRET 교체(BE 문서 1·4·8단계)는 실행기가 하지 않는다
