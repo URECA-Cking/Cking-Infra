@@ -68,6 +68,10 @@ envs/prod/                 운영 환경. 상태는 prod/terraform.tfstate
   functions/               CloudFront Functions(www → cking.co.kr 이동)
 envs/prod-base/            운영 환경 EC2 역할·인스턴스 프로필과 RDS 모니터링 역할. 운영 서버보다 먼저 만들고 운영 환경을 지워도 남긴다. 상태는 prod-base/terraform.tfstate
   iam.tf                   앱 서버·추천 배치 서버·감시용 서버·k6 서버 역할, RDS Enhanced Monitoring 역할(SSM, 운영 비밀값·배포 파일·업로드 버킷, 수집기 설정 읽기, 댓글 필터 호출, 앱·추천 배치 서버 시작 대기 끝내기, 추천 배치 상태 디스크 붙이기)
+envs/security/             계정 보안 기준선. 환경과 상관없이 계정에 하나. 상태는 security/terraform.tfstate
+  logs.tf                  감사 로그 버킷(CloudTrail·Config 공용, 1년 보관)과 CloudTrail 추적(전 리전, 관리 이벤트, 로그 파일 검증)
+  detection.tf             GuardDuty, 심각도 7 이상 발견 → 운영 경보 SNS(Slack), IAM Access Analyzer(계정)
+  posture.tf               AWS Config 기록(서울, 전역 리소스 포함)과 Security Hub FSBP 표준
 modules/api-waf/           API(ALB) 앞단 WAF. 개발·운영이 같은 규칙을 쓴다(관리형 규칙, 본문 크기 예외, IP당 요청 상한, 로그)
 observability/             관측 서버 위의 프로그램 설정(compose, Prometheus, Loki, Alloy, Grafana, 쓰기 전용 nginx)과 AI 진단용 읽기 전용 조회(query.py)
 ```
@@ -137,6 +141,13 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
    - 스모크가 잡지 못한 문제는 BE Actions의 `Deploy to prod` 워크플로를 `main`에서 예전 태그로 실행해 되돌린다
    - 이 절차는 `envs/prod-base`의 앱 역할(시작 대기 끝내기 권한)이 먼저 적용되어 있어야 한다
 7. 운영 부하 테스트: `envs/prod`에서 `terraform apply -var k6_enabled=true -var rds_monitoring_interval=1`로 k6 서버(`prod-cking-k6`)를 만들고 RDS Enhanced Monitoring을 1초로 바꾼다. 끝나면 두 값 없이 다시 apply해 k6 서버를 지우고 60초로 되돌린다. 간격 변경은 재부팅 없이 적용된다. 1초를 켜 두면 수집 비용이 월 약 $16이라 반드시 되돌린다. 실행 절차는 BE `docs/operations/loadtest.md`의 "운영에서 실행"
+
+## 계정 보안 기준선
+
+1. `envs/prod`를 먼저 적용한다. 운영 경보 SNS가 `rule/cking-security-*` 이벤트 규칙의 발행을 허용해야 GuardDuty 경보가 들어간다
+2. `envs/security`에서 `terraform plan -out=tfplan` → `terraform apply tfplan`
+3. Security Hub 검사 결과는 켠 뒤 하루 안에 채워진다. 지적 사항은 심각도 순으로 정리해 따로 고친다
+4. 비용: GuardDuty·Security Hub는 처음 30일 무료 체험이고, 그 뒤 금액은 체험 기간 사용량으로 확인한다. CloudTrail 첫 관리 이벤트 추적은 무료(버킷 저장 비용만), Config는 기록한 설정 항목 수에 비례한다
 
 ## 요구 사항
 

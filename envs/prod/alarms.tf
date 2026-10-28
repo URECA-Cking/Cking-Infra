@@ -48,6 +48,15 @@ resource "aws_sns_topic_policy" "alerts" {
         Resource  = aws_sns_topic.alerts.arn
         Condition = { ArnEquals = { "aws:SourceArn" = aws_cloudwatch_event_rule.launch_failed.arn } }
       },
+      # 계정 보안 기준선(envs/security)의 GuardDuty 높음 경보.
+      {
+        Sid       = "SecurityEvents"
+        Effect    = "Allow"
+        Principal = { Service = "events.amazonaws.com" }
+        Action    = "sns:Publish"
+        Resource  = aws_sns_topic.alerts.arn
+        Condition = { ArnLike = { "aws:SourceArn" = "arn:aws:events:ap-northeast-2:551372961758:rule/cking-security-*" } }
+      },
     ]
   })
 }
