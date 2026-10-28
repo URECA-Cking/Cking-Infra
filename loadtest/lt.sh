@@ -11,8 +11,6 @@
 #   lt.sh all <시나리오 파일> [이미지 태그]  up → prepare → start → wait → down. 실패·중단해도 down
 # 실행기 코드는 이 저장소의 HEAD 커밋을 k6 서버가 GitHub에서 받는다. HEAD가 원격에 올라가 있어야 한다.
 set -euo pipefail
-# tag=$(cmd_prepare)처럼 명령 치환 안에서도 실패하면 멈춘다(bash 기본값은 치환 안에서 -e를 끈다)
-shopt -s inherit_errexit
 
 R=ap-northeast-2
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -154,12 +152,17 @@ cmd_down() {
   terraform -chdir="$TF" destroy -input=false -auto-approve | tail -1
 }
 
+# 명령 치환 안에서는 -e가 꺼져(macOS bash 3.2는 inherit_errexit도 없다) 실패해도 다음 단계로 넘어간다.
+# 그래서 결과를 파일로 받고 함수는 그대로 실행한다.
 cmd_all() {
-  local file=${1:?시나리오 파일} tag=${2:-} id rc=0
-  trap 'log "환경 삭제"; cmd_down' EXIT
+  local file=${1:?시나리오 파일} tag=${2:-} id rc=0 out
+  out=$(mktemp)
+  trap 'log "환경 삭제"; cmd_down; rm -f "$out"' EXIT
   cmd_up
-  tag=$(cmd_prepare "$tag")
-  id=$(cmd_start "$file")
+  cmd_prepare "$tag" > "$out"
+  tag=$(tail -n 1 "$out")
+  cmd_start "$file" > "$out"
+  id=$(tail -n 1 "$out")
   cmd_wait "$id" || rc=$?
   return $rc
 }
