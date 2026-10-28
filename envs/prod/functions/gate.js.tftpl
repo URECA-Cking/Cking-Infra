@@ -1,0 +1,64 @@
+var GATE_COOKIE = 'cking_gate';
+var GATE_SECRET = '${secret}';
+var REDIRECT_WWW = ${redirect_www};
+
+function query(qs, skip) {
+  var params = [];
+  for (var key in qs) {
+    if (key === skip) {
+      continue;
+    }
+    var param = qs[key];
+    (param.multiValue || [param]).forEach(function (v) {
+      params.push(key + '=' + v.value);
+    });
+  }
+  return params.length > 0 ? '?' + params.join('&') : '';
+}
+
+function handler(event) {
+  var request = event.request;
+  var host = request.headers.host.value;
+
+  if (REDIRECT_WWW && host === 'www.cking.co.kr') {
+    return {
+      statusCode: 301,
+      statusDescription: 'Moved Permanently',
+      headers: { location: { value: 'https://cking.co.kr' + request.uri + query(request.querystring, null) } },
+    };
+  }
+
+  var gate = request.querystring.gate;
+  if (gate && gate.value === GATE_SECRET) {
+    return {
+      statusCode: 302,
+      statusDescription: 'Found',
+      headers: { location: { value: request.uri + query(request.querystring, 'gate') } },
+      cookies: {
+        cking_gate: {
+          value: GATE_SECRET,
+          attributes: 'Domain=.cking.co.kr; Path=/; Max-Age=2592000; Secure; HttpOnly; SameSite=Lax',
+        },
+      },
+    };
+  }
+
+  var cookie = request.cookies[GATE_COOKIE];
+  if (cookie && cookie.value === GATE_SECRET) {
+    return request;
+  }
+
+  return {
+    statusCode: 403,
+    statusDescription: 'Forbidden',
+    headers: {
+      'content-type': { value: 'text/html; charset=utf-8' },
+      'cache-control': { value: 'no-store' },
+      'x-robots-tag': { value: 'noindex, nofollow' },
+    },
+    body: {
+      encoding: 'text',
+      data: '<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="robots" content="noindex"><title>CKING</title><p style="font-family:sans-serif;text-align:center;margin-top:20vh">서비스 준비 중입니다.</p></html>',
+    },
+  };
+}

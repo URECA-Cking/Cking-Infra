@@ -48,6 +48,20 @@ variable "rate_window_sec" {
   }
 }
 
+variable "gate" {
+  description = "비밀 쿠키 게이트. cking_gate 쿠키나 x-cking-gate 헤더가 secret과 같은 요청만 통과시킨다. null이면 규칙을 만들지 않는다."
+  type = object({
+    secret = string
+    mode   = string
+  })
+  default = null
+
+  validation {
+    condition     = var.gate == null || contains(["count", "block"], try(var.gate.mode, ""))
+    error_message = "gate.mode는 count 또는 block이다."
+  }
+}
+
 variable "log_retention_days" {
   type = number
 }

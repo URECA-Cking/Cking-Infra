@@ -154,4 +154,6 @@ module "api_waf" {
   mode               = "block"
   allow_ip_cidrs     = [for e in aws_eip.nat : "${e.public_ip}/32"]
   log_retention_days = 14
+
+  gate = var.gate_enabled ? { secret = data.aws_ssm_parameter.gate_secret.value, mode = "count" } : null
 }

@@ -52,6 +52,119 @@ resource "aws_wafv2_web_acl" "this" {
     }
   }
 
+  # 허용 IP(운영 NAT) 다음, 다른 규칙보다 먼저 본다. CORS 사전 요청(OPTIONS)에는 쿠키가 실리지 않아 뺀다.
+  dynamic "rule" {
+    for_each = var.gate == null ? [] : [var.gate]
+
+    content {
+      name     = "gate"
+      priority = 1
+
+      action {
+        dynamic "count" {
+          for_each = rule.value.mode == "count" ? [1] : []
+          content {}
+        }
+        dynamic "block" {
+          for_each = rule.value.mode == "block" ? [1] : []
+          content {}
+        }
+      }
+
+      statement {
+        and_statement {
+          statement {
+            byte_match_statement {
+              search_string         = var.api_host
+              positional_constraint = "EXACTLY"
+
+              field_to_match {
+                single_header {
+                  name = "host"
+                }
+              }
+
+              text_transformation {
+                priority = 0
+                type     = "LOWERCASE"
+              }
+            }
+          }
+
+          statement {
+            not_statement {
+              statement {
+                or_statement {
+                  statement {
+                    byte_match_statement {
+                      search_string         = "OPTIONS"
+                      positional_constraint = "EXACTLY"
+
+                      field_to_match {
+                        method {}
+                      }
+
+                      text_transformation {
+                        priority = 0
+                        type     = "NONE"
+                      }
+                    }
+                  }
+
+                  statement {
+                    byte_match_statement {
+                      search_string         = rule.value.secret
+                      positional_constraint = "EXACTLY"
+
+                      field_to_match {
+                        single_header {
+                          name = "x-cking-gate"
+                        }
+                      }
+
+                      text_transformation {
+                        priority = 0
+                        type     = "NONE"
+                      }
+                    }
+                  }
+
+                  statement {
+                    byte_match_statement {
+                      search_string         = rule.value.secret
+                      positional_constraint = "EXACTLY"
+
+                      field_to_match {
+                        cookies {
+                          match_pattern {
+                            included_cookies = ["cking_gate"]
+                          }
+                          match_scope       = "VALUE"
+                          oversize_handling = "NO_MATCH"
+                        }
+                      }
+
+                      text_transformation {
+                        priority = 0
+                        type     = "NONE"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      visibility_config {
+        cloudwatch_metrics_enabled = true
+        sampled_requests_enabled   = true
+        metric_name                = "${var.name}-gate"
+      }
+    }
+  }
+
   dynamic "rule" {
     for_each = var.rate_limit == null ? [] : [var.rate_limit]
 
