@@ -12,7 +12,7 @@
 ## 구조
 
 ```text
-.github/workflows/         PR 검사(ci.yml), 관측 설정·수집기 배포 워크플로(앱 서버는 바로 적용, 추천 배치 서버는 교체), 경보 AI 진단 Lambda 코드 배포
+.github/workflows/         PR 검사(ci.yml), Terraform plan(PR 댓글)·apply(main 수동, 승인), 관측 설정·수집기 배포 워크플로(앱 서버는 바로 적용, 추천 배치 서버는 교체), 경보 AI 진단 Lambda 코드 배포
 .github/dependabot.yml     컨테이너 이미지·GitHub Actions 갱신 PR
 alert-analyzer/            경보 AI 진단 Lambda(Python). 경보를 받아 Claude(Claude API)가 런북대로 읽기 전용 조회를 하고 Slack 봇으로 제안. 런북 조치는 승인 버튼(approvals.py)을 누르면 실행 함수(executor.py)가 목록(actions.py)대로 실행. build.sh가 배포 묶음을 만든다
 image-normalizer/          이미지 업로드 정규화 Lambda(Python, Pillow). 업로드 버킷 raw/<최종 키>의 원본을 앱과 같은 규칙(EXIF 회전, 긴 변 2048, JPEG 품질 90)으로 바꿔 최종 키에 저장하고 결과를 결과 큐로 보낸다. build.sh가 배포 묶음을 만든다
@@ -70,6 +70,8 @@ envs/prod/                 운영 환경. 상태는 prod/terraform.tfstate
   functions/               CloudFront Functions(www → cking.co.kr 이동)
 envs/prod-base/            운영 환경 EC2 역할·인스턴스 프로필과 RDS 모니터링 역할. 운영 서버보다 먼저 만들고 운영 환경을 지워도 남긴다. 상태는 prod-base/terraform.tfstate
   iam.tf                   앱 서버·추천 배치 서버·감시용 서버·k6 서버 역할, RDS Enhanced Monitoring 역할(SSM, 운영 비밀값·배포 파일·업로드 버킷, 수집기 설정 읽기, 댓글 필터 호출, 앱·추천 배치 서버 시작 대기 끝내기, 추천 배치 상태 디스크 붙이기)
+envs/ci/                   Terraform을 GitHub Actions로 plan·apply하는 역할. plan은 읽기 전용(데이터 읽기 거부, plan에 필요한 비밀값 5개만 복호화), apply는 관리자. 신뢰는 GitHub Environment terraform-plan·terraform-apply(승인자 필요). 상태는 ci/terraform.tfstate
+  roles.tf                 plan·apply 역할
 envs/security/             계정 보안 기준선. 환경과 상관없이 계정에 하나. 상태는 security/terraform.tfstate
   logs.tf                  감사 로그 버킷(CloudTrail·Config 공용, 1년 보관)과 CloudTrail 추적(전 리전, 관리 이벤트, 로그 파일 검증)
   detection.tf             GuardDuty, 심각도 7 이상 발견 → 운영 경보 SNS(Slack), IAM Access Analyzer(계정)
@@ -86,11 +88,11 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
 
 - 상태 파일은 S3 원격 백엔드에 둔다. 상태 파일, 변수 파일, 비밀값은 커밋하지 않는다
 - 비밀값은 Parameter Store에 두고 코드에는 경로만 쓴다
-- 변경은 PR에 `terraform plan` 결과를 붙여 리뷰한 뒤 적용한다
-- 인프라(`envs/`)는 사람이 plan을 확인하고 apply한다. 관측 서버 위의 설정(`observability/`)과 수집기 설정(`app-agent/`)은 main에 머지되면 GitHub Actions가 배포한다(추천 배치 서버는 교체해서 반영). 같은 리소스를 두 주체가 관리하지 않는다
+- 변경은 PR의 plan 결과를 보고 리뷰한 뒤 적용한다. `envs/`·`modules/`를 바꾼 PR은 `terraform-plan.yml`이 바뀐 스택만 plan해 요약(리소스 주소와 동작, 값 없음)을 PR 댓글로 남긴다. Environment `terraform-plan` 승인 뒤 돈다(공개 저장소라 승인 없이는 AWS 자격을 주지 않는다). 계획은 기본 변수값 기준이라 켜 둔 토글(`k6_enabled` 등)은 차이로 나온다
+- 인프라(`envs/`) 적용은 머지 뒤 `terraform-apply.yml`을 main에서 수동 실행한다(스택, PR 댓글의 기대 개수 `추가,변경,삭제`, 필요하면 `-var` 값). Environment `terraform-apply` 승인 뒤 새로 plan하고, 개수가 기대와 다르면 적용하지 않는다. 로컬 apply는 `envs/ci` 처음 만들 때와 CI가 안 될 때만 한다. 관측 서버 위의 설정(`observability/`)과 수집기 설정(`app-agent/`)은 main에 머지되면 GitHub Actions가 배포한다(추천 배치 서버는 교체해서 반영). 같은 리소스를 두 주체가 관리하지 않는다 관측 서버 위의 설정(`observability/`)과 수집기 설정(`app-agent/`)은 main에 머지되면 GitHub Actions가 배포한다(추천 배치 서버는 교체해서 반영). 같은 리소스를 두 주체가 관리하지 않는다
 - 컨테이너 이미지는 `이름:버전@sha256:…`으로 고정한다. 태그는 배포처에서 다른 이미지로 옮길 수 있어, 버전은 사람이 읽는 표기로 남기고 실제로는 digest로 받는다. 갱신은 Dependabot PR로 받고, 직접 바꿀 때는 버전과 digest를 함께 바꾼다. digest는 `docker buildx imagetools inspect 이름:버전`의 `Digest` 값이다
 - PR마다 `ci.yml`이 검사하고, main 룰셋의 필수 검사로 건다. 설정 검증은 compose에 고정된 이미지로 실행한다
-  - `terraform`: `terraform fmt -check`, `envs/` 아래 각 환경의 `init -backend=false`·`validate`
+  - `terraform`: `terraform fmt -check`, `envs/` 아래 각 환경(`ci`·`security` 포함)의 `init -backend=false`·`validate`
   - `config`: compose 해석, Alloy `validate`, `promtool check config`, Loki `-verify-config`, `nginx -t`
   - `lint`: `shellcheck`(배포 스크립트, 서버 첫 부팅 스크립트), `actionlint`(워크플로)
 - 협업 규칙은 조직 CONTRIBUTING을 따른다. 환경이 개발 서버 하나라 `develop` 없이 `main`으로 PR을 보낸다
