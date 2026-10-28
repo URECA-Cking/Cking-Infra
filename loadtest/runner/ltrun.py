@@ -232,7 +232,9 @@ class Runner:
         """앱 서버 한 대(on이 없으면 첫 서버)에서 lt-app.sh를 실행하고 표준 출력을 돌려준다."""
         instance = on or self.apps()[0]
         line = " ".join(shlex.quote(a) for a in ["bash", AGENT, self.t["param_path"], cmd, *map(str, args)])
-        status, out, err = self.ssm([instance], [line], timeout=timeout)[instance]
+        # 운영 그룹은 실행 중에 서버가 바뀐다(장애 주입, 자동 교체). 새 서버에는 코드가 없으니 그때 받는다
+        script = f"{self.fetch_app}[ -f {AGENT} ] || {{ fetch infra Cking-Infra {self.meta['infra_commit']}; fetch be Cking-BE {self.meta['be_commit']}; }}\n{line}"
+        status, out, err = self.ssm([instance], self.bash_lines(script), timeout=timeout)[instance]
         if check and status != "Success":
             raise RuntimeError(f"앱 서버 {cmd} 실패({status}): {err.strip()[-300:]} | 출력: {out.strip()[-300:]}")
         return out
@@ -250,7 +252,7 @@ class Runner:
 
     def step_setup(self, step):
         infra, be = self.meta["infra_commit"], self.meta["be_commit"]
-        fetch = """
+        fetch = self.fetch_app = """
 fetch() {
   rm -rf "/opt/loadtest/$1.new"; mkdir -p "/opt/loadtest/$1.new"
   curl -fsSL "https://codeload.github.com/URECA-Cking/$2/tar.gz/$3" | tar -xz --strip-components=1 -C "/opt/loadtest/$1.new"
@@ -383,9 +385,16 @@ fetch() {
         raise RuntimeError(f"이벤트 {eid}가 시간 안에 마감되지 않음")
 
     def stream(self):
-        out = self.app("redis", "XINFO", "GROUPS", "stream:ticket-deducted", check=False, timeout=60)
-        if "no such key" in out or not out.strip():
+        """응모 Stream의 (pending, lag). 읽지 못하면 (None, None)이다. 0으로 보면 밀린 메시지가 있어도 끝난 것으로 판단한다."""
+        try:
+            out = self.app("redis", "XINFO", "GROUPS", "stream:ticket-deducted", timeout=60)
+        except RuntimeError as e:
+            self.log(f"Stream 상태 읽기 실패: {str(e)[:200]}")
+            return None, None
+        if "no such key" in out:
             return 0, 0
+        if not out.strip():
+            return None, None
         tokens = out.split()
         nums = collections.defaultdict(int)
         for key, value in zip(tokens, tokens[1:]):
@@ -399,7 +408,11 @@ fetch() {
         while True:
             pending, lag = self.stream()
             if pending == 0 and lag == 0:
-                return f"밀린 메시지 0 ({span(time.time() - start)})"
+                # 장애 조치 뒤에는 DB 쓰기가 다시 붙을 때까지 메시지가 pending에 들어오기 전일 수 있어 한 번 더 본다
+                time.sleep(15)
+                pending, lag = self.stream()
+                if pending == 0 and lag == 0:
+                    return f"밀린 메시지 0 ({span(time.time() - start)})"
             if time.time() > deadline:
                 raise RuntimeError(f"밀린 메시지가 빠지지 않음 pending={pending} lag={lag}")
             self.log(f"반영 대기 pending={pending} lag={lag}")
@@ -465,7 +478,7 @@ fetch() {
                          f"pending={pending} lag={lag}{self.asg_text()} codes={s['codes']}")
                 hit = ((stop.get("p95_ms") is not None and (s["p95"] or 0) > stop["p95_ms"])
                        or (stop.get("fail_pct") is not None and s["n"] and s["fail"] * 100 > stop["fail_pct"] * s["n"])
-                       or (stop.get("lag_over") is not None and lag > stop["lag_over"]))
+                       or (stop.get("lag_over") is not None and lag is not None and lag > stop["lag_over"]))
                 breaches = breaches + 1 if hit else 0
                 if stop and not stopped and breaches >= stop.get("consecutive", 2):
                     stopped = f"중단 조건 {breaches}회 연속(p95={s['p95']} fail={s['fail']}/{s['n']} lag={lag})"
