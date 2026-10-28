@@ -1,0 +1,53 @@
+name: Deploy image normalizer
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "image-normalizer/**"
+      - ".github/workflows/deploy-image-normalizer.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-image-normalizer
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-northeast-2
+  AWS_ROLE_ARN: arn:aws:iam::551372961758:role/dev-cking-infra-github-actions-role
+  BUCKET: dev-cking-deploy-551372961758
+  # 진단, 승인 버튼, 조치 실행 함수가 같은 묶음을 쓴다
+  FUNCTIONS: dev-cking-image-normalizer
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5.1.1
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Lambda(arm64, Python 3.13)용 묶음. 러너의 Python과 관계없이 대상 플랫폼 wheel을 받는다
+      - name: 묶음 만들기
+        run: |
+          python3 -m venv "$RUNNER_TEMP/venv"
+          PATH="$RUNNER_TEMP/venv/bin:$PATH" image-normalizer/build.sh "$RUNNER_TEMP/image-normalizer.zip"
+
+      - name: 함수 코드 바꾸기
+        run: |
+          KEY="image-normalizer/${GITHUB_SHA}.zip"
+          aws s3 cp --only-show-errors "$RUNNER_TEMP/image-normalizer.zip" "s3://$BUCKET/$KEY"
+          for function in $FUNCTIONS; do
+            aws lambda update-function-code --function-name "$function" --s3-bucket "$BUCKET" --s3-key "$KEY" \
+              --query LastUpdateStatus --output text
+            aws lambda wait function-updated-v2 --function-name "$function"
+          done
