@@ -10,9 +10,14 @@ APT::Periodic::Unattended-Upgrade "0";
 EOF
 
 apt-get update
-apt-get install -y ca-certificates curl unzip awscli
+apt-get install -y ca-certificates curl unzip
 
 cd /tmp
+
+curl -fsSLO "https://awscli.amazonaws.com/awscli-exe-linux-aarch64-${awscli_version}.zip"
+echo "${awscli_sha256}  awscli-exe-linux-aarch64-${awscli_version}.zip" | sha256sum -c -
+unzip -q -o "awscli-exe-linux-aarch64-${awscli_version}.zip"
+./aws/install --update
 
 curl -fsSLO "https://github.com/grafana/k6/releases/download/${k6_version}/k6-${k6_version}-linux-arm64.tar.gz"
 echo "${k6_sha256}  k6-${k6_version}-linux-arm64.tar.gz" | sha256sum -c -
@@ -91,4 +96,5 @@ systemctl daemon-reload
 systemctl enable --now alloy
 
 k6 version
+aws --version
 systemctl is-active alloy

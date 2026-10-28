@@ -78,7 +78,10 @@ cmd_prepare() {
     tag=${tag##*:}
   fi
   app=$(instance loadtest-cking-app); k6=$(instance loadtest-cking-k6)
-  [ -n "$app" ] && [ -n "$k6" ] || { log "앱 또는 k6 서버가 없음. lt.sh up 먼저"; exit 1; }
+  if [ -z "$app" ] || [ -z "$k6" ]; then
+    log "앱 또는 k6 서버가 없음. lt.sh up 먼저"
+    exit 1
+  fi
   log "서버 준비 대기 app=$app k6=$k6"
   ready "$app"; ready "$k6"
   log "앱 배포 $tag"

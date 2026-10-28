@@ -59,3 +59,15 @@ variable "alloy_sha256" {
   type        = string
   default     = "396827d58158f181c98d5776c908348b38b4099f1d18a1e7554f2fda0fcb9203"
 }
+
+variable "awscli_version" {
+  description = "AWS CLI v2 버전. Ubuntu 26 apt의 awscli(Python 3.14)는 ssm send-command가 'badly formed help string'으로 실패해 공식 설치본을 쓴다"
+  type        = string
+  default     = "2.31.35"
+}
+
+variable "awscli_sha256" {
+  description = "awscli-exe-linux-aarch64-<버전>.zip의 SHA-256. AWS가 체크섬을 따로 내지 않아 awscli.amazonaws.com에서 받은 파일로 계산했다"
+  type        = string
+  default     = "4cd25765c70e1bbd12d34b72d024c5a399f7c430108dc006fabeeac81fe3c418"
+}
