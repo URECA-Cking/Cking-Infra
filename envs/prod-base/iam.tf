@@ -227,19 +227,77 @@ resource "aws_iam_role_policy_attachment" "k6_ssm" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
-# 운영 부하 테스트 k6가 Access Token을 직접 서명하도록 JWT 비밀값 하나만 읽는다. 다른 운영 비밀값은 읽지 않는다.
+# 운영 부하 테스트 k6가 Access Token을 직접 서명하도록 JWT 비밀값을 읽는다. DB·Redis 비밀번호는 앱 서버 역할만 읽는다.
+# 실행기(loadtest/runner/ltrun.py)는 운영 앱 서버에 데이터 작업(되돌리기·시딩·검증)을 보낸다. 앱 서버에서 root 명령이 되므로,
+# k6 서버는 운영 부하 테스트 동안만 만든다(k6_enabled). 지표 조회는 조회 문서만 허용한 loadtest-cking-query로 넘어가서 한다.
 resource "aws_iam_role_policy" "k6" {
-  name = "prod-cking-k6-read-jwt-secret"
+  name = "prod-cking-k6-loadtest-runner"
   role = aws_iam_role.k6.id
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Sid      = "ReadJwtSecret"
-      Effect   = "Allow"
-      Action   = "ssm:GetParameter"
-      Resource = "${local.parameter_arn}/cking/prod/JWT_SECRET"
-    }]
+    Statement = [
+      {
+        Sid    = "ReadSecrets"
+        Effect = "Allow"
+        Action = "ssm:GetParameter"
+        Resource = [
+          "${local.parameter_arn}/cking/prod/JWT_SECRET",
+          "${local.parameter_arn}/cking/dev/monitoring/SLACK_PROD_ALERT_WEBHOOK_URL",
+        ]
+      },
+      {
+        Sid       = "RunOnProdApp"
+        Effect    = "Allow"
+        Action    = "ssm:SendCommand"
+        Resource  = "arn:aws:ec2:ap-northeast-2:551372961758:instance/*"
+        Condition = { StringEquals = { "ssm:resourceTag/aws:autoscaling:groupName" = "prod-cking-app" } }
+      },
+      {
+        Sid      = "RunShellDocument"
+        Effect   = "Allow"
+        Action   = "ssm:SendCommand"
+        Resource = "arn:aws:ssm:ap-northeast-2::document/AWS-RunShellScript"
+      },
+      {
+        Sid    = "Describe"
+        Effect = "Allow"
+        Action = [
+          "ssm:GetCommandInvocation",
+          "ssm:ListCommandInvocations",
+          "ec2:DescribeInstances",
+          "autoscaling:DescribeAutoScalingGroups",
+          "elasticloadbalancing:DescribeTargetGroups",
+          "elasticloadbalancing:DescribeTargetHealth",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid      = "PauseAppGroup"
+        Effect   = "Allow"
+        Action   = ["autoscaling:SuspendProcesses", "autoscaling:ResumeProcesses"]
+        Resource = "arn:aws:autoscaling:ap-northeast-2:551372961758:autoScalingGroup:*:autoScalingGroupName/prod-cking-app"
+      },
+      {
+        Sid      = "AssumeQueryRole"
+        Effect   = "Allow"
+        Action   = "sts:AssumeRole"
+        Resource = "arn:aws:iam::551372961758:role/loadtest-cking-query"
+      },
+      {
+        Sid      = "WriteResults"
+        Effect   = "Allow"
+        Action   = ["s3:PutObject", "s3:GetObject"]
+        Resource = "arn:aws:s3:::loadtest-cking-results-551372961758-ap-northeast-2-an/prod/*"
+      },
+      {
+        Sid       = "ListResults"
+        Effect    = "Allow"
+        Action    = "s3:ListBucket"
+        Resource  = "arn:aws:s3:::loadtest-cking-results-551372961758-ap-northeast-2-an"
+        Condition = { StringLike = { "s3:prefix" = ["prod/*"] } }
+      }
+    ]
   })
 }
 
