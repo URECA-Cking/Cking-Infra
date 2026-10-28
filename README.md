@@ -15,6 +15,7 @@
 .github/workflows/         PR 검사(ci.yml), 관측 설정·수집기 배포 워크플로(앱 서버는 바로 적용, 추천 배치 서버는 교체), 경보 AI 진단 Lambda 코드 배포
 .github/dependabot.yml     컨테이너 이미지·GitHub Actions 갱신 PR
 alert-analyzer/            경보 AI 진단 Lambda(Python). 경보를 받아 Claude(Claude API)가 런북대로 읽기 전용 조회를 하고 Slack 봇으로 제안. 런북 조치는 승인 버튼(approvals.py)을 누르면 실행 함수(executor.py)가 목록(actions.py)대로 실행. build.sh가 배포 묶음을 만든다
+image-normalizer/          이미지 업로드 정규화 Lambda(Python, Pillow). 업로드 버킷 raw/<최종 키>의 원본을 앱과 같은 규칙(EXIF 회전, 긴 변 2048, JPEG 품질 90)으로 바꿔 최종 키에 저장하고 결과를 결과 큐로 보낸다. build.sh가 배포 묶음을 만든다
 app-agent/                 서버 수집기(Alloy) 설정. agent.alloy(서버 지표·로그·전송)는 항상, app.alloy(앱 지표)·redis.alloy(Redis 지표)·cadvisor.alloy(컨테이너 지표, 부하 테스트 서버)·journal.alloy(systemd 서비스 journald 로그, 추천 배치 서버)는 apply.sh가 서버 역할에 따라 켠다
 bootstrap/                 Terraform보다 먼저 만든 상태 버킷 기록
 docs/runbooks/             경보별 대응 절차와 댓글 필터 차단·해제, 추천 배치 서버 절차(런북)
@@ -32,6 +33,7 @@ envs/dev/                  개발 환경. 실행 위치
   alerts.tf                서버 상태 검사 경보와 메일 주제
   observability_deploy.tf  관측 설정·수집기 설정을 배포하는 GitHub Actions 역할(앱 서버 적용, 추천 배치 서버 교체)
   alert_analyzer.tf        경보 AI 진단(분석용 SNS, Lambda와 읽기 전용 역할, 관측 서버 조회 SSM 문서, 같은 경보 묶기·하루 상한 DynamoDB, CI 코드 배포 권한)
+  image_pipeline.tf        이미지 업로드 이벤트 파이프라인(작업·결과 큐와 DLQ, 업로드 버킷 raw/ 알림·CORS·수명 주기, 정규화 Lambda와 역할, 앱 서버 raw/ 쓰기·결과 큐 읽기, 결과 큐 주소 Parameter Store, DLQ 경보, CI 코드 배포 권한)
   alert_actions.tf         경보 AI 진단의 조치 승인 버튼(승인 함수 URL, 실행 함수와 조치별 권한, 서버 조치 SSM 문서, 승인자 목록)
   comment_filter.tf        댓글 필터 이미지 저장소(ECR, 개발·운영 공용), 개발 Lambda(arm64 이미지, 함수 URL IAM 인증, 예약 동시성 2, 이미지는 필터 저장소 CI가 바꿈), 필터 저장소 GitHub Actions 개발 역할(모델 읽기, 이미지 푸시, 개발 Lambda 갱신·호출)
   recommendation.tf        개발 추천 배치 서버(1대짜리 서버 그룹, t4g.small 스팟, 상태 디스크, 시작 대기 자기 검사, 역할, 비밀이 아닌 값)와 추천 배치 저장소 GitHub Actions 개발 역할(배포 패키지 올리기, 배포 버전 값, 서버 교체)

@@ -116,6 +116,7 @@ aws lambda put-function-concurrency --region ap-northeast-2 --function-name dev-
 | --- | --- | --- | --- |
 | `dev-cking-app-system-check`, `dev-cking-observability-system-check` | 시스템 검사 실패 2분 | EC2 기본 자동 복구 | [ec2-system-check](ec2-system-check.md) |
 | `dev-cking-app-instance-check`, `dev-cking-observability-instance-check` | 인스턴스 검사 실패 3분 | 재부팅 | [ec2-instance-check](ec2-instance-check.md) |
+| `dev-cking-image-jobs-dlq`, `dev-cking-image-results-dlq` | 이미지 파이프라인 DLQ 메시지 1개 이상 | | [image-pipeline-dlq](image-pipeline-dlq.md) |
 
 ### 비용
 
