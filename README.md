@@ -162,7 +162,8 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
 1. `envs/prod`를 먼저 적용한다. 운영 경보 SNS가 `rule/cking-security-*` 이벤트 규칙의 발행을 허용해야 GuardDuty 경보가 들어간다
 2. `envs/security`에서 `terraform plan -out=tfplan` → `terraform apply tfplan`
 3. Security Hub 검사 결과는 켠 뒤 하루 안에 채워진다. 지적 사항은 고칠 것과 받아들일 것으로 나눈다. 받아들인 것은 이유와 함께 `triage.tf`에 넣어 억제한다. 새 리소스는 이름·이름표로 좁힌 규칙에 걸리지 않으면 다시 판단한다
-4. 비용: GuardDuty·Security Hub는 처음 30일 무료 체험이고, 그 뒤 금액은 체험 기간 사용량으로 확인한다. CloudTrail 첫 관리 이벤트 추적은 무료(버킷 저장 비용만), Config는 기록한 설정 항목 수에 비례한다
+4. 서울 기본 VPC는 지웠다(2026-10-29). 쓰는 리소스가 없었고, 서브넷을 빠뜨리고 만든 서버가 공인 IP를 달고 뜨는 것을 막는다. 필요하면 `aws ec2 create-default-vpc`로 다시 만든다. 다른 리전의 기본 VPC는 쓰지 않는 리전이라 그대로 둔다
+5. 비용: GuardDuty·Security Hub는 처음 30일 무료 체험이고, 그 뒤 금액은 체험 기간 사용량으로 확인한다. CloudTrail 첫 관리 이벤트 추적은 무료(버킷 저장 비용만), Config는 기록한 설정 항목 수에 비례한다
 
 ## 요구 사항
 
