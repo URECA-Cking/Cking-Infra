@@ -25,6 +25,12 @@ resource "aws_db_parameter_group" "main" {
     name  = "log_output"
     value = "FILE"
   }
+
+  # 평문 연결을 받지 않는다. 앱은 드라이버 기본값(sslMode=PREFERRED)으로 TLS를 쓴다.
+  parameter {
+    name  = "require_secure_transport"
+    value = "1"
+  }
 }
 
 # RDS가 만들기 전에 로그 그룹을 먼저 두어 보존 기간을 정한다.
