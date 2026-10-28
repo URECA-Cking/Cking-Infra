@@ -101,6 +101,23 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
     }
   }
 
+  # 이미지 파이프라인 원본(image_pipeline.tf)은 정규화가 끝나면 쓰지 않는다. 실패 분석용으로 1일만 둔다.
+  dynamic "rule" {
+    for_each = each.key == "uploads" ? [1] : []
+
+    content {
+      id     = "expire-raw-uploads-1d"
+      status = "Enabled"
+      filter {
+        prefix = "raw/"
+      }
+
+      expiration {
+        days = rule.value
+      }
+    }
+  }
+
   dynamic "rule" {
     for_each = each.key == "alb_logs" ? [local.alb_log_retention_days] : []
 

@@ -19,8 +19,7 @@ env:
   AWS_REGION: ap-northeast-2
   AWS_ROLE_ARN: arn:aws:iam::551372961758:role/dev-cking-infra-github-actions-role
   BUCKET: dev-cking-deploy-551372961758
-  # 진단, 승인 버튼, 조치 실행 함수가 같은 묶음을 쓴다
-  FUNCTIONS: dev-cking-image-normalizer
+  FUNCTION: dev-cking-image-normalizer
 
 jobs:
   deploy:
@@ -46,8 +45,27 @@ jobs:
         run: |
           KEY="image-normalizer/${GITHUB_SHA}.zip"
           aws s3 cp --only-show-errors "$RUNNER_TEMP/image-normalizer.zip" "s3://$BUCKET/$KEY"
-          for function in $FUNCTIONS; do
-            aws lambda update-function-code --function-name "$function" --s3-bucket "$BUCKET" --s3-key "$KEY" \
-              --query LastUpdateStatus --output text
-            aws lambda wait function-updated-v2 --function-name "$function"
-          done
+          aws lambda update-function-code --function-name "$FUNCTION" --s3-bucket "$BUCKET" --s3-key "$KEY" \
+            --query LastUpdateStatus --output text
+          aws lambda wait function-updated-v2 --function-name "$FUNCTION"
+
+  # 개발에서 바꾼 같은 묶음을 운영 함수에 쓴다. 운영 함수(envs/prod image_pipeline.tf)를 apply한 뒤
+  # 저장소 변수 IMAGE_NORMALIZER_PROD를 true로 둔다
+  deploy-prod:
+    needs: deploy
+    if: vars.IMAGE_NORMALIZER_PROD == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5.1.1
+        with:
+          role-to-assume: arn:aws:iam::551372961758:role/prod-cking-infra-github-actions-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: 운영 함수 코드 바꾸기
+        run: |
+          aws lambda update-function-code --function-name prod-cking-image-normalizer --s3-bucket "$BUCKET" \
+            --s3-key "image-normalizer/${GITHUB_SHA}.zip" --query LastUpdateStatus --output text
+          aws lambda wait function-updated-v2 --function-name prod-cking-image-normalizer
