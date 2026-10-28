@@ -29,14 +29,13 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
+          fetch-depth: 2
 
       # 공용 모듈과 운영 템플릿은 쓰는 스택을 같이 plan한다. loadtest는 lt.sh가 띄우고 지워 평소 비어 있어 바뀐 경우에만 한다.
+      # HEAD는 PR을 지금 main에 합친 커밋이라 첫 부모(지금 main)와 비교한다. PR을 연 시점의 base와 비교하면 그 뒤 main 변경까지 잡힌다.
       - id: find
-        env:
-          BASE: ${{ github.event.pull_request.base.sha }}
         run: |
-          stacks=$(git diff --name-only "$BASE" HEAD | awk -F/ '
+          stacks=$(git diff --name-only HEAD^1 HEAD | awk -F/ '
             $1 == "envs" && NF > 2 { print $2 }
             $1 == "envs" && $2 == "prod" && $3 == "templates" { print "dev" }
             $1 == "modules" && $2 == "api-waf" { print "dev"; print "prod" }
