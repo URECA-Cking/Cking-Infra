@@ -142,6 +142,14 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
    - 이 절차는 `envs/prod-base`의 앱 역할(시작 대기 끝내기 권한)이 먼저 적용되어 있어야 한다
 7. 운영 부하 테스트: `envs/prod`에서 `terraform apply -var k6_enabled=true -var rds_monitoring_interval=1`로 k6 서버(`prod-cking-k6`)를 만들고 RDS Enhanced Monitoring을 1초로 바꾼다. 끝나면 두 값 없이 다시 apply해 k6 서버를 지우고 60초로 되돌린다. 간격 변경은 재부팅 없이 적용된다. 1초를 켜 두면 수집 비용이 월 약 $16이라 반드시 되돌린다. 실행 절차는 BE `docs/operations/loadtest.md`의 "운영에서 실행"
 
+## 운영 NAT 방식
+
+`envs/prod`의 `nat_mode`로 고른다. 기본은 `instance`(AZ마다 t4g.nano NAT 인스턴스, 월 약 $9)이고 `gateway`는 AZ마다 관리형 NAT Gateway(월 약 $86)다. 운영 NAT를 지나는 데이터가 하루 1GB 안팎이라 비용 대부분이 켜 둔 시간 요금이다.
+
+1. 인스턴스 역할은 `envs/prod-base`(`prod-cking-nat-role`)에 있어 먼저 적용되어 있어야 한다
+2. 바꿀 때: `envs/prod`에서 `terraform plan -var nat_mode=<방식> -out=tfplan` → `terraform apply tfplan`. 바깥 IP가 바뀌고 API WAF 허용 IP(운영 NAT)도 같이 바뀐다
+3. 바꾸는 동안 앱 서브넷의 바깥 연결이 잠깐 끊긴다(경로가 새 NAT로 옮겨 가는 사이). 경보·대응은 런북 `prod-nat.md`
+
 ## 계정 보안 기준선
 
 1. `envs/prod`를 먼저 적용한다. 운영 경보 SNS가 `rule/cking-security-*` 이벤트 규칙의 발행을 허용해야 GuardDuty 경보가 들어간다

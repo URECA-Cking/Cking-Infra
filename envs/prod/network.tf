@@ -1,5 +1,5 @@
 # 운영 VPC. AZ 두 곳에 퍼블릭(ALB·NAT), 프라이빗 앱(서버), 프라이빗 데이터(RDS·ElastiCache) 서브넷을 둔다.
-# NAT는 AZ마다 두어 한 AZ가 멈춰도 다른 AZ 서버의 외부 호출(배포, AI API)이 이어진다.
+# NAT는 AZ마다 두어 한 AZ가 멈춰도 다른 AZ 서버의 외부 호출(배포, AI API)이 이어진다. 방식(관리형 게이트웨이·인스턴스)은 nat.tf의 nat_mode로 고른다.
 
 locals {
   zones = ["2a", "2b"]
@@ -38,14 +38,14 @@ resource "aws_internet_gateway" "main" {
 }
 
 resource "aws_eip" "nat" {
-  for_each = toset(local.zones)
+  for_each = var.nat_mode == "gateway" ? toset(local.zones) : toset([])
 
   domain = "vpc"
   tags   = { Name = "prod-cking-nat-${each.key}" }
 }
 
 resource "aws_nat_gateway" "this" {
-  for_each = toset(local.zones)
+  for_each = var.nat_mode == "gateway" ? toset(local.zones) : toset([])
 
   allocation_id = aws_eip.nat[each.key].id
   subnet_id     = aws_subnet.this["public-${each.key}"].id
@@ -84,7 +84,8 @@ resource "aws_route" "app_internet" {
 
   route_table_id         = aws_route_table.app[each.key].id
   destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id         = aws_nat_gateway.this[each.key].id
+  nat_gateway_id         = var.nat_mode == "gateway" ? aws_nat_gateway.this[each.key].id : null
+  network_interface_id   = var.nat_mode == "instance" ? aws_instance.nat[each.key].primary_network_interface_id : null
 }
 
 resource "aws_route_table_association" "app" {
