@@ -55,9 +55,9 @@ case "$CMD" in
   sql)
     db_env; mysql_run cking -e "SET time_zone = '+00:00'; $1" ;;
   seed)
-    db_env; mysql_run cking -e "$1; source /lt/seed.sql" ;;
+    db_env; mysql_run cking -e "$1; source /lt/seed.sql;" ;;
   seed-closing)
-    db_env; mysql_run cking -e "SET @closing_creator = $1, @closing_minutes = $2; source /lt/seed-closing.sql" ;;
+    db_env; mysql_run cking -e "SET @closing_creator = $1, @closing_minutes = $2; source /lt/seed-closing.sql;" ;;
   redis)
     redis_env; redis_run "$@" ;;
   stop-app)

@@ -155,14 +155,14 @@ cmd_down() {
 # 명령 치환 안에서는 -e가 꺼져(macOS bash 3.2는 inherit_errexit도 없다) 실패해도 다음 단계로 넘어간다.
 # 그래서 결과를 파일로 받고 함수는 그대로 실행한다.
 cmd_all() {
-  local file=${1:?시나리오 파일} tag=${2:-} id rc=0 out
-  out=$(mktemp)
-  trap 'log "환경 삭제"; cmd_down; rm -f "$out"' EXIT
+  local file=${1:?시나리오 파일} tag=${2:-} id rc=0
+  ALL_OUT=$(mktemp)
+  trap 'log "환경 삭제"; cmd_down; rm -f "$ALL_OUT"' EXIT
   cmd_up
-  cmd_prepare "$tag" > "$out"
-  tag=$(tail -n 1 "$out")
-  cmd_start "$file" > "$out"
-  id=$(tail -n 1 "$out")
+  cmd_prepare "$tag" > "$ALL_OUT"
+  tag=$(tail -n 1 "$ALL_OUT")
+  cmd_start "$file" > "$ALL_OUT"
+  id=$(tail -n 1 "$ALL_OUT")
   cmd_wait "$id" || rc=$?
   return $rc
 }

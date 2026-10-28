@@ -234,7 +234,7 @@ class Runner:
         line = " ".join(shlex.quote(a) for a in ["bash", AGENT, self.t["param_path"], cmd, *map(str, args)])
         status, out, err = self.ssm([instance], [line], timeout=timeout)[instance]
         if check and status != "Success":
-            raise RuntimeError(f"앱 서버 {cmd} 실패({status}): {(err or out).strip()[-500:]}")
+            raise RuntimeError(f"앱 서버 {cmd} 실패({status}): {err.strip()[-300:]} | 출력: {out.strip()[-300:]}")
         return out
 
     def exec_on(self, on, command, timeout=900):
