@@ -1,0 +1,79 @@
+name: Terraform apply
+
+# main에서 수동으로 한 스택을 적용한다. Environment terraform-apply의 승인이 있어야 시작하고, 그때만 apply 역할을 받는다.
+# 승인 시점과 PR plan 사이에 바뀐 것이 있으면 적용하지 않도록, 새로 만든 계획의 개수가 입력한 기대 개수와 같을 때만 적용한다.
+on:
+  workflow_dispatch:
+    inputs:
+      stack:
+        description: 스택
+        type: choice
+        options: [dev, loadtest-base, prod-base, prod, security, ci]
+      expect:
+        description: "기대 개수 추가,변경,삭제(PR plan 댓글의 값, 예: 16,2,0)"
+        required: true
+      vars:
+        description: "-var로 넘길 값, 빈칸으로 구분(예: k6_enabled=true nat_mode=instance)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terraform-apply-${{ inputs.stack }}
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    environment: terraform-apply
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.16.4
+          terraform_wrapper: false
+
+      - uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5.1.1
+        with:
+          role-to-assume: arn:aws:iam::551372961758:role/cking-terraform-apply
+          aws-region: ap-northeast-2
+
+      - name: plan
+        env:
+          STACK: ${{ inputs.stack }}
+          EXPECT: ${{ inputs.expect }}
+          VARS: ${{ inputs.vars }}
+        run: |
+          args=()
+          for kv in $VARS; do
+            [[ "$kv" =~ ^[a-z0-9_]+=[A-Za-z0-9._-]+$ ]] || { echo "::error::변수 형식이 아니다: $kv"; exit 1; }
+            args+=(-var "$kv")
+          done
+          dir="envs/$STACK"
+          terraform -chdir="$dir" init -input=false -no-color > /dev/null
+          if ! terraform -chdir="$dir" plan -input=false -no-color -lock-timeout=10m "${args[@]}" -out=tfplan > plan.log 2>&1; then
+            grep -E '^(│ )?Error' plan.log | head -n 5
+            exit 1
+          fi
+          terraform -chdir="$dir" show -json tfplan | jq -r '
+            [.resource_changes[] | select(.change.actions != ["no-op"] and .change.actions != ["read"])] as $c
+            | "\($c | map(select(.change.actions | index("create"))) | length),\($c | map(select(.change.actions == ["update"])) | length),\($c | map(select(.change.actions | index("delete"))) | length)",
+              ($c[] | "- `\(.change.actions | join("·"))` \(.address)")' > summary.md
+          got=$(head -n 1 summary.md)
+          { echo "**$STACK** 계획 $got (기대 $EXPECT)"; tail -n +2 summary.md; } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$got" != "$EXPECT" ]; then
+            echo "::error::새 계획 $got가 기대 $EXPECT와 다르다. 적용하지 않는다"
+            exit 1
+          fi
+
+      - name: apply
+        env:
+          STACK: ${{ inputs.stack }}
+        run: terraform -chdir="envs/$STACK" apply -input=false -no-color tfplan 2>&1 | grep -E '^(Apply complete|│ Error|Error)'

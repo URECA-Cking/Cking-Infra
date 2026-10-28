@@ -1,0 +1,107 @@
+name: Terraform plan
+
+# PR에서 바뀐 스택만 plan해 요약(리소스 주소와 동작)을 PR 댓글로 남긴다. 값은 남기지 않는다(공개 저장소).
+# 역할 cking-terraform-plan은 Environment terraform-plan으로만 받을 수 있고, 그 Environment는 승인이 있어야 시작한다.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "envs/**"
+      - "modules/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terraform-plan-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  stacks:
+    runs-on: ubuntu-24.04
+    outputs:
+      stacks: ${{ steps.find.outputs.stacks }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      # 공용 모듈과 운영 템플릿은 쓰는 스택을 같이 plan한다. loadtest는 lt.sh가 띄우고 지워 평소 비어 있어 바뀐 경우에만 한다.
+      - id: find
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          stacks=$(git diff --name-only "$BASE" HEAD | awk -F/ '
+            $1 == "envs" && NF > 2 { print $2 }
+            $1 == "envs" && $2 == "prod" && $3 == "templates" { print "dev" }
+            $1 == "modules" && $2 == "api-waf" { print "dev"; print "prod" }
+            $1 == "modules" && $2 == "k6-server" { print "loadtest"; print "prod" }
+          ' | sort -u | jq -R . | jq -cs .)
+          echo "stacks=$stacks" >> "$GITHUB_OUTPUT"
+          echo "plan 대상: $stacks"
+
+  plan:
+    needs: stacks
+    if: needs.stacks.outputs.stacks != '[]'
+    runs-on: ubuntu-24.04
+    environment: terraform-plan
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+    strategy:
+      fail-fast: false
+      matrix:
+        stack: ${{ fromJSON(needs.stacks.outputs.stacks) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.16.4
+          terraform_wrapper: false
+
+      - uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5.1.1
+        with:
+          role-to-assume: arn:aws:iam::551372961758:role/cking-terraform-plan
+          aws-region: ap-northeast-2
+
+      # 잠금을 잡지 않는다(읽기만 하고, 사람이 apply 중이어도 막지 않게). 계획 파일과 로그는 출력하지 않는다.
+      - name: plan
+        env:
+          STACK: ${{ matrix.stack }}
+        run: |
+          dir="envs/$STACK"
+          terraform -chdir="$dir" init -input=false -no-color > /dev/null
+          if ! terraform -chdir="$dir" plan -input=false -no-color -lock=false -out=tfplan > plan.log 2>&1; then
+            grep -E '^(│ )?Error' plan.log | head -n 5 | tee summary.md
+            exit 1
+          fi
+          terraform -chdir="$dir" show -json tfplan | jq -r '
+            [.resource_changes[] | select(.change.actions != ["no-op"] and .change.actions != ["read"])] as $c
+            | ($c | map(select(.change.actions | index("create"))) | length) as $add
+            | ($c | map(select(.change.actions == ["update"])) | length) as $change
+            | ($c | map(select(.change.actions | index("delete"))) | length) as $destroy
+            | "**\(env.STACK)**: 추가 \($add), 변경 \($change), 삭제 \($destroy) (apply 기대 개수 `\($add),\($change),\($destroy)`)\n",
+              ($c[] | "- `\(.change.actions | join("·"))` \(.address)")' > summary.md
+          rm -f "$dir/tfplan" plan.log
+          cat summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: PR 댓글
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STACK: ${{ matrix.stack }}
+          PR: ${{ github.event.pull_request.number }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          [ -s summary.md ] || exit 0
+          marker="<!-- terraform-plan:$STACK -->"
+          { echo "$marker"; echo "Terraform plan \`$STACK\` (${SHA:0:7}, 기본 변수값 기준)"; echo; cat summary.md; } > comment.md
+          body=$(cat comment.md)
+          id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate --jq ".[] | select(.body | startswith(\"$marker\")) | .id" | head -n 1)
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -f body="$body" > /dev/null
+          else
+            gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -f body="$body" > /dev/null
+          fi
