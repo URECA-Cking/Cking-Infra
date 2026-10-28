@@ -3,17 +3,20 @@ resource "aws_s3_bucket_policy" "uploads" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Sid       = "AllowCloudFrontReadProfileImages"
-      Effect    = "Allow"
-      Principal = { Service = "cloudfront.amazonaws.com" }
-      Action    = "s3:GetObject"
-      Resource = [
-        "${data.aws_s3_bucket.uploads.arn}/member-profile-images/*",
-        "${data.aws_s3_bucket.uploads.arn}/creator-space-profile-images/*",
-      ]
-      Condition = { StringEquals = { "AWS:SourceArn" = aws_cloudfront_distribution.uploads.arn } }
-    }]
+    Statement = [
+      {
+        Sid       = "AllowCloudFrontReadProfileImages"
+        Effect    = "Allow"
+        Principal = { Service = "cloudfront.amazonaws.com" }
+        Action    = "s3:GetObject"
+        Resource = [
+          "${data.aws_s3_bucket.uploads.arn}/member-profile-images/*",
+          "${data.aws_s3_bucket.uploads.arn}/creator-space-profile-images/*",
+        ]
+        Condition = { StringEquals = { "AWS:SourceArn" = aws_cloudfront_distribution.uploads.arn } }
+      },
+      local.deny_insecure_transport["uploads"],
+    ]
   })
 }
 
