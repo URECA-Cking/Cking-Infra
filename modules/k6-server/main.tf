@@ -23,12 +23,14 @@ resource "aws_instance" "this" {
   associate_public_ip_address = var.associate_public_ip_address
 
   user_data = templatefile("${path.module}/k6-init.sh", {
-    k6_version    = var.k6_version
-    k6_sha256     = var.k6_sha256
-    alloy_version = var.alloy_version
-    alloy_sha256  = var.alloy_sha256
-    instance      = var.name
-    gateway_ip    = var.gateway_ip
+    k6_version     = var.k6_version
+    k6_sha256      = var.k6_sha256
+    alloy_version  = var.alloy_version
+    alloy_sha256   = var.alloy_sha256
+    awscli_version = var.awscli_version
+    awscli_sha256  = var.awscli_sha256
+    instance       = var.name
+    gateway_ip     = var.gateway_ip
   })
 
   metadata_options {

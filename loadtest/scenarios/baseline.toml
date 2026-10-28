@@ -1,0 +1,62 @@
+# 기준선(BE docs/operations/loadtest.md 순서). 응모 지속 SLO 처리량 80/s × 20분, 마감 직전 몰림, 추첨, 동시 요청을 3라운드.
+# 라운드마다 되돌리기·시딩부터 다시 한다. 시작 잔액: 조합 5만, 예열 1 + 지속 96,000/5만 → 2, 마감 80 × 240초 / 1만 → 2 → 100이면 충분
+name = "baseline"
+repeat = 3
+
+[seed]
+creators = 5
+members = 10000
+start_balance = 100
+
+[[steps]]
+type = "k6"
+name = "warmup"
+script = "warmup.js"
+
+[[steps]]
+type = "k6"
+name = "sustain"
+script = "entry-sustain.js"
+env = { RATE = "80", DURATION = "20m", PRE_VUS = "600", SLO_P95_MS = "1000", SLO_FAIL_RATE = "0.001" }
+
+[[steps]]
+type = "drain"
+
+[[steps]]
+type = "seed_closing"
+creator = 1
+minutes = 5
+
+[[steps]]
+type = "wait"
+before_end_seconds = 180
+
+[[steps]]
+type = "k6"
+name = "closing"
+script = "closing-burst.js"
+env = { CLOSING_EVENT_ID = "{closing_event_id}", END_AT_MS = "{end_at_ms}", RATE = "80", DURATION = "4m", PRE_VUS = "600" }
+
+[[steps]]
+type = "wait"
+event_closed = true
+
+[[steps]]
+type = "k6"
+name = "draw"
+script = "draw.js"
+env = { CLOSING_EVENT_ID = "{closing_event_id}", ADMIN_MEMBER_ID = "{admin_member_id}" }
+metrics = false
+
+[[steps]]
+type = "k6"
+name = "race"
+script = "race.js"
+env = { RACE_FIRST_MEMBER_ID = "{race_first_member_id}", ROUNDS = "20", CONCURRENCY = "50" }
+metrics = false
+
+[[steps]]
+type = "drain"
+
+[[steps]]
+type = "verify"

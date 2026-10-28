@@ -10,9 +10,17 @@ APT::Periodic::Unattended-Upgrade "0";
 EOF
 
 apt-get update
-apt-get install -y ca-certificates curl unzip awscli
+apt-get install -y ca-certificates curl unzip
 
-cd /tmp
+# /tmp는 메모리 기반(c7g.medium에서 912MB)이라 AWS CLI(풀면 약 230MB)·Alloy를 함께 풀면 가득 찬다. 디스크에서 풀고 지운다.
+install -d -m 0700 /var/tmp/k6-init
+cd /var/tmp/k6-init
+
+curl -fsSLO "https://awscli.amazonaws.com/awscli-exe-linux-aarch64-${awscli_version}.zip"
+echo "${awscli_sha256}  awscli-exe-linux-aarch64-${awscli_version}.zip" | sha256sum -c -
+unzip -q -o "awscli-exe-linux-aarch64-${awscli_version}.zip"
+./aws/install --update
+rm -rf aws "awscli-exe-linux-aarch64-${awscli_version}.zip"
 
 curl -fsSLO "https://github.com/grafana/k6/releases/download/${k6_version}/k6-${k6_version}-linux-arm64.tar.gz"
 echo "${k6_sha256}  k6-${k6_version}-linux-arm64.tar.gz" | sha256sum -c -
@@ -87,8 +95,11 @@ cat > /etc/profile.d/k6.sh <<'EOF'
 export K6_PROMETHEUS_RW_SERVER_URL="http://${gateway_ip}:9009/api/v1/metrics/write"
 EOF
 
+cd / && rm -rf /var/tmp/k6-init
+
 systemctl daemon-reload
 systemctl enable --now alloy
 
 k6 version
+aws --version
 systemctl is-active alloy

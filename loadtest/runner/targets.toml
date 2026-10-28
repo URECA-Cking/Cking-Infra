@@ -1,0 +1,28 @@
+# 실행 대상. ltrun.py --target <이름>으로 고른다.
+
+[loadtest]
+base_url = "https://loadtest-api.cking.co.kr"
+param_path = "/cking/loadtest"
+app_name_tag = "loadtest-cking-app"
+k6_name_tag = "loadtest-cking-k6"
+instance_prefix = "loadtest-cking-"
+results_bucket = "loadtest-cking-results-551372961758-ap-northeast-2-an"
+query_instance_name_tag = "dev-cking-observability"
+query_document = "dev-cking-observability-query"
+query_role_arn = "arn:aws:iam::551372961758:role/loadtest-cking-query"
+slack_webhook_parameter = "/cking/dev/monitoring/SLACK_ALERT_WEBHOOK_URL"
+
+# 운영은 정식 오픈 전에만 쓴다. 되돌리기가 운영 DB를 지운다. 필요한 권한은 loadtest/README.md "운영 대상"
+[prod]
+base_url = "https://api.cking.co.kr"
+confirm_prod = "api.cking.co.kr"
+param_path = "/cking/prod"
+asg = "prod-cking-app"
+target_group = "prod-cking-app-tg"
+k6_name_tag = "prod-cking-k6"
+instance_prefix = "prod-cking-"
+results_bucket = "loadtest-cking-results-551372961758-ap-northeast-2-an"
+query_instance_name_tag = "dev-cking-observability"
+query_document = "dev-cking-observability-query"
+query_role_arn = "arn:aws:iam::551372961758:role/loadtest-cking-query"
+slack_webhook_parameter = "/cking/dev/monitoring/SLACK_PROD_ALERT_WEBHOOK_URL"

@@ -1,0 +1,58 @@
+# 실행기 동작 확인(약 15분). 모든 단계 종류를 짧게 한 번씩 거친다. 숫자는 기준선으로 쓰지 않는다.
+name = "smoke"
+repeat = 1
+
+[seed]
+members = 1000
+
+[[steps]]
+type = "k6"
+name = "warmup"
+script = "warmup.js"
+
+[[steps]]
+type = "k6"
+name = "sustain"
+script = "entry-sustain.js"
+env = { RATE = "20", DURATION = "2m" }
+hooks = [{ after = "60s", on = "app", run = "docker stats --no-stream --format '{{.Name}} {{.CPUPerc}} {{.MemUsage}}' cking-app" }]
+stop_when = { p95_ms = 3000, consecutive = 3 }
+
+[[steps]]
+type = "seed_closing"
+creator = 1
+minutes = 3
+
+[[steps]]
+type = "wait"
+before_end_seconds = 60
+
+[[steps]]
+type = "k6"
+name = "closing"
+script = "closing-burst.js"
+env = { CLOSING_EVENT_ID = "{closing_event_id}", END_AT_MS = "{end_at_ms}", RATE = "20", DURATION = "2m" }
+
+[[steps]]
+type = "wait"
+event_closed = true
+
+[[steps]]
+type = "k6"
+name = "draw"
+script = "draw.js"
+env = { CLOSING_EVENT_ID = "{closing_event_id}", ADMIN_MEMBER_ID = "{admin_member_id}" }
+metrics = false
+
+[[steps]]
+type = "k6"
+name = "race"
+script = "race.js"
+env = { RACE_FIRST_MEMBER_ID = "{race_first_member_id}", ROUNDS = "20", CONCURRENCY = "50" }
+metrics = false
+
+[[steps]]
+type = "drain"
+
+[[steps]]
+type = "verify"

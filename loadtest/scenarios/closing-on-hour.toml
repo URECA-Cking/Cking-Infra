@@ -1,0 +1,42 @@
+# 정각 마감. 정각 응답 멈춤(Infra #169)을 다시 재는 시나리오. 정각 5분 전에 마감 5분짜리 이벤트를 만들어 정각에 마감시키고,
+# 마감 3분 전부터 몰림을 보낸다. 같은 정각에 도는 일정 작업(잔액 대조 등)과 겹치는지 본다.
+name = "closing-on-hour"
+repeat = 1
+
+[seed]
+members = 10000
+
+[[steps]]
+type = "k6"
+name = "warmup"
+script = "warmup.js"
+
+[[steps]]
+type = "wait"
+before_hour_minutes = 5
+
+[[steps]]
+type = "seed_closing"
+creator = 1
+minutes = 5
+
+[[steps]]
+type = "wait"
+before_end_seconds = 180
+
+[[steps]]
+type = "k6"
+name = "closing"
+script = "closing-burst.js"
+env = { CLOSING_EVENT_ID = "{closing_event_id}", END_AT_MS = "{end_at_ms}", RATE = "80", DURATION = "4m", PRE_VUS = "600" }
+monitor_seconds = 10
+
+[[steps]]
+type = "wait"
+event_closed = true
+
+[[steps]]
+type = "drain"
+
+[[steps]]
+type = "verify"
