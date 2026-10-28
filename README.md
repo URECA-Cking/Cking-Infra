@@ -109,6 +109,7 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
 2. 비밀값은 Parameter Store에 SecureString으로 넣는다. 앱은 `/cking/prod/`, 추천 배치 서버는 `/cking/prod-recommendation/`, 감시용 서버는 `/cking/prod-monitor/`(Redis 감시 전용 사용자)이며 각 역할은 자기 경로만 읽는다
    - `envs/prod` plan 전에 Redis 비밀번호 두 개가 있어야 한다(Terraform이 읽어 ElastiCache 사용자에 넣고 상태 파일에는 남기지 않는다): `/cking/prod/REDIS_PASSWORD`, `/cking/prod-monitor/REDIS_PASSWORD`. 16~128자, `,` `"` `/` `@` 제외
    - RDS 마스터 비밀번호는 RDS가 Secrets Manager에 만들고 교체하므로 넣지 않는다
+   - 비밀 쿠키 게이트 값 `/cking/prod/GATE_SECRET`(`openssl rand -hex 24`). Terraform이 읽어 CloudFront 함수(웹·관리자)와 API WAF 규칙에 넣으므로 상태 파일에 남는다. 팀원 입장 주소는 `https://cking.co.kr/?gate=<값>`이고 30일 쿠키가 생긴다. 정식 오픈 때 `gate_enabled`를 끈다
 3. `envs/prod`에서 `terraform plan -out=tfplan` → `terraform apply tfplan`. 비밀이 아닌 값(`DB_HOST`, `DB_USERNAME`, `REDIS_HOST`, `REDIS_USERNAME`)은 Terraform이 만든다
    - 추천 배치 서버는 배치 저장소 main의 첫 운영 배포 전까지 배포 버전 값이 없어 시작 대기에서 버려지기를 반복한다. 켜는 순서는 [추천 배치 서버](docs/runbooks/recommendation-batch.md#운영에서-다른-점)
 4. 앱 DB 계정(`cking_app`, `cking` 스키마 권한만)을 처음 한 번 만든다. 앱은 마스터가 아닌 이 계정으로 접속한다. Mac에 Session Manager 플러그인, `mysql` 클라이언트, `python3`가 필요하다

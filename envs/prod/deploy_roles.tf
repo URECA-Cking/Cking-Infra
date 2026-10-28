@@ -44,6 +44,13 @@ resource "aws_iam_role_policy" "be_deploy" {
         Action   = ["ssm:GetParameter", "ssm:PutParameter"]
         Resource = "arn:aws:ssm:ap-northeast-2:551372961758:parameter/cking/prod/RELEASE_TAG"
       },
+      # 배포 뒤 스모크 테스트가 비밀 쿠키 게이트를 통과할 때 쓴다(BE deploy-prod.yml).
+      {
+        Sid      = "ReadGateSecret"
+        Effect   = "Allow"
+        Action   = "ssm:GetParameter"
+        Resource = "arn:aws:ssm:ap-northeast-2:551372961758:parameter/cking/prod/GATE_SECRET"
+      },
       {
         Sid      = "RefreshAppServers"
         Effect   = "Allow"

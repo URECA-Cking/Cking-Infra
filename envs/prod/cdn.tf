@@ -64,6 +64,36 @@ resource "aws_cloudfront_function" "www_redirect" {
   code    = file("${path.module}/functions/www-redirect.js")
 }
 
+# 정식 오픈 전 웹·관리자를 비밀 쿠키 게이트 뒤에 둔다. 웹의 www 넘기기도 같은 함수가 한다(요청 단계 함수는 하나만 붙는다).
+variable "gate_enabled" {
+  type    = bool
+  default = true
+}
+
+data "aws_ssm_parameter" "gate_secret" {
+  name = "/cking/prod/GATE_SECRET"
+}
+
+resource "aws_cloudfront_function" "gate" {
+  for_each = var.gate_enabled ? toset(["web", "admin"]) : toset([])
+
+  name    = "prod-cking-${each.key}-gate"
+  runtime = "cloudfront-js-2.0"
+  publish = true
+  code = templatefile("${path.module}/functions/gate.js.tftpl", {
+    secret       = data.aws_ssm_parameter.gate_secret.value
+    redirect_www = each.key == "web"
+  })
+}
+
+locals {
+  viewer_request_functions = {
+    web    = var.gate_enabled ? aws_cloudfront_function.gate["web"].arn : aws_cloudfront_function.www_redirect.arn
+    admin  = var.gate_enabled ? aws_cloudfront_function.gate["admin"].arn : null
+    images = null
+  }
+}
+
 resource "aws_cloudfront_distribution" "this" {
   for_each = local.cdn
 
@@ -90,7 +120,7 @@ resource "aws_cloudfront_distribution" "this" {
     response_headers_policy_id = data.aws_cloudfront_response_headers_policy.security_headers.id
 
     dynamic "function_association" {
-      for_each = each.key == "web" ? [aws_cloudfront_function.www_redirect.arn] : []
+      for_each = local.viewer_request_functions[each.key] == null ? [] : [local.viewer_request_functions[each.key]]
 
       content {
         event_type   = "viewer-request"

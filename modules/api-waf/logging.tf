@@ -33,7 +33,7 @@ resource "aws_wafv2_web_acl_logging_configuration" "this" {
   log_destination_configs = [aws_cloudwatch_log_group.waf.arn]
 
   dynamic "redacted_fields" {
-    for_each = ["authorization", "cookie", "x-cking-recommendation-key"]
+    for_each = ["authorization", "cookie", "x-cking-recommendation-key", "x-cking-gate"]
 
     content {
       single_header {
