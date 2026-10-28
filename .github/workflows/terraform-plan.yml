@@ -12,6 +12,11 @@ on:
 permissions:
   contents: read
 
+# 지정하지 않으면 bash -e라 파이프 앞 명령의 실패가 묻힌다(apply | grep). bash는 -eo pipefail
+defaults:
+  run:
+    shell: bash
+
 concurrency:
   group: terraform-plan-${{ github.event.pull_request.number }}
   cancel-in-progress: true
