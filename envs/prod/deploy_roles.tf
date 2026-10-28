@@ -166,3 +166,46 @@ resource "aws_iam_role_policy" "filter_deploy" {
     ]
   })
 }
+
+# 이미지 정규화 Lambda(image_pipeline.tf): Infra main CI가 개발 함수를 바꾼 뒤 같은 묶음으로 운영 함수를 바꾼다(deploy-image-normalizer.yml).
+resource "aws_iam_role" "infra_deploy" {
+  name = "prod-cking-infra-github-actions-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Federated = data.aws_iam_openid_connect_provider.github.arn }
+      Action    = "sts:AssumeRoleWithWebIdentity"
+      Condition = {
+        StringEquals = {
+          "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+          "token.actions.githubusercontent.com:sub" = "repo:URECA-Cking@326738686/Cking-Infra@1406210898:ref:refs/heads/main"
+        }
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "image_normalizer_deploy" {
+  name = "prod-cking-image-normalizer-deploy"
+  role = aws_iam_role.infra_deploy.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "ReadPackage"
+        Effect   = "Allow"
+        Action   = "s3:GetObject"
+        Resource = "arn:aws:s3:::${local.image_normalizer_package_bucket}/image-normalizer/*"
+      },
+      {
+        Sid      = "UpdateFunction"
+        Effect   = "Allow"
+        Action   = ["lambda:UpdateFunctionCode", "lambda:GetFunction", "lambda:GetFunctionConfiguration"]
+        Resource = aws_lambda_function.image_normalizer.arn
+      },
+    ]
+  })
+}

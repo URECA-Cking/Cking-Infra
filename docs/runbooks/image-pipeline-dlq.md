@@ -2,6 +2,8 @@
 
 > 전제: 브라우저가 업로드 버킷 `raw/<최종 키>`에 올리면 S3 이벤트 → 작업 큐 `dev-cking-image-jobs` → 정규화 Lambda `dev-cking-image-normalizer` → 최종 키 저장 → 결과 큐 `dev-cking-image-results` → 앱이 업로드 기록을 완료로 바꾼다. 원본은 1일 뒤 지워진다
 
+> 이름은 개발 기준이다. 운영은 앞의 `dev-`를 `prod-`로 바꾼다(큐·함수·로그 그룹·경보)
+
 작업 DLQ(`dev-cking-image-jobs-dlq`)나 결과 DLQ(`dev-cking-image-results-dlq`)에 메시지가 1개 이상일 때(CloudWatch).
 
 ## 뜻하는 것

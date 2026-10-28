@@ -58,18 +58,19 @@ envs/prod/                 운영 환경. 상태는 prod/terraform.tfstate
   servers.tf               운영 서버 공통 값(개발 앱 서버와 같은 AMI·Docker 버전)
   monitor.tf               감시용 서버(오토스케일링 그룹 1대, t4g.micro, 앱 서브넷 2a·2b)
   recommendation.tf        추천 배치 서버(1대짜리 서버 그룹, t4g.small 온디맨드, 앱 서브넷 2a, 상태 디스크, 시작 대기 자기 검사, 비밀이 아닌 값)와 추천 배치 저장소 GitHub Actions 운영 역할(개발 패키지 복사, 배포 버전 값, 서버 교체)
-  buckets.tf               배포·업로드·ALB 접근 로그·웹·관리자 프론트 버킷
+  buckets.tf               배포·업로드·ALB 접근 로그·웹·관리자 프론트 버킷(업로드 버킷 raw/ 1일 수명 주기)
   alb.tf                   ALB(HTTPS, /readyz 외부 차단, 접근 로그), api.cking.co.kr, API 앞단 WAF(차단, 운영 NAT IP 허용)
   app.tf                   앱 서버 오토스케일링 그룹(c6g.large 2~4대, 서버당 분당 요청 6,300건 목표 추적, 교체 배포, 시작 대기 중 자기 스모크 검사)
   cdn.tf                   CloudFront(종량제, WAF 없음): cking.co.kr(www 이동)·admin.cking.co.kr 프론트, images.cking.co.kr 프로필 이미지
   comment_filter.tf        운영 댓글 필터 Lambda(arm64 이미지, 함수 URL IAM 인증, 예약 동시성 8, 이미지는 필터 저장소 main CI가 개발에서 확인한 이미지로 바꿈)
+  image_pipeline.tf        이미지 업로드 이벤트 파이프라인(작업·결과 큐와 DLQ, 업로드 버킷 raw/ 알림·CORS, 정규화 Lambda와 SQS 연결 최대 동시성, DLQ 경보). 결과 큐 주소 Parameter Store는 image_pipeline_enabled일 때만
   alarms.tf                AWS 서비스 경보(ALB, 서버 띄우기 실패, ElastiCache, RDS) → SNS → 운영 채널(Amazon Q)·메일
   alert_analyzer.tf        경보 AI 진단의 운영 경보 주제 구독과 호출 허용. 함수는 envs/dev
-  deploy_roles.tf          GitHub Actions 운영 배포 역할(BE: 배포 파일, 배포 태그, 앱 서버 교체 / FE: 프론트 버킷 동기화, 도메인으로 배포 찾기, 캐시 무효화 / 필터: 개발 CI가 올린 이미지에 prod- 태그, 운영 Lambda 교체·호출)
+  deploy_roles.tf          GitHub Actions 운영 배포 역할(BE: 배포 파일, 배포 태그, 앱 서버 교체 / FE: 프론트 버킷 동기화, 도메인으로 배포 찾기, 캐시 무효화 / 필터: 개발 CI가 올린 이미지에 prod- 태그, 운영 Lambda 교체·호출 / Infra: 개발 CI가 올린 묶음으로 운영 이미지 정규화 Lambda 교체)
   templates/               서버 첫 부팅 스크립트(server-base.sh는 공통 준비, recommendation-init.sh는 개발·운영 추천 배치 서버가 같이 쓴다)
   functions/               CloudFront Functions(www → cking.co.kr 이동)
 envs/prod-base/            운영 환경 EC2 역할·인스턴스 프로필과 RDS 모니터링 역할. 운영 서버보다 먼저 만들고 운영 환경을 지워도 남긴다. 상태는 prod-base/terraform.tfstate
-  iam.tf                   앱 서버·추천 배치 서버·감시용 서버·k6 서버 역할, RDS Enhanced Monitoring 역할(SSM, 운영 비밀값·배포 파일·업로드 버킷, 수집기 설정 읽기, 댓글 필터 호출, 앱·추천 배치 서버 시작 대기 끝내기, 추천 배치 상태 디스크 붙이기)
+  iam.tf                   앱 서버·추천 배치 서버·감시용 서버·k6 서버 역할, RDS Enhanced Monitoring 역할(SSM, 운영 비밀값·배포 파일·업로드 버킷, 수집기 설정 읽기, 댓글 필터 호출, 이미지 파이프라인 raw/ 쓰기·결과 큐 읽기, 앱·추천 배치 서버 시작 대기 끝내기, 추천 배치 상태 디스크 붙이기)
 envs/ci/                   Terraform을 GitHub Actions로 plan·apply하는 역할. plan은 읽기 전용(데이터 읽기 거부, plan에 필요한 비밀값 5개만 복호화), apply는 관리자. 신뢰는 GitHub Environment terraform-plan·terraform-apply(승인자 필요). 상태는 ci/terraform.tfstate
   roles.tf                 plan·apply 역할
 envs/security/             계정 보안 기준선. 환경과 상관없이 계정에 하나. 상태는 security/terraform.tfstate

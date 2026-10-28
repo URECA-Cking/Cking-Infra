@@ -6,7 +6,9 @@ locals {
   uploads_bucket       = "prod-cking-uploads-551372961758-ap-northeast-2-an"
   observability_bucket = "dev-cking-observability-551372961758-ap-northeast-2-an"
   comment_filter_arn   = "arn:aws:lambda:ap-northeast-2:551372961758:function:prod-cking-comment-filter"
-  ec2_arn              = "arn:aws:ec2:ap-northeast-2:551372961758"
+  # 이미지 파이프라인 결과 큐(envs/prod/image_pipeline.tf). 사전 서명 PUT은 서명한 이 역할의 권한으로 동작해 raw/ 쓰기가 필요하다
+  image_results_queue_arn = "arn:aws:sqs:ap-northeast-2:551372961758:prod-cking-image-results"
+  ec2_arn                 = "arn:aws:ec2:ap-northeast-2:551372961758"
   upload_prefixes = [
     "subscription-verifications",
     "post-images",
@@ -74,6 +76,18 @@ resource "aws_iam_role_policy" "app" {
         Effect   = "Allow"
         Action   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"]
         Resource = [for p in local.upload_prefixes : "arn:aws:s3:::${local.uploads_bucket}/${p}/*"]
+      },
+      {
+        Sid      = "PresignRawUploads"
+        Effect   = "Allow"
+        Action   = "s3:PutObject"
+        Resource = "arn:aws:s3:::${local.uploads_bucket}/raw/*"
+      },
+      {
+        Sid      = "ReadImageResults"
+        Effect   = "Allow"
+        Action   = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:ChangeMessageVisibility", "sqs:GetQueueAttributes"]
+        Resource = local.image_results_queue_arn
       },
       {
         Sid      = "NotFoundAs404"
