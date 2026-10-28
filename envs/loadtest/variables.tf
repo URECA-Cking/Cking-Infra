@@ -40,3 +40,9 @@ variable "k6_instance_type" {
   default     = "c7g.medium"
 }
 
+
+variable "ttl_hours" {
+  description = "켜진 뒤 이 시간이 지나면 정리기가 서버·RDS를 멈춘다. 가장 길었던 실행(운영 3차 7시간 20분)과 apply·배포 약 20분에 여유를 둔 값. 더 긴 측정이면 늘려서 apply한다"
+  type        = number
+  default     = 12
+}

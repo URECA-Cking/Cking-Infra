@@ -88,13 +88,18 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: shellcheck
         run: |
-          shellcheck observability/apply.sh app-agent/apply.sh alert-analyzer/build.sh image-normalizer/build.sh
+          shellcheck observability/apply.sh app-agent/apply.sh alert-analyzer/build.sh image-normalizer/build.sh \
+            loadtest/lt.sh loadtest/agent/lt-app.sh
           # Terraform templatefile이라 ${...}는 Terraform 변수다. 파일을 고치면 user_data가 바뀌어 서버가 재시작된다.
           shellcheck -e SC2154,SC1091 envs/dev/templates/observability-init.sh envs/loadtest/templates/app-init.sh modules/k6-server/k6-init.sh \
             envs/prod/templates/server-base.sh envs/prod/templates/monitor-init.sh envs/prod/templates/app-init.sh \
             envs/prod/templates/nat-init.sh
       - name: python
-        run: python3 -m py_compile alert-analyzer/*.py image-normalizer/*.py observability/query.py
+        run: |
+          python3 -m py_compile alert-analyzer/*.py image-normalizer/*.py observability/query.py \
+            loadtest/runner/ltrun.py envs/loadtest-base/janitor/janitor.py
+      - name: loadtest scenarios
+        run: python3 loadtest/runner/ltrun.py check loadtest/scenarios/*.toml
       - name: actionlint
         run: >
           docker run --rm -v "$PWD:/repo:ro" -w /repo

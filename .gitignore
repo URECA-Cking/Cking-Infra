@@ -17,3 +17,6 @@ terraform.rc
 
 # Python
 __pycache__/
+
+# 부하 테스트 결과(요청별 기록). 결과 버킷에만 둔다
+loadtest-runs/

@@ -1,0 +1,29 @@
+# 장애 주입 예시. 응모 지속 중 5분에 앱 컨테이너를 재시작하고, 그동안 실패 건수와 회복 시간, 재시작 뒤 DB 반영·정합성을 본다.
+# 훅 명령은 부하를 멈추지 않고 따로 돈다. on = "app"(첫 앱 서버), "apps"(전 서버), "k6"(k6 서버, 이 서버 역할의 AWS 권한).
+name = "fault-app-restart"
+repeat = 1
+
+[seed]
+members = 10000
+
+[[steps]]
+type = "k6"
+name = "warmup"
+script = "warmup.js"
+
+[[steps]]
+type = "k6"
+name = "sustain"
+script = "entry-sustain.js"
+env = { RATE = "40", DURATION = "12m", PRE_VUS = "600" }
+monitor_seconds = 10
+hooks = [
+  { after = "5m", on = "app", run = "docker restart cking-app && date -u +%H:%M:%S" },
+  { after = "5m30s", on = "app", run = "for i in $(seq 1 60); do curl -fs localhost:8080/readyz >/dev/null && { date -u +%H:%M:%S; exit 0; }; sleep 2; done; exit 1" },
+]
+
+[[steps]]
+type = "drain"
+
+[[steps]]
+type = "verify"

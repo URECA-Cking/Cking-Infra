@@ -98,6 +98,8 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
 
 측정 결과(1·2·3차, 어뷰징 탐지)는 [docs/loadtest.md](docs/loadtest.md).
 
+시나리오 실행까지 한 번에 하려면 `loadtest/lt.sh all <시나리오>`([loadtest/README.md](loadtest/README.md)). 아래는 그 스크립트가 하는 일을 손으로 할 때의 순서다. `envs/loadtest-base`는 역할 외에 결과 버킷(`loadtest-cking-results-…`), 지표 조회 역할(`loadtest-cking-query`), 남은 리소스 정리기(`loadtest-cking-janitor`, `cking:ttl-hours` 태그가 붙은 서버·RDS를 기한 뒤 멈춤)를 만든다.
+
 순서
 
 1. `envs/loadtest-base`에서 `terraform plan -out=tfplan` → `terraform apply tfplan`. 앱 서버·k6 서버 IAM 역할을 만든다. 처음 한 번만 하고, 테스트 환경을 지워도 남긴다(서버와 같은 apply로 만들면 역할이 전파되기 전에 부팅해 SSM 에이전트가 붙지 않는다)
