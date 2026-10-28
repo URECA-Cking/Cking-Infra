@@ -193,11 +193,16 @@ resource "aws_lambda_function" "image_normalizer" {
   }
 }
 
+# 예약 동시성만 두면 SQS 폴러가 그보다 많이 호출해 스로틀이 난다(2026-10-29 8건/초부터 분당 23~153건).
 resource "aws_lambda_event_source_mapping" "image_jobs" {
   event_source_arn        = aws_sqs_queue.image_jobs.arn
   function_name           = aws_lambda_function.image_normalizer.arn
   batch_size              = 1
   function_response_types = ["ReportBatchItemFailures"]
+
+  scaling_config {
+    maximum_concurrency = 5
+  }
 }
 
 # 앱: raw/ 사전 서명 PUT(서명한 자격 증명에 쓰기 권한이 있어야 한다)과 결과 큐 읽기
