@@ -74,6 +74,7 @@ envs/security/             계정 보안 기준선. 환경과 상관없이 계�
   logs.tf                  감사 로그 버킷(CloudTrail·Config 공용, 1년 보관)과 CloudTrail 추적(전 리전, 관리 이벤트, 로그 파일 검증)
   detection.tf             GuardDuty, 심각도 7 이상 발견 → 운영 경보 SNS(Slack), IAM Access Analyzer(계정)
   posture.tf               AWS Config 기록(서울, 전역 리소스 포함)과 Security Hub FSBP 표준
+  hardening.tf             EBS 기본 암호화·스냅샷 퍼블릭 차단, S3 계정 퍼블릭 차단, IAM 비밀번호 정책, 모든 VPC 기본 보안 그룹 규칙 비우기, 개발·운영 VPC 흐름 로그, Inspector(EC2·ECR·Lambda)
 modules/api-waf/           API(ALB) 앞단 WAF. 개발·운영이 같은 규칙을 쓴다(관리형 규칙, 본문 크기 예외, IP당 요청 상한, 로그)
 observability/             관측 서버 위의 프로그램 설정(compose, Prometheus, Loki, Alloy, Grafana, 쓰기 전용 nginx)과 AI 진단용 읽기 전용 조회(query.py)
 ```

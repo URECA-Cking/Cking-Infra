@@ -85,6 +85,22 @@ resource "aws_s3_bucket_policy" "audit" {
         Condition = { StringEquals = { "aws:SourceArn" = "arn:aws:cloudtrail:${local.region}:${local.account_id}:trail/${local.trail_name}" } }
       },
       {
+        Sid       = "FlowLogsAclCheck"
+        Effect    = "Allow"
+        Principal = { Service = "delivery.logs.amazonaws.com" }
+        Action    = "s3:GetBucketAcl"
+        Resource  = aws_s3_bucket.audit.arn
+        Condition = { StringEquals = { "aws:SourceAccount" = local.account_id } }
+      },
+      {
+        Sid       = "FlowLogsWrite"
+        Effect    = "Allow"
+        Principal = { Service = "delivery.logs.amazonaws.com" }
+        Action    = "s3:PutObject"
+        Resource  = "${aws_s3_bucket.audit.arn}/flow-logs/AWSLogs/${local.account_id}/*"
+        Condition = { StringEquals = { "aws:SourceAccount" = local.account_id, "s3:x-amz-acl" = "bucket-owner-full-control" } }
+      },
+      {
         Sid       = "ConfigCheck"
         Effect    = "Allow"
         Principal = { Service = "config.amazonaws.com" }
