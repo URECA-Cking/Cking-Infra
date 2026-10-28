@@ -148,7 +148,8 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
 
 1. 인스턴스 역할은 `envs/prod-base`(`prod-cking-nat-role`)에 있어 먼저 적용되어 있어야 한다
 2. 바꿀 때: `envs/prod`에서 `terraform plan -var nat_mode=<방식> -out=tfplan` → `terraform apply tfplan`. 바깥 IP가 바뀌고 API WAF 허용 IP(운영 NAT)도 같이 바뀐다
-3. 바꾸는 동안 앱 서브넷의 바깥 연결이 잠깐 끊긴다(경로가 새 NAT로 옮겨 가는 사이). 경보·대응은 런북 `prod-nat.md`
+3. 바꾸는 동안 앱 서브넷의 바깥 연결이 잠깐 끊긴다(2026-10-29 게이트웨이 → 인스턴스 전환 때 약 45\~48초, 게이트웨이 삭제가 경로 변경보다 먼저 끝나서). 끊김을 없애려면 두 단계로 한다: 새 방식을 만들고 경로를 옮긴 뒤 옛 방식을 지운다. 경보·대응은 런북 `prod-nat.md`
+4. 바깥 IP가 바뀌면 API WAF 허용 IP도 같은 apply에서 바뀌지만 경로보다 늦게 반영될 수 있다. 그 사이 추천 배치 요청이 비밀 쿠키 게이트에 걸려 403을 받을 수 있다(배치는 다음 주기에 다시 한다)
 
 ## 계정 보안 기준선
 

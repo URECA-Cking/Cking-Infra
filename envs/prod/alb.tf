@@ -155,5 +155,5 @@ module "api_waf" {
   allow_ip_cidrs     = [for ip in local.nat_public_ips : "${ip}/32"]
   log_retention_days = 14
 
-  gate = var.gate_enabled ? { secret = data.aws_ssm_parameter.gate_secret.value, mode = "count" } : null
+  gate = var.gate_enabled ? { secret = data.aws_ssm_parameter.gate_secret.value, mode = "block" } : null
 }
