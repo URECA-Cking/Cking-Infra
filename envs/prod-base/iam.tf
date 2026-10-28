@@ -201,6 +201,22 @@ resource "aws_iam_instance_profile" "monitor" {
   role = aws_iam_role.monitor.name
 }
 
+# NAT 인스턴스. 사람이 들어가 볼 때만 SSM을 쓴다. 다른 권한은 없다.
+resource "aws_iam_role" "nat" {
+  name               = "prod-cking-nat-role"
+  assume_role_policy = local.ec2_trust
+}
+
+resource "aws_iam_role_policy_attachment" "nat_ssm" {
+  role       = aws_iam_role.nat.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_iam_instance_profile" "nat" {
+  name = "prod-cking-nat-role"
+  role = aws_iam_role.nat.name
+}
+
 resource "aws_iam_role" "k6" {
   name               = "prod-cking-k6-role"
   assume_role_policy = local.ec2_trust

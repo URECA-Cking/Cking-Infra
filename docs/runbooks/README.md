@@ -165,6 +165,8 @@ aws autoscaling describe-auto-scaling-groups --region ap-northeast-2 --auto-scal
 
 감시용 서버는 `prod-cking-monitor`. 접속은 개발과 같이 `aws ssm start-session --target <인스턴스 ID>`.
 
+NAT 인스턴스 경보는 [운영 NAT 인스턴스](prod-nat.md).
+
 데이터가 망가져 DB를 특정 시각으로 되돌려야 하면 [운영 DB 복원](prod-db-restore.md)(경보가 아니라 사람이 시작하는 절차).
 
 서버 교체(대수는 그대로, 그 서버만 새로 띄운다. ALB 해제 대기 90초 동안 진행 중인 요청을 마친다):
