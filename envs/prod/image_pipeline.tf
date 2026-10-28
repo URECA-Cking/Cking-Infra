@@ -4,9 +4,9 @@
 # image_pipeline_enabled로 주소를 넣는다. 개발 측정 결과는 Infra #228·BE #780.
 
 variable "image_pipeline_enabled" {
-  description = "앱이 이미지 파이프라인을 쓰게 결과 큐 주소를 Parameter Store에 넣는다. 다음 앱 배포(서버 교체)부터 적용"
+  description = "앱이 이미지 파이프라인을 쓰게 결과 큐 주소를 Parameter Store에 넣는다. 다음 앱 배포(서버 교체)부터 적용. 10-29 운영에서 켬"
   type        = bool
-  default     = false
+  default     = true
 }
 
 locals {

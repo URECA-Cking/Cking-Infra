@@ -16,6 +16,8 @@ type = "k6"
 name = "sustain"
 script = "entry-sustain.js"
 env = { RATE = "40", DURATION = "12m", PRE_VUS = "600" }
+# 장애 중에도 부하가 계속 가야 한다. entry-sustain.js의 dropped_iterations 합격선(abortOnFail)이 장애 순간 k6를 멈춘다(운영 게임 데이 1부)
+args = ["--no-thresholds"]
 monitor_seconds = 10
 hooks = [
   { after = "5m", on = "app", run = "docker restart cking-app && date -u +%H:%M:%S" },

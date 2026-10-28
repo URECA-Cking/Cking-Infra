@@ -146,10 +146,12 @@ resource "aws_cloudwatch_metric_alarm" "alb_few_healthy" {
 }
 
 # 앱까지 가지 못한 요청(ALB가 만든 502·503·504)은 앱 지표에 없다. 기준은 Grafana 서버 오류 증가와 같다(5분에 30건 이상일 때 5%).
+# 5분 비율로는 서버 1대가 20~40초 끊긴 502·504(게임 데이 앱 메모리 초과 2.2%, app-2a 차단 3.6%)가 묻혔다. 1분 비율, 3번 중 2번으로 한 번 튄 값은 거른다
 resource "aws_cloudwatch_metric_alarm" "alb_5xx" {
   alarm_name          = "prod-cking-alb-5xx"
-  alarm_description   = "ALB가 만든 5xx가 5분 동안 요청의 5% 초과. 런북: ${local.alarm_runbook}/prod-alb.md"
-  evaluation_periods  = 1
+  alarm_description   = "ALB가 만든 5xx가 1분 단위로 3번 중 2번 요청의 5% 초과. 런북: ${local.alarm_runbook}/prod-alb.md"
+  evaluation_periods  = 3
+  datapoints_to_alarm = 2
   threshold           = 0.05
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
@@ -169,7 +171,7 @@ resource "aws_cloudwatch_metric_alarm" "alb_5xx" {
       metric_name = "HTTPCode_ELB_5XX_Count"
       dimensions  = { LoadBalancer = aws_lb.main.arn_suffix }
       stat        = "Sum"
-      period      = 300
+      period      = 60
     }
   }
 
@@ -180,7 +182,7 @@ resource "aws_cloudwatch_metric_alarm" "alb_5xx" {
       metric_name = "RequestCount"
       dimensions  = { LoadBalancer = aws_lb.main.arn_suffix }
       stat        = "Sum"
-      period      = 300
+      period      = 60
     }
   }
 }

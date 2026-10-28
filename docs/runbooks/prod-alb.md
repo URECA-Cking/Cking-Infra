@@ -6,7 +6,7 @@
 | --- | --- |
 | `prod-cking-alb-no-healthy-target` | 정상 대상 0대 1분(지표가 없어도 울림) |
 | `prod-cking-alb-few-healthy-targets` | 정상 대상 2대 미만 15분 |
-| `prod-cking-alb-5xx` | ALB가 만든 5xx가 5분 동안 요청의 5% 초과(요청 30건 이상일 때) |
+| `prod-cking-alb-5xx` | ALB가 만든 5xx가 1분 단위로 3번 중 2번 요청의 5% 초과(요청 30건 이상일 때) |
 
 Amazon Q 기본 알림에는 `@channel` 멘션이 없다. 같은 경보가 메일로도 온다.
 
@@ -61,3 +61,19 @@ aws elbv2 describe-target-health --region ap-northeast-2 \
 
 - 정상 서버가 적을 때 서버를 교체하지 않는다. 교체 중에는 남은 서버가 모든 요청을 받는다
 - 원인을 보기 전에 서버 그룹 대수를 크게 늘리지 않는다. 새 서버도 같은 이유로 버려지면 실패만 쌓인다
+
+## 가용 영역 하나가 앱 서버에 닿지 않을 때
+
+2026-10-29 게임 데이(app-2a 서브넷에 ALB → 8080 차단): ALB가 2a 대상을 비정상으로 본 뒤(약 40초) 2b만으로 처리했지만, 서버 그룹은 비정상 2a 서버를 교체하면서 새 서버를 다시 2a에 띄웠다(두 번). 그룹은 가용 영역 장애를 모르고 영역 균형을 맞춘다.
+
+1. 영역 장애인지 본다: 비정상 대상이 한 영역에만 있고, 새로 뜬 서버도 그 영역에서 비정상
+2. 서버 그룹 서브넷에서 그 영역을 잠시 뺀다. 그룹이 그 영역에 새 서버를 띄우지 않게 하는 것이 목적이다(그 영역에 남은 서버를 그룹이 언제 정리하는지는 시험하지 않았다). Terraform 밖 변경이라 끝나면 되돌리고 `envs/prod` plan으로 확인한다
+
+   ```bash
+   # Mac (app-2b 서브넷만 남김)
+   SUB_B=$(aws ec2 describe-subnets --region ap-northeast-2 --filters Name=tag:Name,Values=prod-cking-subnet-app-2b --query 'Subnets[0].SubnetId' --output text)
+   aws autoscaling update-auto-scaling-group --region ap-northeast-2 --auto-scaling-group-name prod-cking-app --vpc-zone-identifier "$SUB_B"
+   ```
+
+3. 1대로 부하가 넘치면 남은 영역의 원하는 대수를 늘린다(최대 4대). ALB 영역 이동(ARC zonal shift)은 이 구성(교차 영역 부하 분산 켜짐)에서 쓸 수 있는지 확인하지 않았다
+
