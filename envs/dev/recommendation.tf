@@ -267,6 +267,12 @@ resource "aws_launch_template" "recommendation" {
   }
 }
 
+locals {
+  # 스팟 가격 순(2026-10-29 2a): t4g.small $0.0060, c6g.medium $0.0124, t4g.medium $0.0143, m6g.medium $0.0174, c7g.medium $0.0182, m7g.medium $0.0185.
+  # 모두 t4g.small 온디맨드($0.0208)보다 싸다. price-capacity-optimized가 자리 여유를 먼저 보고 그 안에서 싼 것을 고른다.
+  recommendation_spot_types = ["t4g.small", "c6g.medium", "t4g.medium", "m6g.medium", "c7g.medium", "m7g.medium"]
+}
+
 resource "aws_autoscaling_group" "recommendation" {
   name                = local.recommendation_name
   min_size            = 1
@@ -286,6 +292,16 @@ resource "aws_autoscaling_group" "recommendation" {
       launch_template_specification {
         launch_template_id = aws_launch_template.recommendation.id
         version            = aws_launch_template.recommendation.latest_version
+      }
+
+      # 상태 디스크 때문에 2a 한 곳이라 유형을 넓혀 자리를 찾는다. t4g.small 하나는 2a 스팟 배치 점수 3, 이 6개는 9(10점 만점, 2026-10-29).
+      # arm64(AMI)·메모리 2GB 이상. 7일 최대 메모리 757MiB, CPU 평균 3.7%(1분 최대 2코어의 61%)라 1코어 유형은 일일 작업만 조금 길어진다.
+      dynamic "override" {
+        for_each = local.recommendation_spot_types
+
+        content {
+          instance_type = override.value
+        }
       }
     }
   }

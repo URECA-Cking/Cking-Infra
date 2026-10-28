@@ -36,7 +36,7 @@ envs/dev/                  개발 환경. 실행 위치
   image_pipeline.tf        이미지 업로드 이벤트 파이프라인(작업·결과 큐와 DLQ, 업로드 버킷 raw/ 알림·CORS·수명 주기, 정규화 Lambda와 역할, 앱 서버 raw/ 쓰기·결과 큐 읽기, 결과 큐 주소 Parameter Store, DLQ 경보, CI 코드 배포 권한)
   alert_actions.tf         경보 AI 진단의 조치 승인 버튼(승인 함수 URL, 실행 함수와 조치별 권한, 서버 조치 SSM 문서, 승인자 목록)
   comment_filter.tf        댓글 필터 이미지 저장소(ECR, 개발·운영 공용), 개발 Lambda(arm64 이미지, 함수 URL IAM 인증, 예약 동시성 2, 이미지는 필터 저장소 CI가 바꿈), 필터 저장소 GitHub Actions 개발 역할(모델 읽기, 이미지 푸시, 개발 Lambda 갱신·호출)
-  recommendation.tf        개발 추천 배치 서버(1대짜리 서버 그룹, t4g.small 스팟, 상태 디스크, 시작 대기 자기 검사, 역할, 비밀이 아닌 값)와 추천 배치 저장소 GitHub Actions 개발 역할(배포 패키지 올리기, 배포 버전 값, 서버 교체)
+  recommendation.tf        개발 추천 배치 서버(1대짜리 서버 그룹, arm64 스팟 6개 유형, 상태 디스크, 시작 대기 자기 검사, 역할, 비밀이 아닌 값)와 추천 배치 저장소 GitHub Actions 개발 역할(배포 패키지 올리기, 배포 버전 값, 서버 교체)
   outputs.tf               읽어 온 값 출력
   templates/               서버 첫 부팅 스크립트(추천 배치 서버는 운영의 공통 준비 server-base.sh와 부팅 스크립트 recommendation-init.sh를 함께 쓴다)
 envs/loadtest/             부하 테스트 환경. 측정 때 띄우고 끝나면 지운다. 상태는 loadtest/terraform.tfstate
