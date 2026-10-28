@@ -1,0 +1,32 @@
+# 운영 이미지 파이프라인을 켠 뒤 확인(약 8분). 업로드 초당 2·4건(BE loadtest/image-upload.js, 예약 → S3 PUT → 상태 확인)과 조회 초당 10건.
+# 되돌리기·시딩 없이 앞선 실행(게임 데이)이 시딩한 회원(크리에이터 5, 회원 1만)을 쓴다. 데이터를 지운 뒤라면 reset_before_round를 지운다.
+# 시험 이미지는 결과 버킷 prod/assets/images/(12MP 3.9MB, 20MP 5.1MB)에 있다. 개발 측정 결과는 BE #780·Infra #228.
+name = "image-pipeline-on"
+repeat = 1
+reset_before_round = false
+
+[seed]
+members = 10000
+
+[[steps]]
+type = "exec"
+on = "k6"
+run = "mkdir -p /opt/loadtest/images && aws s3 cp --region ap-northeast-2 --only-show-errors --recursive s3://loadtest-cking-results-551372961758-ap-northeast-2-an/prod/assets/images/ /opt/loadtest/images/ && ls /opt/loadtest/images"
+
+[[steps]]
+type = "k6"
+name = "upload-2"
+script = "image-upload.js"
+env = { MODE = "pipeline", RATE = "2", DURATION = "2m" }
+hooks = [{ after = "110s", on = "apps", run = "docker inspect -f 'restarts={{.RestartCount}} oom={{.State.OOMKilled}}' cking-app" }]
+
+[[steps]]
+type = "wait"
+seconds = 30
+
+[[steps]]
+type = "k6"
+name = "upload-4"
+script = "image-upload.js"
+env = { MODE = "pipeline", RATE = "4", DURATION = "2m" }
+hooks = [{ after = "110s", on = "apps", run = "docker inspect -f 'restarts={{.RestartCount}} oom={{.State.OOMKilled}}' cking-app" }]
