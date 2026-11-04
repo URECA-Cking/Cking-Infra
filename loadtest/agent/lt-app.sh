@@ -15,8 +15,8 @@ set -euo pipefail
 P="${1:?경로}"; CMD="${2:?명령}"; shift 2
 R=ap-northeast-2
 BE=/opt/loadtest/be/loadtest
-MYSQL_IMAGE=mysql:8.4
-VALKEY_IMAGE=valkey/valkey:7.2
+MYSQL_IMAGE=mysql:8.4.10@sha256:8dbcf531a03aade657e181b9cf2f1d1803ce621a1d55610cb44cb531ab7d7db6
+VALKEY_IMAGE=valkey/valkey:7.2.15@sha256:828b1cbb1c258e02b9cd9588063fa997e097444e610d3f3c00d43e21400e2b8d
 
 case "$P" in
   /cking/loadtest | /cking/prod) ;;
