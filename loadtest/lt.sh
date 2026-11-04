@@ -5,7 +5,7 @@
 #   lt.sh prepare [이미지 태그]          앱 배포(기본: 개발 앱 서버에 떠 있는 태그)·수집기
 #   lt.sh start <시나리오 파일> [대상]     k6 서버에서 실행기를 띄우고 실행 ID를 출력(대상 기본 loadtest)
 #   lt.sh status <실행 ID> [대상]        진행 상태와 최근 기록
-#   lt.sh wait <실행 ID> [대상]          끝날 때까지 기다린 뒤 결과를 받는다
+#   lt.sh wait <실행 ID> [대상]          끝날 때까지 기다린 뒤 결과를 받는다(실행기가 죽거나 LT_WAIT_MAX_SECONDS, 기본 12시간을 넘으면 실패)
 #   lt.sh fetch <실행 ID> [대상]         결과를 ./loadtest-runs/<ID>/로 받는다(LT_OUT으로 바꿈, 저장소에 넣지 않는다)
 #   lt.sh down                        envs/loadtest destroy
 #   lt.sh all <시나리오 파일> [이미지 태그]  up → prepare → start → wait → down. 실패·중단해도 down
@@ -31,7 +31,7 @@ k6_name() { [ "${1:-loadtest}" = prod ] && echo prod-cking-k6 || echo loadtest-c
 
 # ssm <인스턴스 ID> <제한 초> <bash 스크립트>: root로 실행하고 표준 출력을 보여 준다. 실패하면 표준 오류와 함께 종료 코드 1
 ssm() {
-  local id=$1 limit=$2 script=$3 params cid s
+  local id=$1 limit=$2 script=$3 params cid s deadline
   params=$(mktemp)
   python3 -I - "$script" "$limit" > "$params" <<'PYEOF'
 import json, sys
@@ -39,12 +39,22 @@ script, limit = sys.argv[1], sys.argv[2]
 print(json.dumps({"commands": ["bash -euo pipefail <<'LTEOF'", *script.splitlines(), "LTEOF"], "executionTimeout": [limit]}))
 PYEOF
   cid=$(aws ssm send-command --region $R --instance-ids "$id" --document-name AWS-RunShellScript \
-    --parameters "file://$params" --query Command.CommandId --output text)
+    --parameters "file://$params" --query Command.CommandId --output text) || cid=""
   rm -f "$params"
+  if [ -z "$cid" ]; then
+    log "SSM 전송 실패 ($id)"
+    return 1
+  fi
+  # 상태를 계속 못 읽어도 끝나도록 실행 제한에 전달 지연 여유 2분을 더해 끊는다(ltrun.py ssm과 같은 기준).
+  deadline=$((SECONDS + limit + 120))
   while :; do
     sleep 3
     s=$(aws ssm get-command-invocation --region $R --instance-id "$id" --command-id "$cid" --query Status --output text 2>/dev/null || true)
     case "$s" in Pending | InProgress | Delayed | "") ;; *) break ;; esac
+    if [ "$SECONDS" -ge "$deadline" ]; then
+      log "SSM 상태 확인 시간 초과 ($id, 마지막 상태 ${s:-없음})"
+      return 1
+    fi
   done
   aws ssm get-command-invocation --region $R --instance-id "$id" --command-id "$cid" --query StandardOutputContent --output text
   if [ "$s" != Success ]; then
@@ -134,11 +144,36 @@ cmd_fetch() {
   log "결과: $OUT/$id/results.md"
 }
 
+run_status() {
+  state "$1" "$2" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["status"], d.get("step") or "")' 2>/dev/null || echo "starting"
+}
+
+# 실행기가 죽으면 state.json이 끝 상태로 바뀌지 않는다. 5분마다 실행기 unit이 살아 있는지 보고,
+# 전체 대기는 정리기 기준(envs/loadtest ttl_hours 기본 12시간)을 넘기지 않는다.
 cmd_wait() {
-  local id=${1:?실행 ID} target=${2:-loadtest} s
+  local id=${1:?실행 ID} target=${2:-loadtest} s unit k6 n=0 deadline
+  deadline=$((SECONDS + ${LT_WAIT_MAX_SECONDS:-43200}))
+  k6=$(instance "$(k6_name "$target")")
   while :; do
-    s=$(state "$id" "$target" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["status"], d.get("step") or "")' 2>/dev/null || echo "starting")
+    s=$(run_status "$id" "$target")
     case "$s" in done* | failed* | stopped*) break ;; esac
+    if [ "$SECONDS" -ge "$deadline" ]; then
+      log "$id 대기 시간 초과 ($s)"
+      s="failed wait-timeout"
+      break
+    fi
+    n=$((n + 1))
+    if [ $((n % 5)) -eq 0 ] && [ -n "$k6" ]; then
+      unit=$(ssm "$k6" 60 "systemctl is-active ltrun-$id || true" 2>/dev/null | tail -1) || unit=unknown
+      case "$unit" in active | activating | reloading | unknown) ;; *)
+        s=$(run_status "$id" "$target")
+        case "$s" in done* | failed* | stopped*) break ;; esac
+        log "$id 실행기 종료됨(unit $unit), 상태 $s"
+        s="failed runner-lost"
+        break
+        ;;
+      esac
+    fi
     log "$id $s"
     sleep 60
   done
