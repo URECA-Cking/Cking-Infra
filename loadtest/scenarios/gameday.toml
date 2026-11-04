@@ -1,0 +1,24 @@
+# 운영 장애 주입 게임 데이. 지속 응모 80/s × 50분 동안 Mac에서 `loadtest/gameday/faults.sh`가 장애를 차례로 넣는다.
+name = "gameday"
+repeat = 1
+
+[seed]
+members = 10000
+
+[[steps]]
+type = "k6"
+name = "warmup"
+script = "warmup.js"
+
+[[steps]]
+type = "k6"
+name = "sustain"
+script = "entry-sustain.js"
+env = { RATE = "80", DURATION = "50m" }
+monitor_seconds = 10
+
+[[steps]]
+type = "drain"
+
+[[steps]]
+type = "verify"

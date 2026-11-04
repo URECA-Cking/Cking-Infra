@@ -89,7 +89,8 @@ jobs:
       - name: shellcheck
         run: |
           shellcheck observability/apply.sh app-agent/apply.sh alert-analyzer/build.sh image-normalizer/build.sh \
-            loadtest/lt.sh loadtest/agent/lt-app.sh .github/scripts/render-templates.sh
+            loadtest/lt.sh loadtest/agent/lt-app.sh loadtest/gameday/faults.sh loadtest/gameday/faults2.sh \
+            .github/scripts/render-templates.sh
           # 부팅 스크립트는 Terraform templatefile이라 변수를 채운 모습으로 펼쳐 검사한다. 파일을 고치면 user_data가 바뀌어 서버가 재시작된다.
           # SC1091: /etc/os-release는 서버에만 있다.
           templates=(envs/dev/templates/observability-init.sh envs/loadtest/templates/app-init.sh modules/k6-server/k6-init.sh
