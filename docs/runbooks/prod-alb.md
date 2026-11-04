@@ -6,7 +6,7 @@
 | --- | --- |
 | `prod-cking-alb-no-healthy-target` | 정상 대상 0대 1분(지표가 없어도 울림) |
 | `prod-cking-alb-few-healthy-targets` | 정상 대상 2대 미만 15분 |
-| `prod-cking-alb-5xx` | ALB가 만든 5xx가 1분 단위로 3번 중 2번 요청의 5% 초과(요청 30건 이상일 때) |
+| `prod-cking-alb-5xx` | ALB가 만든 5xx가 1분 동안 요청의 5% 초과(요청 30건 이상일 때) |
 
 Amazon Q 기본 알림에는 `@channel` 멘션이 없다. 같은 경보가 메일로도 온다.
 
