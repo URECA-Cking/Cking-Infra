@@ -211,7 +211,7 @@ aws autoscaling terminate-instance-in-auto-scaling-group --region ap-northeast-2
 | --- | --- | --- |
 | `prod-cking-alb-no-healthy-target` | 정상 대상 0대 1분 | [prod-alb](prod-alb.md) |
 | `prod-cking-alb-few-healthy-targets` | 정상 대상 2대 미만 15분 | [prod-alb](prod-alb.md) |
-| `prod-cking-alb-5xx` | ALB가 만든 5xx 비율 5% 초과, 1분 단위로 3번 중 2번 (분당 요청 30건 이상) | [prod-alb](prod-alb.md) |
+| `prod-cking-alb-5xx` | ALB가 만든 5xx 비율 5% 초과, 1분 한 번 (분당 요청 30건 이상) | [prod-alb](prod-alb.md) |
 | `prod-cking-launch-failed` (EventBridge) | 서버 그룹의 서버 띄우기 실패마다 | [prod-launch-failed](prod-launch-failed.md) |
 | `prod-cking-redis-memory-<노드>` | 메모리 사용률 70% 초과 10분 | [prod-elasticache](prod-elasticache.md) |
 | `prod-cking-redis-engine-cpu-<노드>` | 엔진 CPU 80% 초과 10분 | [prod-elasticache](prod-elasticache.md) |
