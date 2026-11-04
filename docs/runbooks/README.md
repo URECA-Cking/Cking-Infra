@@ -128,7 +128,7 @@ aws lambda put-function-concurrency --region ap-northeast-2 --function-name dev-
 
 | 대상 | 알게 되는 곳 | 런북 |
 | --- | --- | --- |
-| 앱 배포(Cking-BE `cicd.yml`), 관측 설정·앱 서버 수집기 배포(이 저장소) | GitHub Actions 실패 알림 | [deploy-failed](deploy-failed.md) |
+| 앱 배포(Cking-BE `cicd.yml`), 관측 설정·앱 서버 수집기 배포, 경보 AI 진단·이미지 정규화 Lambda 코드 배포(이 저장소) | GitHub Actions 실패 알림 | [deploy-failed](deploy-failed.md) |
 
 ### 댓글 필터 (경보 없이 쓰는 절차)
 
@@ -144,11 +144,11 @@ aws lambda put-function-concurrency --region ap-northeast-2 --function-name dev-
 
 ## 운영
 
-운영 경보는 Grafana 폴더 **크킹 운영 경보**에 있고 운영 경보 채널로 간다(급함은 `@channel`, 관측 경보는 인프라 담당 멘션). 규칙 uid는 `cking-prod-<개발 uid>`이며, 같은 이름의 개발 런북과 그 런북의 `운영에서 다른 점`을 함께 본다. 운영에만 있는 경보는 uid 이름의 파일이다.
+운영 경보는 Grafana 폴더 **크킹 운영 경보**에 있고 운영 경보 채널로 간다(급함은 `@channel`, 관측 경보는 인프라 담당 멘션). 규칙 uid는 개발 uid의 `cking-` 뒤에 `prod-`를 넣은 이름(`cking-5xx` → `cking-prod-5xx`)이며, 같은 이름의 개발 런북과 그 런북의 `운영에서 다른 점`을 함께 본다. 운영에만 있는 경보는 uid 이름의 파일이다. 예외로 수집기 메모리(`cking-prod-agent-memory`)는 [cking-obs-memory](cking-obs-memory.md)를 본다.
 
 | | 개발 | 운영 |
 | --- | --- | --- |
-| 앱 서버 | `dev-cking-app` 1대 | 서버 그룹 `prod-cking-app` 2~4대(AZ 2a·2b). 경보 라벨 `instance=prod-cking-app-<인스턴스 ID>` |
+| 앱 서버 | `dev-cking-app` 1대 | 서버 그룹 `prod-cking-app` 2\~4대(AZ 2a·2b). 경보 라벨 `instance=prod-cking-app-<인스턴스 ID>` |
 | Redis | 앱 서버 Docker `cking-redis` | ElastiCache Valkey 7.2 `prod-cking-redis`(주·복제, TLS). 지표는 감시용 서버 `prod-cking-monitor`가 보낸다. 접속은 [운영 상태 확인](stream.md#운영-상태-확인) |
 | DB | RDS | RDS db.t4g.small 다중 AZ |
 | 배포·되돌리기 | `Deploy to dev server` | `Deploy to prod`([배포 실패](deploy-failed.md#운영-앱-배포-cking-be-deploy-to-prod)) |
@@ -211,12 +211,14 @@ aws autoscaling terminate-instance-in-auto-scaling-group --region ap-northeast-2
 | --- | --- | --- |
 | `prod-cking-alb-no-healthy-target` | 정상 대상 0대 1분 | [prod-alb](prod-alb.md) |
 | `prod-cking-alb-few-healthy-targets` | 정상 대상 2대 미만 15분 | [prod-alb](prod-alb.md) |
-| `prod-cking-alb-5xx` | ALB가 만든 5xx 비율 5% 초과 5분 (요청 30건 이상) | [prod-alb](prod-alb.md) |
+| `prod-cking-alb-5xx` | ALB가 만든 5xx 비율 5% 초과, 1분 단위로 3번 중 2번 (분당 요청 30건 이상) | [prod-alb](prod-alb.md) |
 | `prod-cking-launch-failed` (EventBridge) | 서버 그룹의 서버 띄우기 실패마다 | [prod-launch-failed](prod-launch-failed.md) |
 | `prod-cking-redis-memory-<노드>` | 메모리 사용률 70% 초과 10분 | [prod-elasticache](prod-elasticache.md) |
 | `prod-cking-redis-engine-cpu-<노드>` | 엔진 CPU 80% 초과 10분 | [prod-elasticache](prod-elasticache.md) |
 | `prod-cking-rds-cpu` | CPU 80% 초과 15분 | [prod-rds](prod-rds.md) |
 | `prod-cking-rds-free-storage` | 남은 저장 공간 2GiB 미만 15분 | [prod-rds](prod-rds.md) |
+| `prod-cking-image-jobs-dlq`, `prod-cking-image-results-dlq` | 이미지 파이프라인 DLQ 메시지 1개 이상 | [image-pipeline-dlq](image-pipeline-dlq.md) |
+| `cking-security-guardduty-high` (EventBridge, `envs/security`) | GuardDuty 발견 사항 심각도 7 이상(높음)마다 | 런북 없음. GuardDuty 콘솔(서울) → 발견 사항에서 대상 리소스와 행위를 본다 |
 
 ### Grafana: 운영 관측 경보 (운영 채널, 인프라 담당 멘션)
 

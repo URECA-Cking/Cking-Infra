@@ -1,6 +1,6 @@
 # 배포 실패
 
-> 전제: 앱은 Cking-BE `cicd.yml` → S3 → SSM → 앱 서버 `deploy.sh`. 관측 설정·앱 서버 수집기는 이 저장소의 `deploy-observability.yml`, `deploy-app-agent.yml` → S3 → SSM → `apply.sh`
+> 전제: 앱은 Cking-BE `cicd.yml` → S3 → SSM → 앱 서버 `deploy.sh`. 관측 설정·앱 서버 수집기는 이 저장소의 `deploy-observability.yml`, `deploy-app-agent.yml` → S3 → SSM → `apply.sh`. Lambda 코드는 이 저장소의 `deploy-alert-analyzer.yml`, `deploy-image-normalizer.yml` → `build.sh` 묶음 → S3 → `update-function-code`
 
 GitHub Actions에서 배포 워크플로가 실패했을 때.
 
@@ -74,3 +74,11 @@ aws s3 ls s3://prod-cking-deploy-551372961758-ap-northeast-2-an/releases/
 
 - 서버에서 설정 파일을 직접 고치지 않는다. 다음 배포에서 덮어써지고 저장소와 어긋난다
 - 관측 서버와 끊긴 상태에서 앱 서버 수집기 배포를 재실행하지 않는다. 수집기가 재시작돼 쌓아 둔 로그를 잃는다([수집 대상 끊김](cking-target-down.md#하면-안-되는-것))
+
+## Lambda 코드 배포 (이 저장소)
+
+- `deploy-alert-analyzer.yml`은 같은 묶음으로 진단·승인·실행 함수(`dev-cking-alert-analyzer`, `-approvals`, `-executor`)를 차례로 바꾼다. `deploy-image-normalizer.yml`은 `dev-cking-image-normalizer`를 바꾼 뒤, 저장소 변수 `IMAGE_NORMALIZER_PROD`가 `true`면 같은 묶음으로 `prod-cking-image-normalizer`를 바꾼다
+- 실패 로그는 `묶음 만들기`, `함수 코드 바꾸기`, `운영 함수 코드 바꾸기` 단계에 남는다
+- `묶음 만들기`에서 실패하면 함수는 그대로다. `함수 코드 바꾸기`에서 실패하면 진단 함수 3개 중 일부만 새 코드일 수 있고, `운영 함수 코드 바꾸기`에서 실패하면 개발과 운영 정규화 함수의 코드가 다르다
+- 코드 오류면 고치는 PR이나 되돌리는 PR(`git revert`)을 머지한다. 머지하면 다시 배포된다
+- 일시적 오류(패키지 받기, AWS API)면 Actions에서 Re-run 또는 Run workflow

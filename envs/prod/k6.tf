@@ -1,6 +1,6 @@
 # 운영 부하 테스트용 k6 서버. 평소에는 만들지 않고 k6_enabled = true로 apply할 때만 만든다.
 # 프라이빗 앱 서브넷에 두어 요청이 NAT IP로 나간다. 운영 WAF는 NAT IP를 허용 목록에 두므로(alb.tf)
-# IP당 요청 제한에 걸리지 않고, 관측 서버는 앱 서브넷 대역을 받으므로(peering.tf) 규칙을 따로 두지 않는다.
+# 비밀 쿠키 게이트·관리형 규칙에 걸리지 않고, 관측 서버는 앱 서브넷 대역을 받으므로(peering.tf) 규칙을 따로 두지 않는다.
 
 variable "k6_enabled" {
   description = "운영 부하 테스트 동안만 true"

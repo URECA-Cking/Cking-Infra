@@ -53,7 +53,7 @@ Grafana(`https://monitoring.cking.co.kr`) → Explore. 운영은 `instance="dev-
   ```
 - 판정 대기열과 처리 중인 스레드(Prometheus): `executor_queued_tasks{instance="dev-cking-app", name="commentFilterExecutor"}`, `executor_active_threads{instance="dev-cking-app", name="commentFilterExecutor"}`. 스레드는 2개, 대기열은 100이다
 - 재시도 제출·상한 도달·대기열 가득 참, 1시간(Prometheus): `increase(comment_filter_retry_attempted_total{instance="dev-cking-app"}[1h])`. `_exhausted_total`, `_queue_full_total`도 같은 형식이다. BE가 다시 시작하면 카운터는 0부터 센다
-- 2026-10-21 개발: 따뜻할 때 BE 대기 0.1~0.8초. 응답 대기가 5초일 때는 쉬고 난 뒤 첫 판정이 콜드 스타트 때문에 시간 초과되고 1분 뒤 재시도에서 저장됐다(URECA-Cking/Cking-BE#726에서 30초로 늘림). 필터를 켤 때 쌓여 있던 판정을 처리하며 대기열은 최대 17건까지 찼다가 몇 초 안에 비었다
+- 2026-10-21 개발: 따뜻할 때 BE 대기 0.1\~0.8초. 응답 대기가 5초일 때는 쉬고 난 뒤 첫 판정이 콜드 스타트 때문에 시간 초과되고 1분 뒤 재시도에서 저장됐다(URECA-Cking/Cking-BE#726에서 30초로 늘림). 필터를 켤 때 쌓여 있던 판정을 처리하며 대기열은 최대 17건까지 찼다가 몇 초 안에 비었다
 
 ## 콜드 스타트 확인
 
@@ -71,7 +71,7 @@ filter @type = "REPORT"
 ```
 
 - 콜드 스타트 중 `Status: timeout`이면 기동이 실행 상한(120초)보다 오래 걸린 것이다. 상한에 걸리면 기동을 처음부터 다시 하므로 상한을 늘린다
-- 2026-10-21 개발 측정: 새 실행 환경 53.5초(초기화 9.8초 + 첫 호출 43.2초), 같은 호스트에 이미지가 캐시돼 있으면 6.7초, 따뜻할 때 판정 97~118ms, 최대 메모리 933MB. 새 이미지의 첫 기동은 30초 상한에서 6번 다시 시작해 약 3분 반 걸렸다
+- 2026-10-21 개발 측정: 새 실행 환경 53.5초(초기화 9.8초 + 첫 호출 43.2초), 같은 호스트에 이미지가 캐시돼 있으면 6.7초, 따뜻할 때 판정 97\~118ms, 최대 메모리 933MB. 새 이미지의 첫 기동은 30초 상한에서 6번 다시 시작해 약 3분 반 걸렸다
 
 ## 하면 안 되는 것
 

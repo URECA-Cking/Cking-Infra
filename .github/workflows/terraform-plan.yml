@@ -12,7 +12,7 @@ on:
 permissions:
   contents: read
 
-# 지정하지 않으면 bash -e라 파이프 앞 명령의 실패가 묻힌다(apply | grep). bash는 -eo pipefail
+# 지정하지 않으면 bash -e라 파이프 앞 명령의 실패가 묻힌다(show -json | jq). bash는 -eo pipefail
 defaults:
   run:
     shell: bash

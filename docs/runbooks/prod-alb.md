@@ -1,6 +1,6 @@
 # 운영 ALB 경보
 
-> 전제: 운영 ALB `prod-cking-alb`, 앱 서버 그룹 `prod-cking-app`(2~4대, 서버 교체 배포, 시작 대기 중 자기 검사), CloudWatch 경보 → SNS `prod-cking-alerts` → 운영 채널(Amazon Q)·인프라 담당 메일
+> 전제: 운영 ALB `prod-cking-alb`, 앱 서버 그룹 `prod-cking-app`(2\~4대, 서버 교체 배포, 시작 대기 중 자기 검사), CloudWatch 경보 → SNS `prod-cking-alerts` → 운영 채널(Amazon Q)·인프라 담당 메일
 
 | 경보 | 조건 |
 | --- | --- |

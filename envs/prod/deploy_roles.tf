@@ -1,4 +1,4 @@
-# GitHub Actions 운영 배포 역할(BE, FE, 댓글 필터). 저장소의 main 브랜치에서만 쓸 수 있고, 각 역할은 자기 자원만 다룬다.
+# GitHub Actions 운영 배포 역할(BE, FE, 댓글 필터, Infra 이미지 정규화). 저장소의 main 브랜치에서만 쓸 수 있고, 각 역할은 자기 자원만 다룬다.
 
 data "aws_iam_openid_connect_provider" "github" {
   url = "https://token.actions.githubusercontent.com"

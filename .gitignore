@@ -18,5 +18,9 @@ terraform.rc
 # Python
 __pycache__/
 
+# Lambda 배포 묶음(build.sh 기본 출력)
+alert-analyzer/dist/
+image-normalizer/dist/
+
 # 부하 테스트 결과(요청별 기록). 결과 버킷에만 둔다
 loadtest-runs/
