@@ -5,19 +5,21 @@
 ## 범위
 
 - Terraform은 새로 만드는 리소스(관측 서버 등)와 콘솔에서 가져온 리소스를 관리한다. 가져온 리소스: FE 배포 역할(`dev-cking-fe-github-actions-role`), 앱 서버 역할(`dev-cking-ec2-role`)
-- 기존 리소스(VPC, 서브넷, 앱 보안 그룹, ALB, RDS)는 콘솔이 관리하며 Terraform은 `data` 소스로 읽기만 한다
-- 업로드 버킷(`dev-cking-uploads-…`)은 콘솔이 관리하고, 버킷 정책(CDN 읽기 허용)만 Terraform이 관리한다
-- ALB는 콘솔이 관리하고, API 앞단 WAF 연결만 Terraform이 관리한다
+- 기존 리소스(VPC, 서브넷, 앱·ALB 보안 그룹, ALB와 HTTPS 리스너, 웹 CloudFront, 앱 서버, 인증서, Route53 영역)는 콘솔이 관리하며 Terraform은 `data` 소스로 읽기만 한다. 개발 RDS는 콘솔이 관리하고 Terraform은 읽지 않는다
+- 업로드 버킷(`dev-cking-uploads-…`)은 콘솔이 관리하고, 버킷 정책(CDN 읽기 허용, TLS 아닌 요청 거부)과 이미지 파이프라인 설정(`raw/` 이벤트 알림, CORS, 수명 주기)은 Terraform이 관리한다
+- 웹 버킷(`dev-cking-frontend-…`)과 배포 버킷(`dev-cking-deploy-…`)은 콘솔이 관리하고, 버킷 정책만 Terraform이 관리한다
+- ALB는 콘솔이 관리하고, API 앞단 WAF 연결과 리스너 규칙(`monitoring.cking.co.kr` Grafana, `loadtest-api.cking.co.kr` 부하 테스트)은 Terraform이 관리한다
 
 ## 구조
 
 ```text
-.github/workflows/         PR 검사(ci.yml), Terraform plan(PR 댓글)·apply(main 수동, 승인), 관측 설정·수집기 배포 워크플로(앱 서버는 바로 적용, 추천 배치 서버는 교체), 경보 AI 진단 Lambda 코드 배포
+.github/workflows/         PR 검사(ci.yml), Terraform plan(terraform-plan.yml, PR 댓글)·apply(terraform-apply.yml, main 수동, 승인), 관측 설정·수집기 배포(deploy-observability.yml, deploy-app-agent.yml. 앱 서버는 바로 적용, 추천 배치 서버는 교체), Lambda 코드 배포(deploy-alert-analyzer.yml 경보 AI 진단, deploy-image-normalizer.yml 이미지 정규화 개발 → 운영)
 .github/dependabot.yml     컨테이너 이미지·GitHub Actions 갱신 PR
 alert-analyzer/            경보 AI 진단 Lambda(Python). 경보를 받아 Claude(Claude API)가 런북대로 읽기 전용 조회를 하고 Slack 봇으로 제안. 런북 조치는 승인 버튼(approvals.py)을 누르면 실행 함수(executor.py)가 목록(actions.py)대로 실행. build.sh가 배포 묶음을 만든다
 image-normalizer/          이미지 업로드 정규화 Lambda(Python, Pillow). 업로드 버킷 raw/<최종 키>의 원본을 앱과 같은 규칙(EXIF 회전, 긴 변 2048, JPEG 품질 90)으로 바꿔 최종 키에 저장하고 결과를 결과 큐로 보낸다. build.sh가 배포 묶음을 만든다
 app-agent/                 서버 수집기(Alloy) 설정. agent.alloy(서버 지표·로그·전송)는 항상, app.alloy(앱 지표)·redis.alloy(Redis 지표)·cadvisor.alloy(컨테이너 지표, 부하 테스트 서버)·journal.alloy(systemd 서비스 journald 로그, 추천 배치 서버)는 apply.sh가 서버 역할에 따라 켠다
 bootstrap/                 Terraform보다 먼저 만든 상태 버킷 기록
+docs/loadtest.md           부하 테스트 측정 결과(1·2·3차, 어뷰징 탐지)
 docs/runbooks/             경보별 대응 절차와 댓글 필터 차단·해제, 추천 배치 서버 절차(런북)
 envs/dev/                  개발 환경. 실행 위치
   terraform.tf             Terraform·프로바이더 버전
@@ -27,29 +29,39 @@ envs/dev/                  개발 환경. 실행 위치
   api_waf.tf               API 앞단 WAF(modules/api-waf)를 기존 ALB에 세기만 상태로 연결
   admin_frontend.tf        관리자 앱 정적 호스팅(S3, CloudFront, WAF, 요금제, Route53)
   uploads_cdn.tf           업로드 이미지 공개 CDN(CloudFront, WAF, 요금제, Route53, 버킷 정책)
+  bucket_tls.tf            웹·업로드·관리자·배포 버킷의 TLS 아닌 요청 거부(웹·배포 버킷 정책)
   app_server.tf            앱 서버 역할(콘솔에서 가져옴)과 수집기 설정 읽기·댓글 필터 호출 권한
   frontend_deploy.tf       FE 배포 역할(콘솔에서 가져옴)과 앱별 권한
   observability.tf         관측 서버(EC2, 데이터 디스크, 스냅샷, 버킷, IAM, 앱·추천 배치 서버 수집 포트)
   alerts.tf                서버 상태 검사 경보와 메일 주제
+  observability_access.tf  Grafana 공개 경로(기존 ALB 규칙 monitoring.cking.co.kr, Google 로그인, 대상 그룹, Route53)
   observability_deploy.tf  관측 설정·수집기 설정을 배포하는 GitHub Actions 역할(앱 서버 적용, 추천 배치 서버 교체)
   alert_analyzer.tf        경보 AI 진단(분석용 SNS, Lambda와 읽기 전용 역할, 관측 서버 조회 SSM 문서, 같은 경보 묶기·하루 상한 DynamoDB, CI 코드 배포 권한)
   image_pipeline.tf        이미지 업로드 이벤트 파이프라인(작업·결과 큐와 DLQ, 업로드 버킷 raw/ 알림·CORS·수명 주기, 정규화 Lambda와 역할, 앱 서버 raw/ 쓰기·결과 큐 읽기, 결과 큐 주소 Parameter Store, DLQ 경보, CI 코드 배포 권한)
   alert_actions.tf         경보 AI 진단의 조치 승인 버튼(승인 함수 URL, 실행 함수와 조치별 권한, 서버 조치 SSM 문서, 승인자 목록)
   comment_filter.tf        댓글 필터 이미지 저장소(ECR, 개발·운영 공용), 개발 Lambda(arm64 이미지, 함수 URL IAM 인증, 예약 동시성 2, 이미지는 필터 저장소 CI가 바꿈), 필터 저장소 GitHub Actions 개발 역할(모델 읽기, 이미지 푸시, 개발 Lambda 갱신·호출)
   recommendation.tf        개발 추천 배치 서버(1대짜리 서버 그룹, arm64 스팟 6개 유형, 상태 디스크, 시작 대기 자기 검사, 역할, 비밀이 아닌 값)와 추천 배치 저장소 GitHub Actions 개발 역할(배포 패키지 올리기, 배포 버전 값, 서버 교체)
-  outputs.tf               읽어 온 값 출력
+  outputs.tf               읽어 온 기존 리소스와 관리자 앱 배포·관측 서버·추천 배치 CI·댓글 필터 CI에 넣을 값 출력
   templates/               서버 첫 부팅 스크립트(추천 배치 서버는 운영의 공통 준비 server-base.sh와 부팅 스크립트 recommendation-init.sh를 함께 쓴다)
-envs/loadtest/             부하 테스트 환경. 측정 때 띄우고 끝나면 지운다. 상태는 loadtest/terraform.tfstate
+envs/loadtest/             부하 테스트 환경. 측정 때 띄우고 끝나면 지운다(loadtest/lt.sh). 상태는 loadtest/terraform.tfstate
+  existing.tf              개발 환경 리소스 읽기(data)
+  variables.tf             환경 이름, 서버·RDS 크기, Docker 버전, 정리 기한(ttl_hours)
   app_server.tf            앱 서버(개발 앱 서버와 같은 AMI·크기·Docker 버전·swap)
   rds.tf                   RDS(개발 RDS와 같은 사양, 빈 DB)
   alb.tf                   기존 ALB에 loadtest-api.cking.co.kr 경로
   k6.tf                    k6 서버와 서버 지표 수집기
   parameters.tf            /cking/loadtest/ 중 비밀이 아닌 값
+  outputs.tf               앱 서버 ID·주소, API 주소
   templates/               서버 첫 부팅 스크립트
-envs/loadtest-base/        부하 테스트 EC2 역할과 인스턴스 프로필. 테스트 환경보다 먼저 만들고 테스트 환경을 지워도 남긴다. 상태는 loadtest-base/terraform.tfstate
-  iam.tf                   앱 서버(SSM, /cking/loadtest/, 배포 파일, 수집기 설정 읽기)·k6 서버(SSM, JWT 비밀값) 역할
+envs/loadtest-base/        부하 테스트 EC2 역할과 인스턴스 프로필, 결과 버킷, 정리기. 테스트 환경보다 먼저 만들고 테스트 환경을 지워도 남긴다. 상태는 loadtest-base/terraform.tfstate
+  iam.tf                   앱 서버(SSM, /cking/loadtest/, 배포 파일, 수집기 설정 읽기)·k6 서버(SSM, JWT 비밀값·실행 알림 웹훅 읽기, 실행기의 앱 서버 명령·결과 쓰기) 역할, 지표 조회 역할(관측 서버 조회 문서만)
+  results.tf               실행기 결과 버킷(비공개, 1년 보관)
+  janitor.tf               남은 서버·RDS 정리기(Lambda, 1시간마다, cking:ttl-hours가 지나면 멈춤)
+  janitor/                 정리기 Lambda 코드(Python)
+  outputs.tf               앱·k6 서버 인스턴스 프로필 이름
 envs/prod/                 운영 환경. 상태는 prod/terraform.tfstate
-  network.tf               VPC 10.1.0.0/16, AZ 2a·2b의 퍼블릭·프라이빗 앱·프라이빗 데이터 서브넷, AZ마다 NAT, S3 게이트웨이 엔드포인트
+  network.tf               VPC 10.1.0.0/16, AZ 2a·2b의 퍼블릭·프라이빗 앱·프라이빗 데이터 서브넷, 경로, AZ마다 NAT Gateway(nat_mode가 gateway일 때), S3 게이트웨이 엔드포인트
+  nat.tf                   NAT 방식(nat_mode). 기본 instance는 AZ마다 t4g.nano NAT 인스턴스·EIP와 시스템 검사 복구·인스턴스 검사 재부팅 경보
   peering.tf               개발 VPC 피어링(관측 서버 공유), 양쪽 경로, 관측 서버 수집 포트에 운영 앱 서브넷 허용
   security_groups.tf       앱·감시용·추천 배치 서버, RDS, ElastiCache 보안 그룹
   database.tf              RDS MySQL 8.4 다중 AZ(마스터 비밀번호는 Secrets Manager 관리), 느린 쿼리 로그, Enhanced Monitoring(평소 60초)
@@ -59,27 +71,32 @@ envs/prod/                 운영 환경. 상태는 prod/terraform.tfstate
   monitor.tf               감시용 서버(오토스케일링 그룹 1대, t4g.micro, 앱 서브넷 2a·2b)
   recommendation.tf        추천 배치 서버(1대짜리 서버 그룹, t4g.small 온디맨드, 앱 서브넷 2a, 상태 디스크, 시작 대기 자기 검사, 비밀이 아닌 값)와 추천 배치 저장소 GitHub Actions 운영 역할(개발 패키지 복사, 배포 버전 값, 서버 교체)
   buckets.tf               배포·업로드·ALB 접근 로그·웹·관리자 프론트 버킷(업로드 버킷 raw/ 1일 수명 주기)
-  alb.tf                   ALB(HTTPS, /readyz 외부 차단, 접근 로그), api.cking.co.kr, API 앞단 WAF(차단, 운영 NAT IP 허용)
+  alb.tf                   ALB(HTTPS, /readyz 외부 차단, 접근 로그), api.cking.co.kr, API 앞단 WAF(차단, 운영 NAT IP 허용, 비밀 쿠키 게이트)
   app.tf                   앱 서버 오토스케일링 그룹(c6g.large 2~4대, 서버당 분당 요청 6,300건 목표 추적, 교체 배포, 시작 대기 중 자기 스모크 검사)
-  cdn.tf                   CloudFront(종량제, WAF 없음): cking.co.kr(www 이동)·admin.cking.co.kr 프론트, images.cking.co.kr 프로필 이미지
+  cdn.tf                   CloudFront(종량제, WAF 없음): cking.co.kr(www 이동)·admin.cking.co.kr 프론트(gate_enabled면 비밀 쿠키 게이트 함수), images.cking.co.kr 프로필 이미지
   comment_filter.tf        운영 댓글 필터 Lambda(arm64 이미지, 함수 URL IAM 인증, 예약 동시성 8, 이미지는 필터 저장소 main CI가 개발에서 확인한 이미지로 바꿈)
   image_pipeline.tf        이미지 업로드 이벤트 파이프라인(작업·결과 큐와 DLQ, 업로드 버킷 raw/ 알림·CORS, 정규화 Lambda와 SQS 연결 최대 동시성, DLQ 경보). 결과 큐 주소 Parameter Store는 image_pipeline_enabled일 때만
-  alarms.tf                AWS 서비스 경보(ALB, 서버 띄우기 실패, ElastiCache, RDS) → SNS → 운영 채널(Amazon Q)·메일
+  alarms.tf                AWS 서비스 경보(ALB, 서버 띄우기 실패, ElastiCache, RDS) → SNS → 운영 채널(Amazon Q)·메일. 같은 SNS가 GuardDuty 경보(envs/security)도 받는다
+  k6.tf                    운영 부하 테스트 k6 서버(modules/k6-server, k6_enabled일 때만, 프라이빗 앱 서브넷 2a)
   alert_analyzer.tf        경보 AI 진단의 운영 경보 주제 구독과 호출 허용. 함수는 envs/dev
   deploy_roles.tf          GitHub Actions 운영 배포 역할(BE: 배포 파일, 배포 태그, 앱 서버 교체 / FE: 프론트 버킷 동기화, 도메인으로 배포 찾기, 캐시 무효화 / 필터: 개발 CI가 올린 이미지에 prod- 태그, 운영 Lambda 교체·호출 / Infra: 개발 CI가 올린 묶음으로 운영 이미지 정규화 Lambda 교체)
+  outputs.tf               NAT 공인 IP, ALB·앱 서버 그룹·배포 역할·배포 버킷·WAF 로그, FE 운영 배포가 쓰는 CDN 값
   templates/               서버 첫 부팅 스크립트(server-base.sh는 공통 준비, recommendation-init.sh는 개발·운영 추천 배치 서버가 같이 쓴다)
-  functions/               CloudFront Functions(www → cking.co.kr 이동)
+  functions/               CloudFront Functions(gate.js.tftpl 비밀 쿠키 게이트와 www 이동, www-redirect.js 게이트를 끈 뒤의 www → cking.co.kr 이동)
 envs/prod-base/            운영 환경 EC2 역할·인스턴스 프로필과 RDS 모니터링 역할. 운영 서버보다 먼저 만들고 운영 환경을 지워도 남긴다. 상태는 prod-base/terraform.tfstate
-  iam.tf                   앱 서버·추천 배치 서버·감시용 서버·k6 서버 역할, RDS Enhanced Monitoring 역할(SSM, 운영 비밀값·배포 파일·업로드 버킷, 수집기 설정 읽기, 댓글 필터 호출, 이미지 파이프라인 raw/ 쓰기·결과 큐 읽기, 앱·추천 배치 서버 시작 대기 끝내기, 추천 배치 상태 디스크 붙이기)
+  iam.tf                   앱 서버·추천 배치 서버·감시용 서버·NAT 인스턴스·k6 서버 역할, RDS Enhanced Monitoring 역할(SSM, 운영 비밀값·배포 파일·업로드 버킷, 수집기 설정 읽기, 댓글 필터 호출, 이미지 파이프라인 raw/ 쓰기·결과 큐 읽기, 앱·추천 배치 서버 시작 대기 끝내기, 추천 배치 상태 디스크 붙이기, k6 실행기의 운영 앱 서버 명령·결과 쓰기. NAT 인스턴스는 SSM만)
+  outputs.tf               인스턴스 프로필 이름
 envs/ci/                   Terraform을 GitHub Actions로 plan·apply하는 역할. plan은 읽기 전용(데이터 읽기 거부, plan에 필요한 비밀값 5개만 복호화), apply는 관리자. 신뢰는 GitHub Environment terraform-plan·terraform-apply(승인자 필요). 상태는 ci/terraform.tfstate
   roles.tf                 plan·apply 역할
 envs/security/             계정 보안 기준선. 환경과 상관없이 계정에 하나. 상태는 security/terraform.tfstate
-  logs.tf                  감사 로그 버킷(CloudTrail·Config 공용, 1년 보관)과 CloudTrail 추적(전 리전, 관리 이벤트, 로그 파일 검증)
+  logs.tf                  감사 로그 버킷(CloudTrail·Config·VPC 흐름 로그 공용, 1년 보관)과 CloudTrail 추적(전 리전, 관리 이벤트, 로그 파일 검증)
   detection.tf             GuardDuty, 심각도 7 이상 발견 → 운영 경보 SNS(Slack), IAM Access Analyzer(계정)
   posture.tf               AWS Config 기록(서울, 전역 리소스 포함)과 Security Hub FSBP 표준
   hardening.tf             EBS 기본 암호화·스냅샷 퍼블릭 차단, S3 계정 퍼블릭 차단, IAM 비밀번호 정책, 모든 VPC 기본 보안 그룹 규칙 비우기, 개발·운영 VPC 흐름 로그, Inspector(EC2·ECR·Lambda)
   triage.tf                Security Hub 자동화 규칙. 받아들이기로 한 지적을 억제하고 이유를 메모로 남긴다
-modules/api-waf/           API(ALB) 앞단 WAF. 개발·운영이 같은 규칙을 쓴다(관리형 규칙, 본문 크기 예외, IP당 요청 상한, 로그)
+modules/api-waf/           API(ALB) 앞단 WAF. 개발·운영이 같은 규칙을 쓴다(관리형 규칙, 본문 크기 예외, 로그). 허용 IP·비밀 쿠키 게이트는 운영만 넘기고, IP당 요청 상한(rate_limit)은 값을 넘길 때만 만든다(지금은 어느 환경도 넘기지 않는다)
+modules/k6-server/         부하 테스트 k6 서버(EC2, 보안 그룹, k6·Alloy·AWS CLI 설치). envs/loadtest와 envs/prod가 같이 쓴다
+loadtest/                  부하 테스트 실행 자동화(lt.sh 환경 생성·배포·실행·삭제, runner/ 시나리오 실행기, agent/ 앱 서버 데이터 작업, scenarios/ 시나리오)
 observability/             관측 서버 위의 프로그램 설정(compose, Prometheus, Loki, Alloy, Grafana, 쓰기 전용 nginx)과 AI 진단용 읽기 전용 조회(query.py)
 ```
 
@@ -90,13 +107,13 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
 - 상태 파일은 S3 원격 백엔드에 둔다. 상태 파일, 변수 파일, 비밀값은 커밋하지 않는다
 - 비밀값은 Parameter Store에 두고 코드에는 경로만 쓴다
 - 변경은 PR의 plan 결과를 보고 리뷰한 뒤 적용한다. `envs/`·`modules/`를 바꾼 PR은 `terraform-plan.yml`이 바뀐 스택만 plan해 요약(리소스 주소와 동작, 값 없음)을 PR 댓글로 남긴다. Environment `terraform-plan` 승인 뒤 돈다(공개 저장소라 승인 없이는 AWS 자격을 주지 않는다). 계획은 기본 변수값 기준이라 켜 둔 토글(`k6_enabled` 등)은 차이로 나온다
-- 인프라(`envs/`) 적용은 머지 뒤 `terraform-apply.yml`을 main에서 수동 실행한다(스택, PR 댓글의 기대 개수 `추가,변경,삭제`, 필요하면 `-var` 값). Environment `terraform-apply` 승인 뒤 새로 plan하고, 개수가 기대와 다르면 적용하지 않는다. 로컬 apply는 `envs/ci` 처음 만들 때와 CI가 안 될 때만 한다. 관측 서버 위의 설정(`observability/`)과 수집기 설정(`app-agent/`)은 main에 머지되면 GitHub Actions가 배포한다(추천 배치 서버는 교체해서 반영). 같은 리소스를 두 주체가 관리하지 않는다 관측 서버 위의 설정(`observability/`)과 수집기 설정(`app-agent/`)은 main에 머지되면 GitHub Actions가 배포한다(추천 배치 서버는 교체해서 반영). 같은 리소스를 두 주체가 관리하지 않는다
-- 컨테이너 이미지는 `이름:버전@sha256:…`으로 고정한다. 태그는 배포처에서 다른 이미지로 옮길 수 있어, 버전은 사람이 읽는 표기로 남기고 실제로는 digest로 받는다. 갱신은 Dependabot PR로 받고, 직접 바꿀 때는 버전과 digest를 함께 바꾼다. digest는 `docker buildx imagetools inspect 이름:버전`의 `Digest` 값이다
+- 인프라(`envs/`) 적용은 머지 뒤 `terraform-apply.yml`을 main에서 수동 실행한다(스택, PR 댓글의 기대 개수 `추가,변경,삭제`, 필요하면 `-var` 값). Environment `terraform-apply` 승인 뒤 새로 plan하고, 개수가 기대와 다르면 적용하지 않는다. `envs/loadtest`를 뺀 모든 스택이 대상이다. 로컬 apply는 `envs/ci`를 처음 만들 때, CI가 안 될 때, `envs/loadtest`(`loadtest/lt.sh`가 띄우고 지운다), 런북의 복구 절차(NAT 방식 되돌리기, DB 복원 되돌리기)에서만 한다. 관측 서버 위의 설정(`observability/`)과 수집기 설정(`app-agent/`)은 main에 머지되면 GitHub Actions가 배포한다(추천 배치 서버는 교체해서 반영). 같은 리소스를 두 주체가 관리하지 않는다
+- 컨테이너 이미지는 `이름:버전@sha256:…`으로 고정한다. 태그는 배포처에서 다른 이미지로 옮길 수 있어, 버전은 사람이 읽는 표기로 남기고 실제로는 digest로 받는다. `observability/`·`app-agent/`의 compose와 GitHub Actions는 Dependabot PR로 갱신을 받는다. 그 밖의 이미지(`ci.yml`의 actionlint, `envs/prod/app.tf`의 k6)는 직접 바꾸며, 버전과 digest를 함께 바꾼다. digest는 `docker buildx imagetools inspect 이름:버전`의 `Digest` 값이다
 - PR마다 `ci.yml`이 검사하고, main 룰셋의 필수 검사로 건다. 설정 검증은 compose에 고정된 이미지로 실행한다
   - `terraform`: `terraform fmt -check`, `envs/` 아래 각 환경(`ci`·`security` 포함)의 `init -backend=false`·`validate`
-  - `config`: compose 해석, Alloy `validate`, `promtool check config`, Loki `-verify-config`, `nginx -t`
-  - `lint`: `shellcheck`(배포 스크립트, 서버 첫 부팅 스크립트), `actionlint`(워크플로)
-- 협업 규칙은 조직 CONTRIBUTING을 따른다. 환경이 개발 서버 하나라 `develop` 없이 `main`으로 PR을 보낸다
+  - `config`: compose 해석, Alloy `validate`, `promtool check config`, Loki `-verify-config`, 대시보드 JSON 형식·uid 중복, `nginx -t`
+  - `lint`: `shellcheck`(배포 스크립트, 서버 첫 부팅 스크립트), Python 문법(`py_compile`), 부하 테스트 시나리오 형식(`ltrun.py check`), `actionlint`(워크플로)
+- 협업 규칙은 조직 CONTRIBUTING을 따른다. 개발·운영은 브랜치가 아니라 `envs/` 스택으로 나누고 관측 서버·수집기 설정은 두 환경이 같이 쓰므로, `develop` 없이 `main`으로 PR을 보낸다
 
 ## 부하 테스트 환경
 
@@ -106,7 +123,7 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
 
 순서
 
-1. `envs/loadtest-base`에서 `terraform plan -out=tfplan` → `terraform apply tfplan`. 앱 서버·k6 서버 IAM 역할을 만든다. 처음 한 번만 하고, 테스트 환경을 지워도 남긴다(서버와 같은 apply로 만들면 역할이 전파되기 전에 부팅해 SSM 에이전트가 붙지 않는다)
+1. `envs/loadtest-base`를 `terraform-apply.yml`로 적용한다. 앱 서버·k6 서버 IAM 역할을 만든다. 처음 한 번만 하고, 테스트 환경을 지워도 남긴다(서버와 같은 apply로 만들면 역할이 전파되기 전에 부팅해 SSM 에이전트가 붙지 않는다)
 2. Parameter Store `/cking/loadtest/`에 비밀값을 SecureString으로 넣는다: `DB_PASSWORD`, `JWT_SECRET`, `ADMIN_ACCOUNT_LOGIN_ID`, `ADMIN_ACCOUNT_PASSWORD`, `DOCS_USERNAME`, `DOCS_PASSWORD`. 나머지 값은 Terraform이 만든다
 3. `envs/loadtest`에서 `terraform plan -out=tfplan` → `terraform apply tfplan`
 4. 앱 배포: 개발 서버에 떠 있는 이미지 태그로 앱 서버에서 `aws s3 cp s3://dev-cking-deploy-551372961758/releases/<태그>/deploy.sh /opt/cking/deploy.sh` 뒤 `PARAM_PATH=/cking/loadtest/ bash /opt/cking/deploy.sh <태그>`(BE CI가 개발 서버에 배포하는 방식과 같다). 측정 내내 같은 태그를 쓴다
@@ -120,12 +137,12 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
 
 ## 운영 환경
 
-1. `envs/prod-base`에서 `terraform plan -out=tfplan` → `terraform apply tfplan`. 처음 한 번만 하고, 운영 환경을 지워도 남긴다
+1. `envs/prod-base`를 `terraform-apply.yml`로 적용한다. 처음 한 번만 하고, 운영 환경을 지워도 남긴다
 2. 비밀값은 Parameter Store에 SecureString으로 넣는다. 앱은 `/cking/prod/`, 추천 배치 서버는 `/cking/prod-recommendation/`, 감시용 서버는 `/cking/prod-monitor/`(Redis 감시 전용 사용자)이며 각 역할은 자기 경로만 읽는다
-   - `envs/prod` plan 전에 Redis 비밀번호 두 개가 있어야 한다(Terraform이 읽어 ElastiCache 사용자에 넣고 상태 파일에는 남기지 않는다): `/cking/prod/REDIS_PASSWORD`, `/cking/prod-monitor/REDIS_PASSWORD`. 16~128자, `,` `"` `/` `@` 제외
+   - `envs/prod` plan 전에 Redis 비밀번호 두 개가 있어야 한다(Terraform이 읽어 ElastiCache 사용자에 넣고 상태 파일에는 남기지 않는다): `/cking/prod/REDIS_PASSWORD`, `/cking/prod-monitor/REDIS_PASSWORD`. 16\~128자, `,` `"` `/` `@` 제외
    - RDS 마스터 비밀번호는 RDS가 Secrets Manager에 만들고 교체하므로 넣지 않는다
    - 비밀 쿠키 게이트 값 `/cking/prod/GATE_SECRET`(`openssl rand -hex 24`). Terraform이 읽어 CloudFront 함수(웹·관리자)와 API WAF 규칙에 넣으므로 상태 파일에 남는다. 팀원 입장 주소는 `https://cking.co.kr/?gate=<값>`이고 30일 쿠키가 생긴다. 정식 오픈 때 `gate_enabled`를 끈다
-3. `envs/prod`에서 `terraform plan -out=tfplan` → `terraform apply tfplan`. 비밀이 아닌 값(`DB_HOST`, `DB_USERNAME`, `REDIS_HOST`, `REDIS_USERNAME`)은 Terraform이 만든다
+3. `envs/prod`를 `terraform-apply.yml`로 적용한다. 비밀이 아닌 값은 Terraform이 만든다: `/cking/prod/`의 `DB_HOST`, `DB_USERNAME`, `REDIS_HOST`, `REDIS_USERNAME`, `COMMENT_FILTER_BASE_URL`, `IMAGE_PIPELINE_RESULTS_QUEUE_URL`(`image_pipeline_enabled`일 때), `/cking/prod-monitor/`의 `REDIS_HOST`·`REDIS_USERNAME`, `/cking/prod-recommendation/`의 `CKING_BE_URL`·`CKING_TAG_DAILY_CALLS`
    - 추천 배치 서버는 배치 저장소 main의 첫 운영 배포 전까지 배포 버전 값이 없어 시작 대기에서 버려지기를 반복한다. 켜는 순서는 [추천 배치 서버](docs/runbooks/recommendation-batch.md#운영에서-다른-점)
 4. 앱 DB 계정(`cking_app`, `cking` 스키마 권한만)을 처음 한 번 만든다. 앱은 마스터가 아닌 이 계정으로 접속한다. Mac에 Session Manager 플러그인, `mysql` 클라이언트, `python3`가 필요하다
    - `/cking/prod/DB_PASSWORD`에 앱 계정 비밀번호를 SecureString으로 넣는다
@@ -151,21 +168,21 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
    - 교체 뒤 ALB 경로 스모크가 실패하면 BE CI가 이전 태그로 한 번 자동 교체하고 다시 검사한다
    - 스모크가 잡지 못한 문제는 BE Actions의 `Deploy to prod` 워크플로를 `main`에서 예전 태그로 실행해 되돌린다
    - 이 절차는 `envs/prod-base`의 앱 역할(시작 대기 끝내기 권한)이 먼저 적용되어 있어야 한다
-7. 운영 부하 테스트: `envs/prod`에서 `terraform apply -var k6_enabled=true -var rds_monitoring_interval=1`로 k6 서버(`prod-cking-k6`)를 만들고 RDS Enhanced Monitoring을 1초로 바꾼다. 끝나면 두 값 없이 다시 apply해 k6 서버를 지우고 60초로 되돌린다. 간격 변경은 재부팅 없이 적용된다. 1초를 켜 두면 수집 비용이 월 약 $16이라 반드시 되돌린다. 실행 절차는 BE `docs/operations/loadtest.md`의 "운영에서 실행"
+7. 운영 부하 테스트: `envs/prod`를 `terraform-apply.yml`로 `-var` 값 `k6_enabled=true rds_monitoring_interval=1`과 함께 적용해 k6 서버(`prod-cking-k6`)를 만들고 RDS Enhanced Monitoring을 1초로 바꾼다. 끝나면 두 값 없이 다시 적용해 k6 서버를 지우고 60초로 되돌린다. 간격 변경은 재부팅 없이 적용된다. 1초를 켜 두면 수집 비용이 월 약 $16이라 반드시 되돌린다. 실행 절차는 BE `docs/operations/loadtest.md`의 "운영에서 실행"
 
 ## 운영 NAT 방식
 
 `envs/prod`의 `nat_mode`로 고른다. 기본은 `instance`(AZ마다 t4g.nano NAT 인스턴스, 월 약 $9)이고 `gateway`는 AZ마다 관리형 NAT Gateway(월 약 $86)다. 운영 NAT를 지나는 데이터가 하루 1GB 안팎이라 비용 대부분이 켜 둔 시간 요금이다.
 
 1. 인스턴스 역할은 `envs/prod-base`(`prod-cking-nat-role`)에 있어 먼저 적용되어 있어야 한다
-2. 바꿀 때: `envs/prod`에서 `terraform plan -var nat_mode=<방식> -out=tfplan` → `terraform apply tfplan`. 바깥 IP가 바뀌고 API WAF 허용 IP(운영 NAT)도 같이 바뀐다
+2. 바꿀 때: `envs/prod`를 `terraform-apply.yml`로 `-var` 값 `nat_mode=<방식>`과 함께 적용한다. 바깥 IP가 바뀌고 API WAF 허용 IP(운영 NAT)도 같이 바뀐다
 3. 바꾸는 동안 앱 서브넷의 바깥 연결이 잠깐 끊긴다(2026-10-29 게이트웨이 → 인스턴스 전환 때 약 45\~48초, 게이트웨이 삭제가 경로 변경보다 먼저 끝나서). 끊김을 없애려면 두 단계로 한다: 새 방식을 만들고 경로를 옮긴 뒤 옛 방식을 지운다. 경보·대응은 런북 `prod-nat.md`
 4. 바깥 IP가 바뀌면 API WAF 허용 IP도 같은 apply에서 바뀌지만 경로보다 늦게 반영될 수 있다. 그 사이 추천 배치 요청이 비밀 쿠키 게이트에 걸려 403을 받을 수 있다(배치는 다음 주기에 다시 한다)
 
 ## 계정 보안 기준선
 
 1. `envs/prod`를 먼저 적용한다. 운영 경보 SNS가 `rule/cking-security-*` 이벤트 규칙의 발행을 허용해야 GuardDuty 경보가 들어간다
-2. `envs/security`에서 `terraform plan -out=tfplan` → `terraform apply tfplan`
+2. `envs/security`를 `terraform-apply.yml`로 적용한다
 3. Security Hub 검사 결과는 켠 뒤 하루 안에 채워진다. 지적 사항은 고칠 것과 받아들일 것으로 나눈다. 받아들인 것은 이유와 함께 `triage.tf`에 넣어 억제한다. 새 리소스는 이름·이름표로 좁힌 규칙에 걸리지 않으면 다시 판단한다
 4. 서울 기본 VPC는 지웠다(2026-10-29). 쓰는 리소스가 없었고, 서브넷을 빠뜨리고 만든 서버가 공인 IP를 달고 뜨는 것을 막는다. 필요하면 `aws ec2 create-default-vpc`로 다시 만든다. 다른 리전의 기본 VPC는 쓰지 않는 리전이라 그대로 둔다
 5. 비용: GuardDuty·Security Hub는 처음 30일 무료 체험이고, 그 뒤 금액은 체험 기간 사용량으로 확인한다. CloudTrail 첫 관리 이벤트 추적은 무료(버킷 저장 비용만), Config는 기록한 설정 항목 수에 비례한다
