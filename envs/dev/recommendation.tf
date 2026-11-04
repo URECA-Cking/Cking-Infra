@@ -83,7 +83,8 @@ resource "aws_iam_role_policy" "recommendation_deploy" {
 }
 
 # 개발 추천 배치 서버. 운영 설계(#102)와 같이 1대짜리 서버 그룹에 상태 디스크를 따로 두고, 새 서버가 부팅하며 붙인다.
-# 구매 방식만 스팟이다(서울 t4g.small 중단 빈도 5% 미만). 중단되면 그룹이 새 서버를 띄우고 상태 디스크를 다시 붙인다.
+# 운영과 달리 스팟(서울 t4g.small 중단 빈도 5% 미만)이고, 자리를 찾도록 arm64 유형 6개를 쓴다(recommendation_spot_types). 서브넷은 퍼블릭 2a다.
+# 중단되면 그룹이 새 서버를 띄우고 상태 디스크를 다시 붙인다.
 
 resource "aws_ssm_parameter" "recommendation_be_url" {
   name  = "/cking/dev-recommendation/CKING_BE_URL"

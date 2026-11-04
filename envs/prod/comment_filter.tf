@@ -42,7 +42,7 @@ resource "aws_iam_role_policy" "comment_filter_function" {
   })
 }
 
-# 메모리·실행 상한은 개발과 같다(개발 측정 최대 메모리 약 962MB, 콜드 스타트 최대 53.5초에 각각 2배 여유).
+# 메모리·실행 상한은 개발과 같다(로컬 측정 최대 메모리 약 962MB, 개발 콜드 스타트 최대 53.5초에 각각 2배 여유).
 resource "aws_lambda_function" "comment_filter" {
   function_name = local.comment_filter_function
   role          = aws_iam_role.comment_filter_function.arn

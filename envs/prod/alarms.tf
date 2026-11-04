@@ -145,7 +145,7 @@ resource "aws_cloudwatch_metric_alarm" "alb_few_healthy" {
   ok_actions          = [aws_sns_topic.alerts.arn]
 }
 
-# 앱까지 가지 못한 요청(ALB가 만든 502·503·504)은 앱 지표에 없다. 기준은 Grafana 서버 오류 증가와 같다(5분에 30건 이상일 때 5%).
+# 앱까지 가지 못한 요청(ALB가 만든 502·503·504)은 앱 지표에 없다. 비율 5%는 Grafana 서버 오류 증가와 같고, 1분 요청이 30건 미만이면 0으로 본다.
 # 5분 비율로는 서버 1대가 20~40초 끊긴 502·504(게임 데이 앱 메모리 초과 2.2%, app-2a 차단 3.6%)가 묻혔다. 1분 비율, 3번 중 2번으로 한 번 튄 값은 거른다
 resource "aws_cloudwatch_metric_alarm" "alb_5xx" {
   alarm_name          = "prod-cking-alb-5xx"
@@ -264,7 +264,7 @@ resource "aws_cloudwatch_metric_alarm" "redis_cpu" {
   ok_actions          = [aws_sns_topic.alerts.arn]
 }
 
-# 부하 테스트 최대(db.t4g.micro, 초당 150 반영 시도에서 37.5%)의 2배를 넘는 상태가 15분 이어질 때.
+# 운영 부하 테스트 3차 최대(같은 db.t4g.small 다중 AZ, 앱 서버 3대·DB 반영 초당 약 423건에서 1분 평균 75%)를 넘는 상태가 15분 이어질 때.
 resource "aws_cloudwatch_metric_alarm" "rds_cpu" {
   alarm_name          = "prod-cking-rds-cpu"
   alarm_description   = "RDS CPU 15분째 80% 초과. 런북: ${local.alarm_runbook}/prod-rds.md"

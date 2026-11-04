@@ -21,7 +21,7 @@ variable "ami" {
 }
 
 variable "instance_profile" {
-  description = "SSM 접속과 JWT 비밀값 읽기만 허용한 인스턴스 프로필"
+  description = "인스턴스 프로필(envs/loadtest-base, envs/prod-base). SSM 접속, JWT 비밀값·실행 알림 웹훅 읽기, 실행기의 앱 서버 명령·지표 조회 역할 넘어가기·결과 버킷 쓰기"
   type        = string
 }
 

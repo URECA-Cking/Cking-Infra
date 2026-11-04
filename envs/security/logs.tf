@@ -1,5 +1,5 @@
 # 계정 보안 기준선. 환경(dev·prod)과 상관없이 계정 전체에 하나씩 둔다.
-# CloudTrail과 Config가 같은 버킷에 쓴다. 감사 기록이라 1년 남기고 지운다.
+# CloudTrail, Config, VPC 흐름 로그(hardening.tf)가 같은 버킷에 쓴다. 감사 기록이라 1년 남기고 지운다.
 
 locals {
   account_id   = "551372961758"

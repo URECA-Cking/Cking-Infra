@@ -68,7 +68,8 @@ resource "aws_autoscaling_group" "app" {
   target_group_arns   = [aws_lb_target_group.app.arn]
 
   # 새 서버는 시작 대기 동안 부팅(Docker 설치, 이미지 받기, 앱 기동)과 자기 검사를 마친다.
-  # 대기 상한은 그 최악값을 몰라 넉넉히 900초로 두고, 넘기면 버린다. 실제 부팅 시간은 apply 후 재서 줄인다.
+  # 대기 상한은 그 최악값을 몰라 넉넉히 900초로 두고, 넘기면 버린다. 운영 부하 테스트 3차에서 서버 시작부터 자기 검사를 통과해
+  # 요청을 받기까지 c6g.large 2분 29초, t4g.small 3분 8초였다.
   initial_lifecycle_hook {
     name                 = local.app_launch_hook
     lifecycle_transition = "autoscaling:EC2_INSTANCE_LAUNCHING"
