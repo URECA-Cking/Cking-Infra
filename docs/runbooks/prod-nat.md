@@ -6,6 +6,7 @@
 | --- | --- | --- |
 | `prod-cking-nat-<AZ>-system-check` | 시스템 검사 실패 2분 | 같은 인스턴스로 복구(다른 하드웨어, EIP·주소 유지) |
 | `prod-cking-nat-<AZ>-instance-check` | 인스턴스 검사 실패 3분 | 재부팅 |
+| `prod-cking-nat-<AZ>-forwarding` | 전달 확인 실패 또는 지표 없음 5분 | 없음 |
 
 ## 뜻하는 것
 
@@ -28,6 +29,11 @@ sysctl net.ipv4.ip_forward
 ```
 
 ## 원인별 대응
+
+`forwarding` 경보는 NAT 인스턴스가 1분마다 보내는 `Cking/NAT ForwardingReady`(전달 서비스 active, `ip_forward=1`, 기본 경로 장치로 마스커레이드 규칙이 있으면 1)로 판단한다. 상태 검사 경보 없이 이것만 울리면 아래 둘 중 하나다.
+
+- **인스턴스가 멈춤**(위 표에서 `stopped`): `aws ec2 start-instances --region ap-northeast-2 --instance-ids <ID>`. EIP와 경로는 그대로라 켜지면 돌아온다
+- **지표만 끊김**(인스턴스·서비스 정상): `systemctl status cking-nat-check.timer cking-nat-check.service --no-pager`와 `journalctl -u cking-nat-check -n 20`. awscli가 없으면 `sudo apt-get install -y awscli`
 
 - **자동 복구·재부팅 중**: 몇 분 기다린다. 끝나면 `cking-nat.service`가 전달·마스커레이드를 다시 건다
 - **서비스가 실패함**(`cking-nat.service` failed): `sudo systemctl restart cking-nat.service`. 기본 경로 장치 이름이 바뀌었으면 로그(`journalctl -u cking-nat`)에 남는다

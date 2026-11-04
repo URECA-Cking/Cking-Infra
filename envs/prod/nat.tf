@@ -106,3 +106,23 @@ resource "aws_cloudwatch_metric_alarm" "nat_instance_check" {
   alarm_actions       = ["arn:aws:swf:ap-northeast-2:551372961758:action/actions/AWS_EC2.InstanceId.Reboot/1.0", aws_sns_topic.alerts.arn]
   ok_actions          = [aws_sns_topic.alerts.arn]
 }
+
+# 상태 검사는 EC2·OS만 본다. 전달 서비스가 실패하거나 인스턴스가 멈추면 그대로 통과해 따로 본다.
+# 5분은 첫 부팅(지표 시작 1분 + awscli 설치, 측정하지 않음)에 여유를 둔 값이다.
+resource "aws_cloudwatch_metric_alarm" "nat_forwarding" {
+  for_each = local.nat_zones
+
+  alarm_name          = "prod-cking-nat-${each.key}-forwarding"
+  alarm_description   = "NAT 인스턴스 전달 확인 실패 또는 지표 끊김(전달 서비스·규칙 이상, 인스턴스 정지). 런북: ${local.alarm_runbook}/prod-nat.md"
+  namespace           = "Cking/NAT"
+  metric_name         = "ForwardingReady"
+  dimensions          = { InstanceId = aws_instance.nat[each.key].id }
+  statistic           = "Minimum"
+  period              = 60
+  evaluation_periods  = 5
+  threshold           = 1
+  comparison_operator = "LessThanThreshold"
+  treat_missing_data  = "breaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+  ok_actions          = [aws_sns_topic.alerts.arn]
+}

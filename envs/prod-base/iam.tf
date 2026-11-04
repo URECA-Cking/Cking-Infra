@@ -215,7 +215,7 @@ resource "aws_iam_instance_profile" "monitor" {
   role = aws_iam_role.monitor.name
 }
 
-# NAT 인스턴스. 사람이 들어가 볼 때만 SSM을 쓴다. 다른 권한은 없다.
+# NAT 인스턴스. 사람이 들어가 볼 때만 SSM을 쓴다. 그 밖에는 전달 상태 지표(Cking/NAT)만 보낸다.
 resource "aws_iam_role" "nat" {
   name               = "prod-cking-nat-role"
   assume_role_policy = local.ec2_trust
@@ -224,6 +224,21 @@ resource "aws_iam_role" "nat" {
 resource "aws_iam_role_policy_attachment" "nat_ssm" {
   role       = aws_iam_role.nat.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_iam_role_policy" "nat_metrics" {
+  name = "prod-cking-nat-metrics"
+  role = aws_iam_role.nat.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Action    = "cloudwatch:PutMetricData"
+      Resource  = "*"
+      Condition = { StringEquals = { "cloudwatch:namespace" = "Cking/NAT" } }
+    }]
+  })
 }
 
 resource "aws_iam_instance_profile" "nat" {
