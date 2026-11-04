@@ -1,6 +1,11 @@
 # 운영 API 입구. HTTPS만 받고, 설정은 개발 ALB와 같다(TLS 정책, /readyz 외부 차단, 헬스체크).
 # 해제 대기는 앱 종료 대기(stop_grace_period 90초)와 맞춰, 서버를 교체할 때 진행 중인 요청을 끊지 않는다.
 
+locals {
+  api_host       = "api.cking.co.kr"
+  not_found_body = jsonencode({ code = "RESOURCE_NOT_FOUND", message = "대상을 찾을 수 없습니다." })
+}
+
 data "aws_acm_certificate" "wildcard" {
   domain   = "*.cking.co.kr"
   statuses = ["ISSUED"]
@@ -88,7 +93,29 @@ resource "aws_lb_listener" "https" {
   ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-Res-PQ-2025-09"
   certificate_arn   = data.aws_acm_certificate.wildcard.arn
 
+  # WAF 규칙은 Host가 api_host일 때만 검사한다. 다른 Host는 앱까지 가지 않게 기본 응답을 404로 둔다.
   default_action {
+    type = "fixed-response"
+
+    fixed_response {
+      content_type = "application/json"
+      status_code  = "404"
+      message_body = local.not_found_body
+    }
+  }
+}
+
+resource "aws_lb_listener_rule" "app" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 100
+
+  condition {
+    host_header {
+      values = [local.api_host]
+    }
+  }
+
+  action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.app.arn
   }
@@ -127,14 +154,14 @@ resource "aws_lb_listener_rule" "block_readyz" {
     fixed_response {
       content_type = "application/json"
       status_code  = "404"
-      message_body = jsonencode({ code = "RESOURCE_NOT_FOUND", message = "대상을 찾을 수 없습니다." })
+      message_body = local.not_found_body
     }
   }
 }
 
 resource "aws_route53_record" "api" {
   zone_id = data.aws_route53_zone.main.zone_id
-  name    = "api.cking.co.kr"
+  name    = local.api_host
   type    = "A"
 
   alias {
@@ -150,7 +177,7 @@ module "api_waf" {
 
   name               = "prod-cking-api"
   alb_arn            = aws_lb.main.arn
-  api_host           = "api.cking.co.kr"
+  api_host           = local.api_host
   mode               = "block"
   allow_ip_cidrs     = [for ip in local.nat_public_ips : "${ip}/32"]
   log_retention_days = 14
