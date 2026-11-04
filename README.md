@@ -15,6 +15,7 @@
 ```text
 .github/workflows/         PR 검사(ci.yml), Terraform plan(terraform-plan.yml, PR 댓글)·apply(terraform-apply.yml, main 수동, 승인), 관측 설정·수집기 배포(deploy-observability.yml, deploy-app-agent.yml. 앱 서버는 바로 적용, 추천 배치 서버는 교체), Lambda 코드 배포(deploy-alert-analyzer.yml 경보 AI 진단, deploy-image-normalizer.yml 이미지 정규화 개발 → 운영)
 .github/dependabot.yml     컨테이너 이미지·GitHub Actions 갱신 PR
+.github/scripts/           CI 보조 스크립트(render-templates.sh: 서버 부팅 스크립트 템플릿을 변수를 채운 모습으로 펼쳐 shellcheck에 넘김)
 alert-analyzer/            경보 AI 진단 Lambda(Python). 경보를 받아 Claude(Claude API)가 런북대로 읽기 전용 조회를 하고 Slack 봇으로 제안. 런북 조치는 승인 버튼(approvals.py)을 누르면 실행 함수(executor.py)가 목록(actions.py)대로 실행. build.sh가 배포 묶음을 만든다
 image-normalizer/          이미지 업로드 정규화 Lambda(Python, Pillow). 업로드 버킷 raw/<최종 키>의 원본을 앱과 같은 규칙(EXIF 회전, 긴 변 2048, JPEG 품질 90)으로 바꿔 최종 키에 저장하고 결과를 결과 큐로 보낸다. build.sh가 배포 묶음을 만든다
 app-agent/                 서버 수집기(Alloy) 설정. agent.alloy(서버 지표·로그·전송)는 항상, app.alloy(앱 지표)·redis.alloy(Redis 지표)·cadvisor.alloy(컨테이너 지표, 부하 테스트 서버)·journal.alloy(systemd 서비스 journald 로그, 추천 배치 서버)는 apply.sh가 서버 역할에 따라 켠다
@@ -112,7 +113,7 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
 - PR마다 `ci.yml`이 검사하고, main 룰셋의 필수 검사로 건다. 설정 검증은 compose에 고정된 이미지로 실행한다
   - `terraform`: `terraform fmt -check`, `envs/` 아래 각 환경(`ci`·`security` 포함)의 `init -backend=false`·`validate`
   - `config`: compose 해석, Alloy `validate`, `promtool check config`, Loki `-verify-config`, 대시보드 JSON 형식·uid 중복, `nginx -t`
-  - `lint`: `shellcheck`(배포 스크립트, 서버 첫 부팅 스크립트), Python 문법(`py_compile`), 부하 테스트 시나리오 형식(`ltrun.py check`), `actionlint`(워크플로)
+  - `lint`: `shellcheck`(배포 스크립트, 서버 첫 부팅 스크립트는 Terraform 변수를 채운 모습으로 펼쳐서), Python 문법(`py_compile`), 부하 테스트 시나리오 형식(`ltrun.py check`), `actionlint`(워크플로)
 - 협업 규칙은 조직 CONTRIBUTING을 따른다. 개발·운영은 브랜치가 아니라 `envs/` 스택으로 나누고 관측 서버·수집기 설정은 두 환경이 같이 쓰므로, `develop` 없이 `main`으로 PR을 보낸다
 
 ## 부하 테스트 환경
