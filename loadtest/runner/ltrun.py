@@ -396,6 +396,9 @@ fetch() {
         if not out.strip():
             return None, None
         tokens = out.split()
+        if "pending" not in tokens:
+            self.log(f"Stream 상태 응답에 pending이 없음: {out.strip()[:200]}")
+            return None, None
         nums = collections.defaultdict(int)
         for key, value in zip(tokens, tokens[1:]):
             if key in ("pending", "lag") and value.lstrip("-").isdigit():
@@ -577,6 +580,10 @@ fetch() {
         (self.dir / f"r{rnd}-verify.txt").write_text(out + "\n" + "\n".join(lines[-len(checks):]) + "\n")
         fails = sum(l.startswith("FAIL") for l in lines)
         passes = sum(l.startswith("PASS") for l in lines)
+        # verify.sh는 마지막에 "== 결과:" 줄을 쓴다. 없으면 중간에 멈췄거나 SSM 출력(24,000자)이 잘린 것이다.
+        complete = "== 결과:" in out
+        if fails or not complete:
+            raise RuntimeError(f"PASS {passes} / FAIL {fails}" + ("" if complete else ", verify 출력이 끝나지 않음"))
         return {"text": f"PASS {passes} / FAIL {fails}", "verify": lines}
 
     # 실행
