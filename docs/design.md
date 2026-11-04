@@ -89,7 +89,7 @@ API  api.cking.co.kr
 
 | 항목 | 운영 | 근거 |
 |---|---|---|
-| 클래스 | db.t4g.small 다중 AZ | 비버스터블 db.m6g.large는 월 약 $153(단일 AZ) vs $37. 정각 steal 영향은 응모 경로의 DB 조회를 없애 피했다(12절) |
+| 클래스 | db.t4g.small 다중 AZ | 비버스터블 db.m6g.large는 월 약 $153(단일 AZ) vs $37. RDS 매시 관리 작업(약 2초)은 남아 정각 응모가 최대 253ms까지 늦지만 SLO 안이다(12절) |
 | 스토리지 | gp3 20GiB, 자동 확장 상한 100GiB | 축소가 안 되므로 최소로 시작하고 폭주를 상한으로 막는다 |
 | 백업 | 자동 백업 14일·시점 복구, 삭제 방지, 마지막 스냅샷 | |
 | 연결 | TLS 강제(`require_secure_transport`), 앱 전용 계정(스키마 권한만) | 마스터 비밀번호는 RDS가 Secrets Manager에서 관리 |
@@ -205,7 +205,7 @@ API  api.cking.co.kr
 |---|---|---|
 | 앱 실행: EC2 + Docker Compose | ECS·EKS | 서버 수가 적고 배포 경로(SSM)를 직접 보이게 다룰 수 있다. 서브넷 `/20`으로 옮길 여유를 둠 |
 | 운영 앱 서버 c6g.large | t4g.small | t4g는 정각에 하이퍼바이저 CPU steal(최대 79%)로 정각 응모 API가 1,506ms까지 늘었다. c6g에서 steal 0%, 253ms([`loadtest.md`](loadtest.md) 3.3) |
-| RDS db.t4g.small 유지 | db.m6g.large | 정각 steal은 RDS에도 있지만 월 $37 vs $153. 응모 경로의 DB 조회를 없애(BE #707) DB 멈춤이 응모에 닿지 않게 했다 |
+| RDS db.t4g.small 유지 | db.m6g.large | 월 $37 vs $153. 매시 관리 작업은 남지만, 응모 경로의 DB 읽기를 이벤트 캐시가 빌 때와 첫 프로필 검사로 줄여(BE #707) 정각 응모 지연이 최대 253ms로 SLO 안이다 |
 | 확장 지표: ALB 대상당 요청 수 | CPU | c6g는 요청이 초당 75 → 140건으로 늘어도 CPU가 8%p만 올라 처리량을 가늠하지 못한다. 분당 6,300건 = 서버당 초당 105건으로 DB 반영 한계보다 낮게(Infra #173) |
 | 응모 DB 반영: 서버당 소비자 4개 | 소비자 1개 | 1개는 초당 약 80\~110건이 한계. 4개로 200\~250건(BE #697) |
 | 이미지: S3 직접 업로드 + Lambda 정규화 | 앱 안 정규화 | 6절 |
