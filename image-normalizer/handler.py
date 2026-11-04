@@ -11,6 +11,7 @@ import os
 import urllib.parse
 
 import boto3
+from botocore.exceptions import ClientError
 from PIL import Image, ImageOps
 
 log = logging.getLogger()
@@ -70,7 +71,13 @@ def process(bucket, raw_key):
     except InvalidImage as e:
         send_result(final_key, "FAILED", reason=str(e))
         return
-    s3.put_object(Bucket=bucket, Key=final_key, Body=jpeg, ContentType="image/jpeg")
+    # 최종 키는 한 번만 쓴다. 이미 있으면 앞선 실행이 저장하고 결과를 못 보낸 것이라 결과만 다시 보낸다.
+    try:
+        s3.put_object(Bucket=bucket, Key=final_key, Body=jpeg, ContentType="image/jpeg", IfNoneMatch="*")
+    except ClientError as e:
+        if e.response.get("Error", {}).get("Code") != "PreconditionFailed":
+            raise
+        log.info("이미 저장된 최종 키: %s", final_key)
     send_result(final_key, "READY", width=width, height=height, size=len(jpeg))
 
 
@@ -84,6 +91,17 @@ def final_key_of(raw_key):
 
 
 def normalize(source, min_width, min_height):
+    # 손상된 EXIF·데이터는 Pillow가 여러 종류의 예외로 알린다. 재시도해도 같으므로 모두 해석 실패로 본다.
+    try:
+        return _normalize(source, min_width, min_height)
+    except InvalidImage:
+        raise
+    except Exception as e:
+        log.warning("해석 실패: %s", e)
+        raise InvalidImage("decode") from e
+
+
+def _normalize(source, min_width, min_height):
     try:
         image = Image.open(io.BytesIO(source))
         if image.format not in ALLOWED_FORMATS:
