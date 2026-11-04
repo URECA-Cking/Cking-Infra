@@ -71,7 +71,7 @@ resource "aws_s3_bucket_cors_configuration" "uploads" {
   cors_rule {
     allowed_methods = ["PUT"]
     allowed_origins = ["https://dev.cking.co.kr", "https://dev-admin.cking.co.kr"]
-    allowed_headers = ["content-type", "x-amz-meta-min-width", "x-amz-meta-min-height"]
+    allowed_headers = ["content-type", "if-none-match", "x-amz-meta-min-width", "x-amz-meta-min-height"]
     max_age_seconds = 3000
   }
 }
