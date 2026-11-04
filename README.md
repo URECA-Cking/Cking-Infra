@@ -62,7 +62,7 @@ envs/loadtest-base/        부하 테스트 EC2 역할과 인스턴스 프로필
   outputs.tf               앱·k6 서버 인스턴스 프로필 이름
 envs/prod/                 운영 환경. 상태는 prod/terraform.tfstate
   network.tf               VPC 10.1.0.0/16, AZ 2a·2b의 퍼블릭·프라이빗 앱·프라이빗 데이터 서브넷, 경로, AZ마다 NAT Gateway(nat_mode가 gateway일 때), S3 게이트웨이 엔드포인트
-  nat.tf                   NAT 방식(nat_mode). 기본 instance는 AZ마다 t4g.nano NAT 인스턴스·EIP와 시스템 검사 복구·인스턴스 검사 재부팅 경보
+  nat.tf                   NAT 방식(nat_mode). 기본 instance는 AZ마다 t4g.nano NAT 인스턴스·EIP와 시스템 검사 복구·인스턴스 검사 재부팅·전달 확인 경보
   peering.tf               개발 VPC 피어링(관측 서버 공유), 양쪽 경로, 관측 서버 수집 포트에 운영 앱 서브넷 허용
   security_groups.tf       앱·감시용·추천 배치 서버, RDS, ElastiCache 보안 그룹
   database.tf              RDS MySQL 8.4 다중 AZ(마스터 비밀번호는 Secrets Manager 관리), 느린 쿼리 로그, Enhanced Monitoring(평소 60초)
