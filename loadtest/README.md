@@ -74,6 +74,7 @@ env = { RATE = "80", DURATION = "20m" }
 | `closing-on-hour.toml` | 정각 5분 전 시작, 정각 마감 몰림(감시 10초) |
 | `fault-app-restart.toml` | 지속 중 5분에 앱 재시작, 회복 시각 기록 |
 | `image-pipeline-on.toml` | 운영 이미지 파이프라인 켠 뒤 확인(약 8분): 시험 이미지 받기 → 업로드 2·4건/초 × 2분(+ 조회 10/s), 앱 재시작·메모리 초과 확인. 되돌리기·시딩 없이 앞선 실행이 시딩한 회원을 쓴다 |
+| `gameday.toml`, `gameday2.toml` | 운영 장애 주입 게임 데이 부하(예열 → 지속 80/s). 장애는 Mac에서 `gameday/faults.sh`(1부, 장애 1\~5)·`faults2.sh`(2부, 장애 3\~5)가 지속 시작 기준 정해진 분에 넣는다. 결과는 [`docs/gameday.md`](../docs/gameday.md) |
 
 ## 결과
 

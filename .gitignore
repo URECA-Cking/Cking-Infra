@@ -24,3 +24,6 @@ image-normalizer/dist/
 
 # 부하 테스트 결과(요청별 기록). 결과 버킷에만 둔다
 loadtest-runs/
+
+# 장애 주입 기록(faults.sh가 스크립트 옆에 쓴다)
+loadtest/gameday/*.log
