@@ -11,5 +11,5 @@ locals {
     compose_version    = "5.5.1-1~ubuntu.26.04~resolute"
   }
 
-  observability_bucket = "dev-cking-observability-551372961758-ap-northeast-2-an"
+  observability_bucket = "dev-cking-observability-${local.account_id}-${local.region}-an"
 }

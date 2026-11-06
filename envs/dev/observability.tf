@@ -97,7 +97,7 @@ resource "aws_iam_role_policy" "observability" {
         Sid      = "MonitoringParameters"
         Effect   = "Allow"
         Action   = ["ssm:GetParameter", "ssm:GetParameters"]
-        Resource = "arn:aws:ssm:ap-northeast-2:551372961758:parameter/cking/dev/monitoring/*"
+        Resource = "arn:aws:ssm:${local.region}:${local.account_id}:parameter/cking/dev/monitoring/*"
       },
       {
         Sid    = "CloudWatchRead"
@@ -242,7 +242,7 @@ resource "aws_dlm_lifecycle_policy" "observability_data" {
 }
 
 resource "aws_s3_bucket" "observability" {
-  bucket           = "dev-cking-observability-551372961758-ap-northeast-2-an"
+  bucket           = "dev-cking-observability-${local.account_id}-${local.region}-an"
   bucket_namespace = "account-regional"
 }
 

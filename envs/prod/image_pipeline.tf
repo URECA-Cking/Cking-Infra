@@ -14,7 +14,7 @@ locals {
   image_normalizer_name = "prod-cking-image-normalizer"
   image_final_prefixes  = ["member-profile-images/", "creator-space-profile-images/", "post-images/"]
   # 묶음은 Infra main CI가 한 번 만들어 개발 배포 버킷에 올리고 개발·운영 함수에 같이 쓴다(댓글 필터 이미지와 같은 방식).
-  image_normalizer_package_bucket = "dev-cking-deploy-551372961758"
+  image_normalizer_package_bucket = "dev-cking-deploy-${local.account_id}"
 }
 
 resource "aws_sqs_queue" "image_jobs_dlq" {
@@ -41,7 +41,7 @@ resource "aws_sqs_queue_policy" "image_jobs" {
       Resource  = aws_sqs_queue.image_jobs.arn
       Condition = {
         ArnEquals    = { "aws:SourceArn" = aws_s3_bucket.this["uploads"].arn }
-        StringEquals = { "aws:SourceAccount" = "551372961758" }
+        StringEquals = { "aws:SourceAccount" = local.account_id }
       }
     }]
   })

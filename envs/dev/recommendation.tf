@@ -3,9 +3,9 @@
 
 locals {
   recommendation_name          = "dev-cking-recommendation"
-  recommendation_release_param = "arn:aws:ssm:ap-northeast-2:551372961758:parameter/cking/dev-recommendation/RELEASE"
+  recommendation_release_param = "arn:aws:ssm:${local.region}:${local.account_id}:parameter/cking/dev-recommendation/RELEASE"
   # 교체·시작 대기 권한은 그룹 이름으로 한정한다. 그룹 ARN을 참조하면 plan 때 값을 몰라 정책 전체가 미정으로 보인다.
-  recommendation_asg_arn = "arn:aws:autoscaling:ap-northeast-2:551372961758:autoScalingGroup:*:autoScalingGroupName/${local.recommendation_name}"
+  recommendation_asg_arn = "arn:aws:autoscaling:${local.region}:${local.account_id}:autoScalingGroup:*:autoScalingGroupName/${local.recommendation_name}"
   recommendation_state   = "dev-cking-recommendation-state"
   recommendation_hook    = "dev-cking-recommendation-launch"
 
@@ -159,7 +159,7 @@ resource "aws_iam_role_policy" "recommendation" {
         Sid      = "ReadRecommendationParameters"
         Effect   = "Allow"
         Action   = ["ssm:GetParameter", "ssm:GetParameters"]
-        Resource = "arn:aws:ssm:ap-northeast-2:551372961758:parameter/cking/dev-recommendation/*"
+        Resource = "arn:aws:ssm:${local.region}:${local.account_id}:parameter/cking/dev-recommendation/*"
       },
       {
         Sid      = "ReadReleases"
@@ -177,14 +177,14 @@ resource "aws_iam_role_policy" "recommendation" {
         Sid       = "AttachStateVolume"
         Effect    = "Allow"
         Action    = "ec2:AttachVolume"
-        Resource  = "arn:aws:ec2:ap-northeast-2:551372961758:volume/*"
+        Resource  = "arn:aws:ec2:${local.region}:${local.account_id}:volume/*"
         Condition = { StringEquals = { "aws:ResourceTag/Name" = local.recommendation_state } }
       },
       {
         Sid       = "AttachToRecommendationServer"
         Effect    = "Allow"
         Action    = "ec2:AttachVolume"
-        Resource  = "arn:aws:ec2:ap-northeast-2:551372961758:instance/*"
+        Resource  = "arn:aws:ec2:${local.region}:${local.account_id}:instance/*"
         Condition = { StringEquals = { "aws:ResourceTag/Name" = local.recommendation_name } }
       },
       {
@@ -237,7 +237,7 @@ resource "aws_launch_template" "recommendation" {
     lifecycle_hook       = local.recommendation_hook
     state_volume         = local.recommendation_state
     param_path           = "/cking/dev-recommendation/"
-    deploy_bucket        = "dev-cking-deploy-551372961758"
+    deploy_bucket        = "dev-cking-deploy-${local.account_id}"
     observability_bucket = aws_s3_bucket.observability.bucket
   }))
 

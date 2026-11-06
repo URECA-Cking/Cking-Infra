@@ -77,7 +77,7 @@ resource "aws_db_instance" "main" {
   enabled_cloudwatch_logs_exports = ["slowquery"]
 
   monitoring_interval = var.rds_monitoring_interval
-  monitoring_role_arn = "arn:aws:iam::551372961758:role/prod-cking-rds-monitoring-role"
+  monitoring_role_arn = "arn:aws:iam::${local.account_id}:role/prod-cking-rds-monitoring-role"
 
   # 다중 AZ 백업은 대기 인스턴스에서 떠서 주 인스턴스 I/O에 영향이 없다. 시각은 개발과 같은 새벽(KST)에 둔다.
   backup_retention_period    = 14

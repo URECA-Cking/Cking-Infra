@@ -10,12 +10,12 @@ locals {
 }
 
 ephemeral "aws_ssm_parameter" "redis_app_password" {
-  arn             = "arn:aws:ssm:ap-northeast-2:551372961758:parameter/cking/prod/REDIS_PASSWORD"
+  arn             = "arn:aws:ssm:${local.region}:${local.account_id}:parameter/cking/prod/REDIS_PASSWORD"
   with_decryption = true
 }
 
 ephemeral "aws_ssm_parameter" "redis_monitor_password" {
-  arn             = "arn:aws:ssm:ap-northeast-2:551372961758:parameter/cking/prod-monitor/REDIS_PASSWORD"
+  arn             = "arn:aws:ssm:${local.region}:${local.account_id}:parameter/cking/prod-monitor/REDIS_PASSWORD"
   with_decryption = true
 }
 

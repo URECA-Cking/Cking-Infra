@@ -51,7 +51,7 @@ data "aws_iam_openid_connect_provider" "github" {
 }
 
 data "aws_s3_bucket" "frontend" {
-  bucket = "dev-cking-frontend-551372961758"
+  bucket = "dev-cking-frontend-${local.account_id}"
 }
 
 data "aws_cloudfront_distribution" "frontend" {
@@ -59,7 +59,7 @@ data "aws_cloudfront_distribution" "frontend" {
 }
 
 data "aws_s3_bucket" "uploads" {
-  bucket = "dev-cking-uploads-551372961758-ap-northeast-2-an"
+  bucket = "dev-cking-uploads-${local.account_id}-${local.region}-an"
 }
 
 data "aws_acm_certificate" "wildcard" {

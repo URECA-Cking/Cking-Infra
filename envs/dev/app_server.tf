@@ -23,13 +23,13 @@ resource "aws_iam_role_policy" "app_server_deploy" {
         Sid      = "ReadDevParameters"
         Effect   = "Allow"
         Action   = ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"]
-        Resource = "arn:aws:ssm:ap-northeast-2:551372961758:parameter/cking/dev/*"
+        Resource = "arn:aws:ssm:${local.region}:${local.account_id}:parameter/cking/dev/*"
       },
       {
         Sid      = "ReadDeployFiles"
         Effect   = "Allow"
         Action   = "s3:GetObject"
-        Resource = "arn:aws:s3:::dev-cking-deploy-551372961758/releases/*"
+        Resource = "arn:aws:s3:::dev-cking-deploy-${local.account_id}/releases/*"
       }
     ]
   })
@@ -47,17 +47,17 @@ resource "aws_iam_role_policy" "app_server_uploads" {
         Effect = "Allow"
         Action = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"]
         Resource = [
-          "arn:aws:s3:::dev-cking-uploads-551372961758-ap-northeast-2-an/subscription-verifications/*",
-          "arn:aws:s3:::dev-cking-uploads-551372961758-ap-northeast-2-an/post-images/*",
-          "arn:aws:s3:::dev-cking-uploads-551372961758-ap-northeast-2-an/member-profile-images/*",
-          "arn:aws:s3:::dev-cking-uploads-551372961758-ap-northeast-2-an/creator-space-profile-images/*"
+          "${data.aws_s3_bucket.uploads.arn}/subscription-verifications/*",
+          "${data.aws_s3_bucket.uploads.arn}/post-images/*",
+          "${data.aws_s3_bucket.uploads.arn}/member-profile-images/*",
+          "${data.aws_s3_bucket.uploads.arn}/creator-space-profile-images/*"
         ]
       },
       {
         Sid      = "NotFoundAs404"
         Effect   = "Allow"
         Action   = "s3:ListBucket"
-        Resource = "arn:aws:s3:::dev-cking-uploads-551372961758-ap-northeast-2-an"
+        Resource = data.aws_s3_bucket.uploads.arn
       }
     ]
   })
@@ -107,7 +107,7 @@ resource "aws_iam_role_policy" "app_server_comment_filter" {
       Sid      = "InvokeCommentFilter"
       Effect   = "Allow"
       Action   = ["lambda:InvokeFunctionUrl", "lambda:InvokeFunction"]
-      Resource = local.comment_filter_function_arn
+      Resource = aws_lambda_function.comment_filter.arn
     }]
   })
 }

@@ -10,9 +10,9 @@ locals {
   alert_channels         = { dev = "C0CA27W8N1F", prod = "C0CAXUX1FKN" }
   alert_action_approvers = ["U0C9V1RMCS1"]
 
-  alert_parameter_arn = "arn:aws:ssm:ap-northeast-2:551372961758:parameter"
-  prod_deploy_bucket  = "arn:aws:s3:::prod-cking-deploy-551372961758-ap-northeast-2-an"
-  asg_arn_prefix      = "arn:aws:autoscaling:ap-northeast-2:551372961758:autoScalingGroup:*:autoScalingGroupName"
+  alert_parameter_arn = "arn:aws:ssm:${local.region}:${local.account_id}:parameter"
+  prod_deploy_bucket  = "arn:aws:s3:::prod-cking-deploy-${local.account_id}-${local.region}-an"
+  asg_arn_prefix      = "arn:aws:autoscaling:${local.region}:${local.account_id}:autoScalingGroup:*:autoScalingGroupName"
 
   # 진단(제안 때)과 실행 함수(실행 직전)가 같은 검사를 한다
   alert_action_reads = [
@@ -32,7 +32,7 @@ locals {
       Sid      = "ReadFilterConcurrency"
       Effect   = "Allow"
       Action   = "lambda:GetFunctionConcurrency"
-      Resource = [aws_lambda_function.comment_filter.arn, "arn:aws:lambda:ap-northeast-2:551372961758:function:prod-cking-comment-filter"]
+      Resource = [aws_lambda_function.comment_filter.arn, "arn:aws:lambda:${local.region}:${local.account_id}:function:prod-cking-comment-filter"]
     },
     {
       Sid       = "ListReleases"
@@ -110,7 +110,7 @@ resource "aws_ssm_document" "dev_app_rollback" {
       inputs = {
         timeoutSeconds = "900"
         runCommand = [
-          "aws s3 cp --region ap-northeast-2 \"s3://dev-cking-deploy-551372961758/releases/{{ tag }}/deploy.sh\" /opt/cking/deploy.sh",
+          "aws s3 cp --region ap-northeast-2 \"s3://dev-cking-deploy-${local.account_id}/releases/{{ tag }}/deploy.sh\" /opt/cking/deploy.sh",
           "bash /opt/cking/deploy.sh \"{{ tag }}\"",
         ]
       }
@@ -253,15 +253,15 @@ resource "aws_iam_role_policy" "alert_executor" {
         Sid      = "CommentFilter"
         Effect   = "Allow"
         Action   = "lambda:PutFunctionConcurrency"
-        Resource = [aws_lambda_function.comment_filter.arn, "arn:aws:lambda:ap-northeast-2:551372961758:function:prod-cking-comment-filter"]
+        Resource = [aws_lambda_function.comment_filter.arn, "arn:aws:lambda:${local.region}:${local.account_id}:function:prod-cking-comment-filter"]
       },
       {
         Sid    = "ProdRedisNodeType"
         Effect = "Allow"
         Action = "elasticache:ModifyReplicationGroup"
         Resource = [
-          "arn:aws:elasticache:ap-northeast-2:551372961758:replicationgroup:prod-cking-redis",
-          "arn:aws:elasticache:ap-northeast-2:551372961758:cluster:prod-cking-redis-*",
+          "arn:aws:elasticache:${local.region}:${local.account_id}:replicationgroup:prod-cking-redis",
+          "arn:aws:elasticache:${local.region}:${local.account_id}:cluster:prod-cking-redis-*",
         ]
       },
       {
@@ -286,7 +286,7 @@ resource "aws_lambda_function" "alert_actions" {
   runtime       = "python3.13"
   architectures = ["arm64"]
   handler       = each.value.handler
-  s3_bucket     = "dev-cking-deploy-551372961758"
+  s3_bucket     = "dev-cking-deploy-${local.account_id}"
   s3_key        = "alert-analyzer/initial.zip"
   memory_size   = 256
   timeout       = each.value.timeout

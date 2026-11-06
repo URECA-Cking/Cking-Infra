@@ -5,7 +5,6 @@
 locals {
   image_pipeline_name   = "dev-cking-image"
   image_normalizer_name = "dev-cking-image-normalizer"
-  image_normalizer_arn  = "arn:aws:lambda:ap-northeast-2:551372961758:function:${local.image_normalizer_name}"
   image_final_prefixes  = ["member-profile-images/", "creator-space-profile-images/", "post-images/"]
 }
 
@@ -33,7 +32,7 @@ resource "aws_sqs_queue_policy" "image_jobs" {
       Resource  = aws_sqs_queue.image_jobs.arn
       Condition = {
         ArnEquals    = { "aws:SourceArn" = data.aws_s3_bucket.uploads.arn }
-        StringEquals = { "aws:SourceAccount" = "551372961758" }
+        StringEquals = { "aws:SourceAccount" = local.account_id }
       }
     }]
   })
@@ -173,7 +172,7 @@ resource "aws_lambda_function" "image_normalizer" {
   runtime       = "python3.13"
   architectures = ["arm64"]
   handler       = "handler.handler"
-  s3_bucket     = "dev-cking-deploy-551372961758"
+  s3_bucket     = "dev-cking-deploy-${local.account_id}"
   s3_key        = "image-normalizer/initial.zip"
   memory_size   = 1536
   timeout       = 60
@@ -274,7 +273,7 @@ resource "aws_iam_role_policy" "image_normalizer_deploy" {
         Sid      = "UpdateFunction"
         Effect   = "Allow"
         Action   = ["lambda:UpdateFunctionCode", "lambda:GetFunction", "lambda:GetFunctionConfiguration"]
-        Resource = local.image_normalizer_arn
+        Resource = aws_lambda_function.image_normalizer.arn
       },
     ]
   })

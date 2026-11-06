@@ -1,14 +1,14 @@
 # 운영 EC2가 쓰는 역할. 서버와 같은 apply로 만들면 전파 전에 부팅해 SSM 에이전트가 자격 증명을 받지 못해 따로 먼저 만든다.
 # 버킷·함수·앱 서버 그룹은 envs/prod에서 만들므로 이름으로 가리킨다.
 locals {
-  parameter_arn        = "arn:aws:ssm:ap-northeast-2:551372961758:parameter"
-  deploy_bucket        = "prod-cking-deploy-551372961758-ap-northeast-2-an"
-  uploads_bucket       = "prod-cking-uploads-551372961758-ap-northeast-2-an"
-  observability_bucket = "dev-cking-observability-551372961758-ap-northeast-2-an"
-  comment_filter_arn   = "arn:aws:lambda:ap-northeast-2:551372961758:function:prod-cking-comment-filter"
+  parameter_arn        = "arn:aws:ssm:${local.region}:${local.account_id}:parameter"
+  deploy_bucket        = "prod-cking-deploy-${local.account_id}-${local.region}-an"
+  uploads_bucket       = "prod-cking-uploads-${local.account_id}-${local.region}-an"
+  observability_bucket = "dev-cking-observability-${local.account_id}-${local.region}-an"
+  comment_filter_arn   = "arn:aws:lambda:${local.region}:${local.account_id}:function:prod-cking-comment-filter"
   # 이미지 파이프라인 결과 큐(envs/prod/image_pipeline.tf). 사전 서명 PUT은 서명한 이 역할의 권한으로 동작해 raw/ 쓰기가 필요하다
-  image_results_queue_arn = "arn:aws:sqs:ap-northeast-2:551372961758:prod-cking-image-results"
-  ec2_arn                 = "arn:aws:ec2:ap-northeast-2:551372961758"
+  image_results_queue_arn = "arn:aws:sqs:${local.region}:${local.account_id}:prod-cking-image-results"
+  ec2_arn                 = "arn:aws:ec2:${local.region}:${local.account_id}"
   upload_prefixes = [
     "subscription-verifications",
     "post-images",
@@ -105,7 +105,7 @@ resource "aws_iam_role_policy" "app" {
         Sid      = "CompleteOwnLaunch"
         Effect   = "Allow"
         Action   = "autoscaling:CompleteLifecycleAction"
-        Resource = "arn:aws:autoscaling:ap-northeast-2:551372961758:autoScalingGroup:*:autoScalingGroupName/prod-cking-app"
+        Resource = "arn:aws:autoscaling:${local.region}:${local.account_id}:autoScalingGroup:*:autoScalingGroupName/prod-cking-app"
       },
     ], local.app_agent_statements)
   })
@@ -171,7 +171,7 @@ resource "aws_iam_role_policy" "recommendation" {
         Sid      = "CompleteOwnLaunch"
         Effect   = "Allow"
         Action   = "autoscaling:CompleteLifecycleAction"
-        Resource = "arn:aws:autoscaling:ap-northeast-2:551372961758:autoScalingGroup:*:autoScalingGroupName/prod-cking-recommendation"
+        Resource = "arn:aws:autoscaling:${local.region}:${local.account_id}:autoScalingGroup:*:autoScalingGroupName/prod-cking-recommendation"
       },
     ], local.app_agent_statements)
   })
@@ -279,7 +279,7 @@ resource "aws_iam_role_policy" "k6" {
         Sid       = "RunOnProdApp"
         Effect    = "Allow"
         Action    = "ssm:SendCommand"
-        Resource  = "arn:aws:ec2:ap-northeast-2:551372961758:instance/*"
+        Resource  = "arn:aws:ec2:${local.region}:${local.account_id}:instance/*"
         Condition = { StringEquals = { "ssm:resourceTag/aws:autoscaling:groupName" = "prod-cking-app" } }
       },
       {
@@ -305,25 +305,25 @@ resource "aws_iam_role_policy" "k6" {
         Sid      = "PauseAppGroup"
         Effect   = "Allow"
         Action   = ["autoscaling:SuspendProcesses", "autoscaling:ResumeProcesses"]
-        Resource = "arn:aws:autoscaling:ap-northeast-2:551372961758:autoScalingGroup:*:autoScalingGroupName/prod-cking-app"
+        Resource = "arn:aws:autoscaling:${local.region}:${local.account_id}:autoScalingGroup:*:autoScalingGroupName/prod-cking-app"
       },
       {
         Sid      = "AssumeQueryRole"
         Effect   = "Allow"
         Action   = "sts:AssumeRole"
-        Resource = "arn:aws:iam::551372961758:role/loadtest-cking-query"
+        Resource = "arn:aws:iam::${local.account_id}:role/loadtest-cking-query"
       },
       {
         Sid      = "WriteResults"
         Effect   = "Allow"
         Action   = ["s3:PutObject", "s3:GetObject"]
-        Resource = "arn:aws:s3:::loadtest-cking-results-551372961758-ap-northeast-2-an/prod/*"
+        Resource = "arn:aws:s3:::loadtest-cking-results-${local.account_id}-${local.region}-an/prod/*"
       },
       {
         Sid       = "ListResults"
         Effect    = "Allow"
         Action    = "s3:ListBucket"
-        Resource  = "arn:aws:s3:::loadtest-cking-results-551372961758-ap-northeast-2-an"
+        Resource  = "arn:aws:s3:::loadtest-cking-results-${local.account_id}-${local.region}-an"
         Condition = { StringLike = { "s3:prefix" = ["prod/*"] } }
       }
     ]

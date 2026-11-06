@@ -103,7 +103,7 @@ resource "aws_cloudwatch_metric_alarm" "nat_instance_check" {
   evaluation_periods  = 3
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
-  alarm_actions       = ["arn:aws:swf:ap-northeast-2:551372961758:action/actions/AWS_EC2.InstanceId.Reboot/1.0", aws_sns_topic.alerts.arn]
+  alarm_actions       = ["arn:aws:swf:${local.region}:${local.account_id}:action/actions/AWS_EC2.InstanceId.Reboot/1.0", aws_sns_topic.alerts.arn]
   ok_actions          = [aws_sns_topic.alerts.arn]
 }
 

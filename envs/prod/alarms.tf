@@ -25,7 +25,7 @@ resource "aws_sns_topic_policy" "alerts" {
       {
         Sid       = "AccountOwner"
         Effect    = "Allow"
-        Principal = { AWS = "arn:aws:iam::551372961758:root" }
+        Principal = { AWS = "arn:aws:iam::${local.account_id}:root" }
         Action = [
           "SNS:GetTopicAttributes", "SNS:SetTopicAttributes", "SNS:AddPermission", "SNS:RemovePermission",
           "SNS:DeleteTopic", "SNS:Subscribe", "SNS:ListSubscriptionsByTopic", "SNS:Publish",
@@ -38,7 +38,7 @@ resource "aws_sns_topic_policy" "alerts" {
         Principal = { Service = "cloudwatch.amazonaws.com" }
         Action    = "sns:Publish"
         Resource  = aws_sns_topic.alerts.arn
-        Condition = { ArnLike = { "aws:SourceArn" = "arn:aws:cloudwatch:ap-northeast-2:551372961758:alarm:prod-cking-*" } }
+        Condition = { ArnLike = { "aws:SourceArn" = "arn:aws:cloudwatch:${local.region}:${local.account_id}:alarm:prod-cking-*" } }
       },
       {
         Sid       = "LaunchFailureEvents"
@@ -55,7 +55,7 @@ resource "aws_sns_topic_policy" "alerts" {
         Principal = { Service = "events.amazonaws.com" }
         Action    = "sns:Publish"
         Resource  = aws_sns_topic.alerts.arn
-        Condition = { ArnLike = { "aws:SourceArn" = "arn:aws:events:ap-northeast-2:551372961758:rule/cking-security-*" } }
+        Condition = { ArnLike = { "aws:SourceArn" = "arn:aws:events:${local.region}:${local.account_id}:rule/cking-security-*" } }
       },
     ]
   })

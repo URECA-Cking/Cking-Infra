@@ -2,7 +2,7 @@
 # 운영 환경을 지우면 구독과 호출 허용도 같이 지워진다.
 
 locals {
-  alert_analyzer_function = "arn:aws:lambda:ap-northeast-2:551372961758:function:dev-cking-alert-analyzer"
+  alert_analyzer_function = "arn:aws:lambda:${local.region}:${local.account_id}:function:dev-cking-alert-analyzer"
 }
 
 resource "aws_lambda_permission" "alert_analyzer" {
