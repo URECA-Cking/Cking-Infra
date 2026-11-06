@@ -3,11 +3,11 @@
 
 locals {
   buckets = {
-    deploy   = "prod-cking-deploy-551372961758-ap-northeast-2-an"
-    uploads  = "prod-cking-uploads-551372961758-ap-northeast-2-an"
-    alb_logs = "prod-cking-alb-logs-551372961758-ap-northeast-2-an"
-    web      = "prod-cking-frontend-551372961758-ap-northeast-2-an"
-    admin    = "prod-cking-admin-551372961758-ap-northeast-2-an"
+    deploy   = "prod-cking-deploy-${local.account_id}-${local.region}-an"
+    uploads  = "prod-cking-uploads-${local.account_id}-${local.region}-an"
+    alb_logs = "prod-cking-alb-logs-${local.account_id}-${local.region}-an"
+    web      = "prod-cking-frontend-${local.account_id}-${local.region}-an"
+    admin    = "prod-cking-admin-${local.account_id}-${local.region}-an"
   }
 
   # ALB 접근 로그는 SSE-S3만 지원한다. 로그 보존은 앱 로그(Loki)와 같은 14일.
@@ -73,8 +73,8 @@ resource "aws_s3_bucket_policy" "this" {
         Effect    = "Allow"
         Principal = { Service = "logdelivery.elasticloadbalancing.amazonaws.com" }
         Action    = "s3:PutObject"
-        Resource  = "${aws_s3_bucket.this[each.key].arn}/AWSLogs/551372961758/*"
-        Condition = { ArnLike = { "aws:SourceArn" = "arn:aws:elasticloadbalancing:ap-northeast-2:551372961758:loadbalancer/*" } }
+        Resource  = "${aws_s3_bucket.this[each.key].arn}/AWSLogs/${local.account_id}/*"
+        Condition = { ArnLike = { "aws:SourceArn" = "arn:aws:elasticloadbalancing:${local.region}:${local.account_id}:loadbalancer/*" } }
       }] : [],
       contains(keys(local.cdn_bucket_reads), each.key) ? [{
         Sid       = "AllowCloudFrontRead"

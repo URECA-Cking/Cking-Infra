@@ -16,7 +16,7 @@ resource "aws_vpc_security_group_ingress_rule" "db_from_app" {
 
 # 비밀번호는 Parameter Store에 직접 넣은 값을 읽는다. ephemeral로 읽어 상태 파일에 남기지 않는다.
 ephemeral "aws_ssm_parameter" "db_password" {
-  arn             = "arn:aws:ssm:ap-northeast-2:551372961758:parameter/cking/${var.env_name}/DB_PASSWORD"
+  arn             = "arn:aws:ssm:${local.region}:${local.account_id}:parameter/cking/${var.env_name}/DB_PASSWORD"
   with_decryption = true
 }
 

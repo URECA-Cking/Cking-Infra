@@ -6,7 +6,7 @@ locals {
     uploads  = data.aws_s3_bucket.uploads.arn
     admin    = aws_s3_bucket.admin_frontend.arn
     frontend = data.aws_s3_bucket.frontend.arn
-    deploy   = "arn:aws:s3:::dev-cking-deploy-551372961758"
+    deploy   = "arn:aws:s3:::dev-cking-deploy-${local.account_id}"
   }
 
   deny_insecure_transport = {
@@ -41,7 +41,7 @@ resource "aws_s3_bucket_policy" "frontend" {
 }
 
 resource "aws_s3_bucket_policy" "deploy" {
-  bucket = "dev-cking-deploy-551372961758"
+  bucket = "dev-cking-deploy-${local.account_id}"
 
   policy = jsonencode({
     Version   = "2012-10-17"

@@ -4,11 +4,10 @@
 # 개발 VPC에는 NAT가 없어 Lambda는 VPC 밖에 두고, 관측 서버 Prometheus·Loki 조회는 고정 SSM 문서로만 한다.
 # 모델은 Claude API로 부른다. 이 계정은 Bedrock의 Anthropic 모델이 막혀 있다(403 not available for this account).
 # 함수 코드는 alert-analyzer/ 배포 워크플로가 바꾸므로 Terraform은 비교하지 않는다. 처음 apply 전에 build.sh로 만든 묶음을
-# s3://dev-cking-deploy-551372961758/alert-analyzer/initial.zip 에 올려 둔다.
+# s3://dev-cking-deploy-<계정 ID>/alert-analyzer/initial.zip 에 올려 둔다.
 
 locals {
   alert_analyzer_name = "dev-cking-alert-analyzer"
-  alert_analyzer_arn  = "arn:aws:lambda:ap-northeast-2:551372961758:function:${local.alert_analyzer_name}"
 }
 
 # Grafana가 관측 서버 역할로 발행한다(observability.tf).
@@ -109,11 +108,11 @@ resource "aws_iam_role_policy" "alert_analyzer" {
         Effect = "Allow"
         Action = "ssm:GetParameter"
         Resource = [
-          "arn:aws:ssm:ap-northeast-2:551372961758:parameter/cking/dev/monitoring/ANTHROPIC_API_KEY",
-          "arn:aws:ssm:ap-northeast-2:551372961758:parameter/cking/dev/monitoring/SLACK_ALERT_WEBHOOK_URL",
-          "arn:aws:ssm:ap-northeast-2:551372961758:parameter/cking/dev/monitoring/SLACK_PROD_ALERT_WEBHOOK_URL",
-          "arn:aws:ssm:ap-northeast-2:551372961758:parameter/cking/dev/monitoring/SLACK_BOT_TOKEN",
-          "arn:aws:ssm:ap-northeast-2:551372961758:parameter/cking/prod/RELEASE_TAG",
+          "arn:aws:ssm:${local.region}:${local.account_id}:parameter/cking/dev/monitoring/ANTHROPIC_API_KEY",
+          "arn:aws:ssm:${local.region}:${local.account_id}:parameter/cking/dev/monitoring/SLACK_ALERT_WEBHOOK_URL",
+          "arn:aws:ssm:${local.region}:${local.account_id}:parameter/cking/dev/monitoring/SLACK_PROD_ALERT_WEBHOOK_URL",
+          "arn:aws:ssm:${local.region}:${local.account_id}:parameter/cking/dev/monitoring/SLACK_BOT_TOKEN",
+          "arn:aws:ssm:${local.region}:${local.account_id}:parameter/cking/prod/RELEASE_TAG",
         ]
       },
       {
@@ -151,7 +150,7 @@ resource "aws_lambda_function" "alert_analyzer" {
   runtime       = "python3.13"
   architectures = ["arm64"]
   handler       = "handler.handler"
-  s3_bucket     = "dev-cking-deploy-551372961758"
+  s3_bucket     = "dev-cking-deploy-${local.account_id}"
   s3_key        = "alert-analyzer/initial.zip"
   memory_size   = 512
   timeout       = 600
@@ -227,7 +226,7 @@ resource "aws_iam_role_policy" "alert_analyzer_deploy" {
         Sid      = "UpdateFunction"
         Effect   = "Allow"
         Action   = ["lambda:UpdateFunctionCode", "lambda:GetFunction", "lambda:GetFunctionConfiguration"]
-        Resource = [local.alert_analyzer_arn, aws_lambda_function.alert_actions[local.alert_approvals_name].arn, aws_lambda_function.alert_actions[local.alert_executor_name].arn]
+        Resource = [aws_lambda_function.alert_analyzer.arn, aws_lambda_function.alert_actions[local.alert_approvals_name].arn, aws_lambda_function.alert_actions[local.alert_executor_name].arn]
       },
     ]
   })

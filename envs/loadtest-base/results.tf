@@ -2,7 +2,7 @@
 # 테스트 환경을 지워도 남아야 해서 base에 둔다. 1년 뒤 지운다(같은 계정의 감사 로그와 같은 기한).
 
 locals {
-  results_bucket = "loadtest-cking-results-551372961758-ap-northeast-2-an"
+  results_bucket = "loadtest-cking-results-${local.account_id}-${local.region}-an"
 }
 
 resource "aws_s3_bucket" "results" {

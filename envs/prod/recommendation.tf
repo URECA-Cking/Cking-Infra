@@ -7,7 +7,7 @@ locals {
   recommendation_state = "prod-cking-recommendation-state"
   recommendation_hook  = "prod-cking-recommendation-launch"
   # 교체 권한은 그룹 이름으로 한정한다. 그룹 ARN을 참조하면 plan 때 값을 몰라 정책 전체가 미정으로 보인다.
-  recommendation_asg_arn = "arn:aws:autoscaling:ap-northeast-2:551372961758:autoScalingGroup:*:autoScalingGroupName/${local.recommendation_name}"
+  recommendation_asg_arn = "arn:aws:autoscaling:${local.region}:${local.account_id}:autoScalingGroup:*:autoScalingGroupName/${local.recommendation_name}"
 }
 
 # 배치 저장소 CI: main에서 개발 CI가 확인하고 올린 패키지를 운영 배포 버킷에 복사 → 배포 버전 값 갱신 → 서버 교체 시작.
@@ -41,14 +41,14 @@ resource "aws_iam_role_policy" "recommendation_deploy" {
         Sid       = "ListDevReleases"
         Effect    = "Allow"
         Action    = "s3:ListBucket"
-        Resource  = "arn:aws:s3:::dev-cking-deploy-551372961758"
+        Resource  = "arn:aws:s3:::dev-cking-deploy-${local.account_id}"
         Condition = { StringLike = { "s3:prefix" = ["recommendation/releases/", "recommendation/releases/*"] } }
       },
       {
         Sid      = "ReadDevReleases"
         Effect   = "Allow"
         Action   = "s3:GetObject"
-        Resource = "arn:aws:s3:::dev-cking-deploy-551372961758/recommendation/releases/*"
+        Resource = "arn:aws:s3:::dev-cking-deploy-${local.account_id}/recommendation/releases/*"
       },
       # 같은 커밋을 다시 실행할 때 올려 둔 패키지가 있는지 본다. 목록 권한이 없으면 없는 파일도 403이라 구분하지 못한다.
       {
@@ -69,7 +69,7 @@ resource "aws_iam_role_policy" "recommendation_deploy" {
         Sid      = "SetRelease"
         Effect   = "Allow"
         Action   = ["ssm:GetParameter", "ssm:PutParameter"]
-        Resource = "arn:aws:ssm:ap-northeast-2:551372961758:parameter/cking/prod-recommendation/RELEASE"
+        Resource = "arn:aws:ssm:${local.region}:${local.account_id}:parameter/cking/prod-recommendation/RELEASE"
       },
       {
         Sid      = "RefreshServer"

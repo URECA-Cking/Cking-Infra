@@ -43,14 +43,14 @@ resource "aws_iam_role_policy" "janitor" {
         Sid       = "StopTaggedInstances"
         Effect    = "Allow"
         Action    = "ec2:StopInstances"
-        Resource  = "arn:aws:ec2:ap-northeast-2:551372961758:instance/*"
+        Resource  = "arn:aws:ec2:${local.region}:${local.account_id}:instance/*"
         Condition = { StringLike = { "aws:ResourceTag/cking:ttl-hours" = "*" } }
       },
       {
         Sid       = "StopTaggedDatabases"
         Effect    = "Allow"
         Action    = "rds:StopDBInstance"
-        Resource  = "arn:aws:rds:ap-northeast-2:551372961758:db:*"
+        Resource  = "arn:aws:rds:${local.region}:${local.account_id}:db:*"
         Condition = { StringLike = { "aws:ResourceTag/cking:ttl-hours" = "*" } }
       },
       {

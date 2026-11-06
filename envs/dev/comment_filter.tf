@@ -2,9 +2,8 @@
 # 모델 파일은 Git에 없어 개발 배포 버킷 filter/models/에 두고, 이미지 빌드 때 받아 이미지에 넣는다.
 
 locals {
-  comment_filter_function     = "dev-cking-comment-filter"
-  comment_filter_function_arn = "arn:aws:lambda:ap-northeast-2:551372961758:function:${local.comment_filter_function}"
-  deploy_bucket_arn           = "arn:aws:s3:::dev-cking-deploy-551372961758"
+  comment_filter_function = "dev-cking-comment-filter"
+  deploy_bucket_arn       = "arn:aws:s3:::dev-cking-deploy-${local.account_id}"
 }
 
 resource "aws_ecr_repository" "comment_filter" {
@@ -56,7 +55,7 @@ resource "aws_ecr_repository_policy" "comment_filter" {
       Effect    = "Allow"
       Principal = { Service = "lambda.amazonaws.com" }
       Action    = ["ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer"]
-      Condition = { ArnLike = { "aws:sourceArn" = "arn:aws:lambda:ap-northeast-2:551372961758:function:*-cking-comment-filter" } }
+      Condition = { ArnLike = { "aws:sourceArn" = "arn:aws:lambda:${local.region}:${local.account_id}:function:*-cking-comment-filter" } }
     }]
   })
 }
@@ -120,13 +119,13 @@ resource "aws_iam_role_policy" "comment_filter_deploy" {
         Sid      = "UpdateDevFunction"
         Effect   = "Allow"
         Action   = ["lambda:UpdateFunctionCode", "lambda:GetFunction", "lambda:GetFunctionConfiguration"]
-        Resource = local.comment_filter_function_arn
+        Resource = aws_lambda_function.comment_filter.arn
       },
       {
         Sid      = "InvokeDevFunction"
         Effect   = "Allow"
         Action   = ["lambda:InvokeFunctionUrl", "lambda:InvokeFunction"]
-        Resource = local.comment_filter_function_arn
+        Resource = aws_lambda_function.comment_filter.arn
       },
     ]
   })

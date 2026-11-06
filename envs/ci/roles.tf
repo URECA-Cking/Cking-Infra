@@ -4,8 +4,8 @@
 
 locals {
   repo_sub      = "repo:URECA-Cking@326738686/Cking-Infra@1406210898"
-  state_bucket  = "dev-cking-tfstate-551372961758-ap-northeast-2-an"
-  parameter_arn = "arn:aws:ssm:ap-northeast-2:551372961758:parameter"
+  state_bucket  = "dev-cking-tfstate-${local.account_id}-${local.region}-an"
+  parameter_arn = "arn:aws:ssm:${local.region}:${local.account_id}:parameter"
 
   # plan이 data·ephemeral로 읽는 SecureString. 그 밖의 비밀값은 복호화하지 못한다.
   plan_secure_parameters = [

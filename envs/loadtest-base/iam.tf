@@ -1,9 +1,9 @@
 # 부하 테스트 EC2가 쓰는 역할. 서버와 같은 apply로 만들면 전파 전에 부팅해 SSM 에이전트가 자격 증명을 받지 못해 따로 먼저 만든다.
 # 테스트 환경을 지워도 남긴다. 이름은 envs/loadtest가 그대로 가리킨다.
 locals {
-  parameter_arn        = "arn:aws:ssm:ap-northeast-2:551372961758:parameter"
-  deploy_bucket        = "dev-cking-deploy-551372961758"
-  observability_bucket = "dev-cking-observability-551372961758-ap-northeast-2-an"
+  parameter_arn        = "arn:aws:ssm:${local.region}:${local.account_id}:parameter"
+  deploy_bucket        = "dev-cking-deploy-${local.account_id}"
+  observability_bucket = "dev-cking-observability-${local.account_id}-${local.region}-an"
 
   ec2_trust = jsonencode({
     Version = "2012-10-17"
@@ -105,7 +105,7 @@ resource "aws_iam_role_policy" "k6" {
         Sid      = "RunOnLoadtestApp"
         Effect   = "Allow"
         Action   = "ssm:SendCommand"
-        Resource = "arn:aws:ec2:ap-northeast-2:551372961758:instance/*"
+        Resource = "arn:aws:ec2:${local.region}:${local.account_id}:instance/*"
         Condition = {
           StringEquals = { "ssm:resourceTag/Name" = "loadtest-cking-app" }
         }
@@ -160,7 +160,7 @@ resource "aws_iam_role" "query" {
     Statement = [{
       Effect = "Allow"
       Principal = {
-        AWS = [aws_iam_role.k6.arn, "arn:aws:iam::551372961758:role/prod-cking-k6-role"]
+        AWS = [aws_iam_role.k6.arn, "arn:aws:iam::${local.account_id}:role/prod-cking-k6-role"]
       }
       Action = "sts:AssumeRole"
     }]
@@ -179,8 +179,8 @@ resource "aws_iam_role_policy" "query" {
         Effect = "Allow"
         Action = "ssm:SendCommand"
         Resource = [
-          "arn:aws:ssm:ap-northeast-2:551372961758:document/dev-cking-observability-query",
-          "arn:aws:ec2:ap-northeast-2:551372961758:instance/*",
+          "arn:aws:ssm:${local.region}:${local.account_id}:document/dev-cking-observability-query",
+          "arn:aws:ec2:${local.region}:${local.account_id}:instance/*",
         ]
         Condition = {
           StringEqualsIfExists = { "ssm:resourceTag/Name" = "dev-cking-observability" }

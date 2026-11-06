@@ -1,5 +1,5 @@
 resource "aws_s3_bucket" "admin_frontend" {
-  bucket           = "dev-cking-admin-551372961758-ap-northeast-2-an"
+  bucket           = "dev-cking-admin-${local.account_id}-${local.region}-an"
   bucket_namespace = "account-regional"
 }
 
