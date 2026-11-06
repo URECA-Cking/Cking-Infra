@@ -1,4 +1,4 @@
-# 운영 API 입구. HTTPS만 받고, 설정은 개발 ALB와 같다(TLS 정책, /readyz 외부 차단, 헬스체크).
+# 운영 API 입구. HTTPS만 받는다. 헬스체크는 앱 생존만 보는 /livez, 배포 확인은 서버 안에서 /readyz.
 # 해제 대기는 앱 종료 대기(stop_grace_period 90초)와 맞춰, 서버를 교체할 때 진행 중인 요청을 끊지 않는다.
 
 locals {
@@ -76,8 +76,9 @@ resource "aws_lb_target_group" "app" {
   vpc_id               = aws_vpc.main.id
   deregistration_delay = 90
 
+  # DB·Redis까지 보는 /readyz로 검사하면 공유 의존성 장애에 모든 서버가 비정상이 되고 그룹이 멀쩡한 서버를 교체한다.
   health_check {
-    path                = "/readyz"
+    path                = "/livez"
     matcher             = "200"
     interval            = 10
     timeout             = 5
@@ -144,7 +145,7 @@ resource "aws_lb_listener_rule" "block_readyz" {
 
   condition {
     path_pattern {
-      values = ["/readyz"]
+      values = ["/livez", "/readyz"]
     }
   }
 

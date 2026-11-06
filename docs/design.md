@@ -140,7 +140,7 @@ API  api.cking.co.kr
 | 네트워크 | 보안 그룹을 보안 그룹 참조로 연결(ALB → 앱 8080 → RDS·Valkey). 22번 없음 |
 | API 앞단 | WAF(`modules/api-waf`): AWS 관리형 규칙, 업로드 본문 검사 예외, 로그(토큰·쿠키 가림). 개발은 세기만, 운영은 차단. 운영 NAT IP는 규칙을 건너뛴다. IP당 요청 상한은 모듈에 있지만 두 환경 모두 켜지 않았다 |
 | 오픈 전 접근 | 비밀 쿠키 게이트: 웹·관리자는 CloudFront Function, API는 WAF가 쿠키·헤더가 없으면 403(Infra #204·#216). 오픈하는 날 `gate_enabled = false` |
-| 운영 ALB | Host가 `api.cking.co.kr`일 때만 앱으로, 나머지는 404(Infra #257). `/readyz`는 외부에서 막는다 |
+| 운영 ALB | Host가 `api.cking.co.kr`일 때만 앱으로, 나머지는 404(Infra #257). 헬스체크는 앱 생존만 보는 `/livez`, `/livez`·`/readyz`는 외부에서 막는다 |
 | 정적 파일 | S3 퍼블릭 차단 + CloudFront OAC. 프로필 이미지 경로만 CDN으로 공개, 나머지 이미지는 앱이 권한을 확인한 뒤 사전 서명 GET |
 | 비밀값 | Parameter Store SecureString. 서버가 배포 때 직접 읽고 Actions를 거치지 않는다. 저장소·로그·이미지에 두지 않는다 |
 | CI 인증 | GitHub OIDC, 저장소·브랜치별 역할. 액세스 키 없음 |
