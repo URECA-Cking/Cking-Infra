@@ -321,11 +321,13 @@ resource "aws_lambda_function_event_invoke_config" "alert_executor" {
 
 # Slack이 버튼 클릭을 보내는 주소. 인증은 Slack 서명(SLACK_SIGNING_SECRET)으로 한다.
 resource "aws_lambda_function_url" "alert_approvals" {
+  #checkov:skip=CKV_AWS_258:인증은 함수가 Slack 서명으로 한다(alert-analyzer/approvals.py, envs/security/triage.tf accepted-dev)
   function_name      = aws_lambda_function.alert_actions[local.alert_approvals_name].function_name
   authorization_type = "NONE"
 }
 
 resource "aws_lambda_permission" "alert_approvals_url" {
+  #checkov:skip=CKV_AWS_301:인증은 함수가 Slack 서명으로 한다(alert-analyzer/approvals.py, envs/security/triage.tf accepted-dev)
   statement_id           = "slack-interactivity"
   action                 = "lambda:InvokeFunctionUrl"
   function_name          = aws_lambda_function.alert_actions[local.alert_approvals_name].function_name

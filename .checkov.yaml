@@ -1,5 +1,5 @@
 # CI(ci.yml security)가 Terraform만 검사한다. skip은 규칙마다 설계 근거와 출처를 단다.
-# 규칙 단위 skip이라 같은 규칙에 걸리는 리소스가 새로 생겨도 잡지 않는다. 리소스를 더하면 근거가 그대로 맞는지 다시 본다.
+# 여기 skip은 규칙 단위라 같은 규칙에 걸리는 리소스가 새로 생겨도 잡지 않는다. 한 리소스에만 해당하는 근거는 그 리소스에 #checkov:skip으로 단다.
 directory:
   - .
 framework:
@@ -24,19 +24,12 @@ skip-check:
   - CKV_AWS_378
   # 운영 ALB 80번 공개: HTTP 리스너는 443으로 301 넘기기만 한다(envs/prod/alb.tf aws_lb_listener.http)
   - CKV_AWS_260
-  # 공인 IP 서버: NAT 인스턴스는 공인 IP가 필요하고, 개발·부하 테스트 서버는 비용 때문에 퍼블릭 서브넷(envs/security/triage.tf accepted-public-instances, 설계서 3절)
+  # 공인 IP 서버: 개발·부하 테스트 서버는 비용 때문에 퍼블릭 서브넷(envs/security/triage.tf accepted-public-instances, 설계서 3절)
   - CKV_AWS_88
   # RDS IAM 인증: 앱 계정은 비밀번호, 마스터는 Secrets Manager 자동 교체(envs/security/triage.tf accepted-identity-data, RDS.10)
   - CKV_AWS_161
   # RDS 마이너 자동 업그레이드: 운영은 사람이 시점을 정한다(envs/security/triage.tf accepted-prod, RDS.13). 부하 테스트 RDS는 개발 사양을 따른다(envs/loadtest/rds.tf)
   - CKV_AWS_226
-  # 부하 테스트 RDS의 다중 AZ·향상된 모니터링·로그 내보내기·백업·삭제 보호·스냅샷 태그 복사: 개발 사양으로 측정 때만 만들고 지운다(envs/loadtest/rds.tf, envs/security/triage.tf accepted-dev)
-  - CKV_AWS_157
-  - CKV_AWS_118
-  - CKV_AWS_129
-  - CKV_AWS_133
-  - CKV_AWS_293
-  - CKV2_AWS_60
   # CloudTrail KMS·CloudWatch Logs 연동: SSE-S3·S3 보관으로 충분하다(envs/security/triage.tf accepted-logging, CloudTrail.2·CloudTrail.5)
   - CKV_AWS_35
   - CKV2_AWS_10
@@ -50,13 +43,6 @@ skip-check:
   - CKV_AWS_68
   # S3 수명 주기(개발 관리자 버킷): 개발 환경 비용 구성으로 받아들였다(envs/security/triage.tf accepted-dev, S3.13)
   - CKV2_AWS_61
-  # Terraform apply 역할 관리자 권한: 승인자와 main 브랜치 조건으로 실행 자체를 막는다(envs/ci/roles.tf, 설계서 12절)
-  - CKV_AWS_274
-  # 승인 버튼 함수 URL 인증 없음·공개 호출: 인증은 함수가 Slack 서명으로 한다(envs/dev/alert_actions.tf, alert-analyzer/approvals.py, envs/security/triage.tf accepted-dev)
-  - CKV_AWS_258
-  - CKV_AWS_301
-  # DynamoDB 시점 복구: 경보 진단 기록은 만료 시각이 있는 임시 표다(envs/security/triage.tf accepted-identity-data, DynamoDB.2)
-  - CKV_AWS_28
 # 근거를 아직 정하지 않은 규칙. 실패로 막지 않고 결과에만 남긴다. 규칙마다 위 skip(근거)이나 리소스 수정으로 옮긴다.
 # 여기 없는 규칙은 계속 실패로 막는다.
 soft-fail-on:

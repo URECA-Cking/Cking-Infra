@@ -67,7 +67,7 @@ class TestVerified:
         headers = {k.lower(): v for k, v in signed("a=1", int(time.time()) + offset).items()}
         assert not approvals._verified(headers, "a=1")
 
-    @pytest.mark.parametrize("timestamp", ["", "abc", "-1", "1.5"])
+    @pytest.mark.parametrize("timestamp", ["", "abc", "-1", "1.5", "²"])
     def test_timestamp_not_digits(self, timestamp):
         assert not approvals._verified({"x-slack-request-timestamp": timestamp, "x-slack-signature": "v0=x"}, "a=1")
 

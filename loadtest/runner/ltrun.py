@@ -385,7 +385,7 @@ fetch() {
         raise RuntimeError(f"이벤트 {eid}가 시간 안에 마감되지 않음")
 
     def stream(self):
-        """응모 Stream의 (pending, lag). 읽지 못하면 (None, None)이다. 0으로 보면 밀린 메시지가 있어도 끝난 것으로 판단한다."""
+        """응모 Stream의 (pending, lag). 읽지 못하면 (None, None), lag를 셀 수 없으면 lag만 None이다. 0으로 보면 밀린 메시지가 있어도 끝난 것으로 판단한다."""
         try:
             out = self.app("redis", "XINFO", "GROUPS", "stream:ticket-deducted", timeout=60)
         except RuntimeError as e:
