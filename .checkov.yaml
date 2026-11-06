@@ -1,0 +1,91 @@
+# CI(ci.yml security)가 Terraform만 검사한다. skip은 규칙마다 설계 근거와 출처를 단다.
+# 규칙 단위 skip이라 같은 규칙에 걸리는 리소스가 새로 생겨도 잡지 않는다. 리소스를 더하면 근거가 그대로 맞는지 다시 본다.
+directory:
+  - .
+framework:
+  - terraform
+quiet: true
+compact: true
+skip-download: true
+skip-check:
+  # SSM 파라미터 암호화: Terraform은 비밀이 아닌 값만 String으로 만들고 비밀값은 사람이 SecureString으로 넣는다(envs/prod/parameters.tf, envs/loadtest/parameters.tf, 설계서 7절)
+  - CKV2_AWS_34
+  # 로그 그룹 1년 보존: 운영 로그는 앱 로그(Loki 14일)에 맞춰 짧게 두고, 1년 보존은 감사 기록 버킷(CloudTrail·Config·흐름 로그)이 맡는다(envs/prod/buckets.tf, envs/security/logs.tf, 설계서 7·9절)
+  - CKV_AWS_338
+  # S3 리전 간 복제: 단일 리전, 리전 간 백업 복제는 규모 대비 비용으로 하지 않는다(설계서 12절)
+  - CKV_AWS_144
+  # S3 서버 접근 로그: 비용 대비 CloudTrail로 대신한다(envs/security/triage.tf accepted-logging, S3.9)
+  - CKV_AWS_18
+  # Lambda 환경 변수 KMS: 환경 변수에는 이름·ID·파라미터 경로만 두고 비밀값은 실행 중 Parameter Store에서 읽는다(설계서 7절, alert-analyzer/slack.py)
+  - CKV_AWS_173
+  # IMDS 응답 홉 1: 앱 컨테이너가 Docker 브리지를 한 번 더 거쳐 역할 자격 증명을 받아 홉 2로 둔다(설계서 4절)
+  - CKV_AWS_341
+  # 대상 그룹 HTTP: ALB에서 TLS를 끝내고 앱은 ALB 보안 그룹에서만 받는다(envs/security/triage.tf accepted-network, ELB.21·ELB.22)
+  - CKV_AWS_378
+  # 운영 ALB 80번 공개: HTTP 리스너는 443으로 301 넘기기만 한다(envs/prod/alb.tf aws_lb_listener.http)
+  - CKV_AWS_260
+  # 공인 IP 서버: NAT 인스턴스는 공인 IP가 필요하고, 개발·부하 테스트 서버는 비용 때문에 퍼블릭 서브넷(envs/security/triage.tf accepted-public-instances, 설계서 3절)
+  - CKV_AWS_88
+  # RDS IAM 인증: 앱 계정은 비밀번호, 마스터는 Secrets Manager 자동 교체(envs/security/triage.tf accepted-identity-data, RDS.10)
+  - CKV_AWS_161
+  # RDS 마이너 자동 업그레이드: 운영은 사람이 시점을 정한다(envs/security/triage.tf accepted-prod, RDS.13). 부하 테스트 RDS는 개발 사양을 따른다(envs/loadtest/rds.tf)
+  - CKV_AWS_226
+  # 부하 테스트 RDS의 다중 AZ·향상된 모니터링·로그 내보내기·백업·삭제 보호·스냅샷 태그 복사: 개발 사양으로 측정 때만 만들고 지운다(envs/loadtest/rds.tf, envs/security/triage.tf accepted-dev)
+  - CKV_AWS_157
+  - CKV_AWS_118
+  - CKV_AWS_129
+  - CKV_AWS_133
+  - CKV_AWS_293
+  - CKV2_AWS_60
+  # CloudTrail KMS·CloudWatch Logs 연동: SSE-S3·S3 보관으로 충분하다(envs/security/triage.tf accepted-logging, CloudTrail.2·CloudTrail.5)
+  - CKV_AWS_35
+  - CKV2_AWS_10
+  # VPC 흐름 로그·기본 보안 그룹: 계정 기준선 스택이 dev·prod VPC를 이름으로 찾아 흐름 로그를 켜고 기본 보안 그룹 규칙을 비운다(envs/security/hardening.tf)
+  - CKV2_AWS_11
+  - CKV2_AWS_12
+  # WAF Log4j 규칙: 개발 CloudFront ACL과 API WAF 모듈에 KnownBadInputsRuleSet을 붙였고(envs/dev/admin_frontend.tf, envs/dev/uploads_cdn.tf, modules/api-waf/main.tf), 운영 CloudFront는 WAF를 붙이지 않는다(envs/prod/cdn.tf)
+  - CKV2_AWS_47
+  - CKV2_AWS_76
+  # 운영 CloudFront WAF: 무료 요금제 3자리를 개발이 써서 운영은 종량제로 두고 WAF를 붙이지 않는다(envs/prod/cdn.tf)
+  - CKV_AWS_68
+  # S3 수명 주기(개발 관리자 버킷): 개발 환경 비용 구성으로 받아들였다(envs/security/triage.tf accepted-dev, S3.13)
+  - CKV2_AWS_61
+  # Terraform apply 역할 관리자 권한: 승인자와 main 브랜치 조건으로 실행 자체를 막는다(envs/ci/roles.tf, 설계서 12절)
+  - CKV_AWS_274
+  # 승인 버튼 함수 URL 인증 없음·공개 호출: 인증은 함수가 Slack 서명으로 한다(envs/dev/alert_actions.tf, alert-analyzer/approvals.py, envs/security/triage.tf accepted-dev)
+  - CKV_AWS_258
+  - CKV_AWS_301
+  # DynamoDB 시점 복구: 경보 진단 기록은 만료 시각이 있는 임시 표다(envs/security/triage.tf accepted-identity-data, DynamoDB.2)
+  - CKV_AWS_28
+# 근거를 아직 정하지 않은 규칙. 실패로 막지 않고 결과에만 남긴다. 규칙마다 위 skip(근거)이나 리소스 수정으로 옮긴다.
+# 여기 없는 규칙은 계속 실패로 막는다.
+soft-fail-on:
+  - CKV2_AWS_3
+  - CKV2_AWS_31
+  - CKV2_AWS_62
+  - CKV_AWS_115
+  - CKV_AWS_116
+  - CKV_AWS_117
+  - CKV_AWS_119
+  - CKV_AWS_126
+  - CKV_AWS_135
+  - CKV_AWS_136
+  - CKV_AWS_145
+  - CKV_AWS_150
+  - CKV_AWS_158
+  - CKV_AWS_189
+  - CKV_AWS_191
+  - CKV_AWS_21
+  - CKV_AWS_23
+  - CKV_AWS_252
+  - CKV_AWS_26
+  - CKV_AWS_27
+  - CKV_AWS_272
+  - CKV_AWS_297
+  - CKV_AWS_300
+  - CKV_AWS_305
+  - CKV_AWS_310
+  - CKV_AWS_355
+  - CKV_AWS_374
+  - CKV_AWS_50
+  - CKV_AWS_86
