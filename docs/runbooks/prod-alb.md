@@ -16,7 +16,7 @@ Amazon Q 기본 알림에는 `@channel` 멘션이 없다. 같은 경보가 메�
 - **2대 미만 15분**: 서버 하나를 교체하는 상한(시작 대기 900초)을 넘겼다. 새 서버가 계속 버려지고 있을 가능성이 크다
 - **ALB 5xx**: 앱까지 가지 못한 요청이다. 502(대상이 연결을 끊음)·503(정상 대상 없음)·504(응답 시간 초과). 앱이 낸 5xx는 Grafana [서버 오류 증가](cking-5xx.md)가 본다
 
-서버 그룹은 ALB 헬스체크(`/readyz`, 10초 간격 2번 실패면 비정상)로 서버 상태를 보고, 비정상 서버를 유예 120초 뒤 교체한다.
+서버 그룹은 ALB 헬스체크(`/livez`, 10초 간격 2번 실패면 비정상)로 서버 상태를 보고, 비정상 서버를 유예 120초 뒤 교체한다. `/livez`는 앱 생존만 보고 DB·Redis는 보지 않는다.
 
 첫 BE 배포 전에는 배포 태그가 없어 정상 대상이 0대이므로 앞의 두 경보가 울리는 것이 정상이다.
 
@@ -24,7 +24,7 @@ Amazon Q 기본 알림에는 `@channel` 멘션이 없다. 같은 경보가 메�
 
 1. 서버 그룹의 서버 상태와 활동 기록([서버 찾기](README.md#운영), [운영 서버 띄우기 실패](prod-launch-failed.md#먼저-볼-곳))
 2. 직전 배포: Cking-BE Actions `Deploy to prod`
-3. 대상 그룹 `prod-cking-app-tg`의 대상별 상태와 비정상 사유(`Target.ResponseCodeMismatch`는 `/readyz`가 200이 아님, `Target.Timeout`은 응답 없음)
+3. 대상 그룹 `prod-cking-app-tg`의 대상별 상태와 비정상 사유(`Target.ResponseCodeMismatch`는 `/livez`가 200이 아님, `Target.Timeout`은 응답 없음)
 
 ```bash
 # Mac
@@ -47,7 +47,9 @@ aws elbv2 describe-target-health --region ap-northeast-2 \
 
 ### 3. 서버는 떠 있는데 헬스체크 실패
 
-`/readyz`가 실패하는 원인은 대개 DB·Redis 연결이다. [운영 RDS 경보](prod-rds.md), [운영 ElastiCache 경보](prod-elasticache.md), Grafana [DB 연결 대기](cking-hikari-pending.md)가 함께 울렸는지 본다. 서버 그룹이 비정상 서버를 교체하는데, 원인이 DB·Redis처럼 공통이면 새 서버도 자기 검사에서 버려져 [운영 서버 띄우기 실패](prod-launch-failed.md) 알림이 이어진다. 교체로는 풀리지 않으므로 DB·Redis를 먼저 고친다.
+`/livez`는 DB·Redis를 보지 않으므로, 실패하면 앱 자체가 응답하지 못하는 것이다(컨테이너 재시작, 메모리 초과, 요청 스레드 고갈). 서버에서 `curl -s localhost:8080/livez`와 컨테이너 상태·로그를 본다. 서버 그룹이 그 서버를 교체한다. DB·Redis 장애만으로는 헬스체크가 실패하지 않고, 앱이 내는 5xx로 나타난다([서버 오류 증가](cking-5xx.md), [DB 연결 대기](cking-hikari-pending.md), [운영 RDS 경보](prod-rds.md), [운영 ElastiCache 경보](prod-elasticache.md)). 다만 DB를 기다리는 요청이 요청 스레드(기본 200개)를 모두 차지하면 `/livez`도 5초 안에 답하지 못해 서버가 교체된다. 그때 새로 뜨는 서버는 배포 자기 검사(`/readyz`)에서 버려져 [운영 서버 띄우기 실패](prod-launch-failed.md) 알림이 이어질 수 있다.
+
+서버 한 대에서만 DB·Redis 연결이 끊긴 경우는 헬스체크가 잡지 못한다. 그 서버는 5xx를 내며 계속 요청을 받는다. 서버별 [DB 연결 대기](cking-hikari-pending.md)와 ERROR 로그로 찾아 그 서버를 직접 교체한다.
 
 ### 4. 5xx만 늘어남 (정상 대상 수는 정상)
 
