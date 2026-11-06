@@ -81,7 +81,7 @@ aws lambda put-function-concurrency --region ap-northeast-2 --function-name dev-
 | Stream 밀림 | lag 0 초과 5분 | `@channel` | [cking-stream-lag](cking-stream-lag.md) |
 | 응모 실패 (Redis 쓰기 거부) | 거부 명령 5분 안에 1건 이상 | `@channel` | [cking-redis-rejected](cking-redis-rejected.md) |
 | Redis 연결 끊김 | 수집기가 Redis에 1분 붙지 못함(`redis_up` 0) | `@channel` | [cking-redis-down](cking-redis-down.md) |
-| 처리 실패 누적 | pending 0 초과 10분 | | [cking-stream-pending](cking-stream-pending.md) |
+| 처리 실패 누적 | 가장 오래된 pending의 나이 10분 초과 | | [cking-stream-pending](cking-stream-pending.md) |
 | 응답 지연 | p95 1초 초과 10분 | | [cking-p95](cking-p95.md) |
 | DB 연결 대기 | Hikari 대기 0 초과 5분 | | [cking-hikari-pending](cking-hikari-pending.md) |
 | Redis 메모리 | 한도의 70% 초과 10분 | | [cking-redis-memory](cking-redis-memory.md) |
@@ -191,7 +191,7 @@ aws autoscaling terminate-instance-in-auto-scaling-group --region ap-northeast-2
 | Stream 소비 멈춤 | 소비자 idle 최솟값 120초 초과 | `@channel` | [cking-stream-stopped](cking-stream-stopped.md) |
 | Stream 밀림 | lag 0 초과 5분 | `@channel` | [cking-stream-lag](cking-stream-lag.md) |
 | 응모 실패 (Redis 쓰기 거부) | 거부 명령 5분 안에 1건 이상 | `@channel` | [cking-redis-rejected](cking-redis-rejected.md) |
-| 처리 실패 누적 | pending 0 초과 10분 | | [cking-stream-pending](cking-stream-pending.md) |
+| 처리 실패 누적 | 가장 오래된 pending의 나이 10분 초과 | | [cking-stream-pending](cking-stream-pending.md) |
 | 응답 지연 | 운영 앱 서버 전체 p95 1초 초과 10분 | | [cking-p95](cking-p95.md) |
 | DB 연결 대기 | 서버별 Hikari 대기 0 초과 5분 | | [cking-hikari-pending](cking-hikari-pending.md) |
 | ERROR 로그 | 서버별 ERROR 5분 안에 1건 이상 | | [cking-error-log](cking-error-log.md) |
