@@ -116,8 +116,8 @@ def _normalize(source, min_width, min_height):
         raise InvalidImage("dimensions")
 
     # 16비트 회색(I;16)은 RGBA로 바꾸면 255에서 잘려 거의 흰색이 되므로 먼저 8비트로 줄인다.
-    if image.mode.startswith("I"):
-        image = image.point(lambda value: value / 257).convert("L")
+    if image.mode in ("I", "I;16"):
+        image = image.point(lambda value: value / 256).convert("L")
 
     longest = max(image.width, image.height)
     if longest > MAX_LONG_EDGE:
