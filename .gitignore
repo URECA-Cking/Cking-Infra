@@ -17,6 +17,7 @@ terraform.rc
 
 # Python
 __pycache__/
+.pytest_cache/
 
 # Lambda 배포 묶음(build.sh 기본 출력)
 alert-analyzer/dist/

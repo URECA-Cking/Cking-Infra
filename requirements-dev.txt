@@ -1,0 +1,4 @@
+# CI pytest용. boto3는 Lambda 실행 환경이 주므로 함수 묶음(requirements.txt)에는 넣지 않는다.
+-r alert-analyzer/requirements.txt
+boto3==1.43.115
+pytest==9.1.1
