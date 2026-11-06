@@ -395,15 +395,21 @@ fetch() {
             return 0, 0
         if not out.strip():
             return None, None
-        tokens = out.split()
-        if "pending" not in tokens:
+        lines = [line.strip() for line in out.splitlines()]
+        if "pending" not in lines:
             self.log(f"Stream 상태 응답에 pending이 없음: {out.strip()[:200]}")
             return None, None
         nums = collections.defaultdict(int)
-        for key, value in zip(tokens, tokens[1:]):
-            if key in ("pending", "lag") and value.lstrip("-").isdigit():
+        lag_unknown = False
+        for key, value in zip(lines, lines[1:] + [""]):
+            if key not in ("pending", "lag"):
+                continue
+            if value.lstrip("-").isdigit():
                 nums[key] += int(value)
-        return nums["pending"], nums["lag"]
+            elif key == "lag":
+                # 전달 전 메시지가 지워지면 lag를 셀 수 없어 빈 줄로 온다. 다 읽으면 다시 숫자가 된다
+                lag_unknown = True
+        return nums["pending"], None if lag_unknown else nums["lag"]
 
     def step_drain(self, step):
         deadline = time.time() + seconds(step.get("timeout", "20m"))
