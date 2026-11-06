@@ -163,7 +163,7 @@ class TestStream:
 
     @pytest.mark.parametrize("tail", ["lag\n\n", "lag\n", "lag"])
     def test_nil_lag_is_unknown(self, runner, reply, tail):
-        """전달 전 메시지가 지워지면 lag를 셀 수 없어 redis-cli·valkey-cli가 빈 줄로 낸다. 밀린 메시지가 있을 수 있으니 0으로 보지 않는다."""
+        """그룹 위치 뒤에 XDEL로 지운 항목이 있으면 lag를 셀 수 없어 redis-cli·valkey-cli가 빈 줄로 낸다. 밀린 메시지가 있을 수 있으니 0으로 보지 않는다."""
         reply["out"] = "name\ng\nconsumers\n1\npending\n0\nlast-delivered-id\n1-0\nentries-read\n\n" + tail
         assert runner.stream() == (0, None)
 
@@ -441,3 +441,25 @@ class TestRun:
         runner.results.append({"round": 1, "type": "exec", "label": "exec", "start": 0, "end": 1, "ok": True, "text": "a | b\nc"})
         runner.write_report()
         assert "| 1 | exec | 00:00:00 | 0m01s | a \\| b c |" in (runner.dir / "results.md").read_text()
+
+
+class TestBreached:
+    SAMPLE = {"p95": 100, "n": 100, "fail": 0}
+
+    @pytest.mark.parametrize("pending, lag, expected", [
+        (5, 10, False),
+        (5, 1001, True),
+        (5, None, True),
+        (0, None, True),
+        (None, None, False),
+    ])
+    def test_lag_over(self, pending, lag, expected):
+        assert ltrun.breached({"lag_over": 1000}, self.SAMPLE, pending, lag) is expected
+
+    def test_unknown_lag_ignored_without_lag_condition(self):
+        assert ltrun.breached({"p95_ms": 500}, self.SAMPLE, 5, None) is False
+
+    def test_p95_and_fail(self):
+        assert ltrun.breached({"p95_ms": 50}, self.SAMPLE, 0, 0) is True
+        assert ltrun.breached({"fail_pct": 1}, {"p95": 1, "n": 100, "fail": 2}, 0, 0) is True
+        assert ltrun.breached({"fail_pct": 1}, {"p95": 1, "n": 0, "fail": 0}, 0, 0) is False

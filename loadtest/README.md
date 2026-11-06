@@ -63,7 +63,7 @@ env = { RATE = "80", DURATION = "20m" }
 - `env`·`run`의 `{이름}`은 실행 변수로 바뀐다(`round`, `run_id`, 위 단계가 남긴 값, `before_hour_minutes` 뒤의 `hour_at`). 셸의 `${VAR}`는 그대로 둔다
 - `k6` 감시: `monitor_seconds`마다 최근 구간 응모 수·초당·p95·실패·결과 코드와 Stream pending·lag(운영은 서버 대수)를 `timeline.log`에 남긴다
 - `hooks = [{ after = "5m", on = "app", run = "docker restart cking-app" }]`: k6 시작 뒤 `after`에 명령을 따로 실행한다(부하는 계속). `on`은 `app`(첫 앱 서버), `apps`(전 서버), `k6`(k6 서버, k6 역할의 AWS 권한). 장애 주입에 쓴다
-- `stop_when = { p95_ms = 1000, fail_pct = 1, lag_over = 20000, consecutive = 2 }`: 감시 구간에서 하나라도 넘는 일이 연속 `consecutive`번이면 k6를 멈춘다(한계 측정)
+- `stop_when = { p95_ms = 1000, fail_pct = 1, lag_over = 20000, consecutive = 2 }`: 감시 구간에서 하나라도 넘는 일이 연속 `consecutive`번이면 k6를 멈춘다(한계 측정). Stream을 읽었는데 lag를 셀 수 없으면(그룹 위치 뒤에 XDEL로 지운 항목) `lag_over`를 넘은 것으로 본다. Stream을 읽지 못한 구간은 넘지 않은 것으로 둔다
 - k6 종료 코드 99(합격선 미달)·108(abortOnFail) 같은 결과는 측정값으로 기록하고 다음 단계로 간다. 시딩·SSM 실패 같은 실행기 오류는 그 자리에서 멈춘다
 - 형식 검사: `python3 loadtest/runner/ltrun.py check loadtest/scenarios/*.toml`
 

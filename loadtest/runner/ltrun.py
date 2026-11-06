@@ -407,7 +407,7 @@ fetch() {
             if value.lstrip("-").isdigit():
                 nums[key] += int(value)
             elif key == "lag":
-                # 전달 전 메시지가 지워지면 lag를 셀 수 없어 빈 줄로 온다. 다 읽으면 다시 숫자가 된다
+                # 그룹 위치 뒤에 XDEL로 지운 항목이 있으면 lag를 셀 수 없어 빈 줄로 온다. 다 읽으면 다시 숫자가 된다
                 lag_unknown = True
         return nums["pending"], None if lag_unknown else nums["lag"]
 
@@ -485,10 +485,7 @@ fetch() {
                 pending, lag = self.stream()
                 self.log(f"k6 {name} t={int(now - start)}s n={s['n']} rps={s['rps']:.1f} p95={s['p95']} fail={s['fail']} "
                          f"pending={pending} lag={lag}{self.asg_text()} codes={s['codes']}")
-                hit = ((stop.get("p95_ms") is not None and (s["p95"] or 0) > stop["p95_ms"])
-                       or (stop.get("fail_pct") is not None and s["n"] and s["fail"] * 100 > stop["fail_pct"] * s["n"])
-                       or (stop.get("lag_over") is not None and lag is not None and lag > stop["lag_over"]))
-                breaches = breaches + 1 if hit else 0
+                breaches = breaches + 1 if breached(stop, s, pending, lag) else 0
                 if stop and not stopped and breaches >= stop.get("consecutive", 2):
                     stopped = f"중단 조건 {breaches}회 연속(p95={s['p95']} fail={s['fail']}/{s['n']} lag={lag})"
                     self.log(f"k6 {name} {stopped} → k6 중단")
@@ -712,6 +709,14 @@ fetch() {
         out += ["", "## 시나리오", "", "```toml", self.scenario_text.strip(), "```", "",
                 "원자료: `timeline.log`(30초 감시), `k6/r<라운드>-<단계>.log`(요청별), `.summary.json`, `.out.txt`, `r<라운드>-verify.txt`", ""]
         (self.dir / "results.md").write_text("\n".join(out))
+
+
+def breached(stop, sample, pending, lag):
+    """k6 중단 조건. Stream을 읽었는데 lag를 셀 수 없으면 밀림을 알 수 없으므로 넘은 것으로 본다."""
+    lag_over = stop.get("lag_over")
+    return bool((stop.get("p95_ms") is not None and (sample["p95"] or 0) > stop["p95_ms"])
+            or (stop.get("fail_pct") is not None and sample["n"] and sample["fail"] * 100 > stop["fail_pct"] * sample["n"])
+            or (lag_over is not None and pending is not None and (lag is None or lag > lag_over)))
 
 
 class EntryWindow:
