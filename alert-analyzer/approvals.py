@@ -28,11 +28,11 @@ _lambda = boto3.client("lambda", region_name=REGION)
 
 def _verified(headers, body):
     timestamp = headers.get("x-slack-request-timestamp", "")
-    if not timestamp.isdigit() or abs(time.time() - int(timestamp)) > SIGNATURE_MAX_AGE:
+    if not (timestamp.isascii() and timestamp.isdigit()) or abs(time.time() - int(timestamp)) > SIGNATURE_MAX_AGE:
         return False
     secret = slack._parameter(SIGNING_SECRET_PARAMETER)
     expected = "v0=" + hmac.new(secret.encode(), f"v0:{timestamp}:{body}".encode(), hashlib.sha256).hexdigest()
-    return hmac.compare_digest(expected, headers.get("x-slack-signature", ""))
+    return hmac.compare_digest(expected.encode(), headers.get("x-slack-signature", "").encode())
 
 
 def _ephemeral(response_url, text):

@@ -21,6 +21,15 @@ jobs:
           terraform_version: 1.16.4
           terraform_wrapper: false
       - run: terraform fmt -check -recursive
+      # 규칙 플러그인은 .tflint.hcl에 고정한 버전을 GitHub 릴리스에서 받는다(토큰은 받기 횟수 제한용).
+      - name: tflint
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TFLINT_IMAGE: ghcr.io/terraform-linters/tflint:v0.65.0@sha256:2788f4d4fc663c0e953b011b01bf443fe5bfce7587ee916e588e6057b85d6359
+        run: |
+          args=(--rm -v "$PWD:/repo:ro" -v "$RUNNER_TEMP/tflint:/plugins" -e TFLINT_PLUGIN_DIR=/plugins -w /repo)
+          docker run "${args[@]}" -e GITHUB_TOKEN "$TFLINT_IMAGE" --init --config /repo/.tflint.hcl
+          docker run "${args[@]}" "$TFLINT_IMAGE" --recursive --config /repo/.tflint.hcl --format compact
       - run: |
           for dir in envs/ci envs/dev envs/loadtest envs/loadtest-base envs/prod envs/prod-base envs/security; do
             terraform -chdir="$dir" init -backend=false -input=false
@@ -109,3 +118,34 @@ jobs:
           docker run --rm -v "$PWD:/repo:ro" -w /repo
           rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667
           -no-color
+
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # 경보 진단 Lambda 런타임(python3.13)과 같은 버전
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --disable-pip-version-check -r requirements-dev.txt
+      - run: python -m pytest
+
+  security:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: checkov
+        run: >
+          docker run --rm -v "$PWD:/repo:ro" -w /repo
+          bridgecrew/checkov:3.3.30@sha256:4b65e89f1fde292249fc0aa0d0db43302c036dfe39f7370b2d3517571082b894
+          --config-file .checkov.yaml
+      # 전체 이력을 검사한다. gitleaks는 git 명령이 실패해도 0으로 끝나므로 검사한 커밋 수도 확인한다.
+      - name: gitleaks
+        run: |
+          out=$(docker run --rm -v "$PWD:/repo:ro" \
+            ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f \
+            git --redact --verbose --no-banner --no-color /repo 2>&1) || { echo "$out"; exit 1; }
+          echo "$out"
+          grep -Eq '[1-9][0-9]* commits scanned' <<< "$out" || { echo "::error::gitleaks가 커밋을 검사하지 못함"; exit 1; }

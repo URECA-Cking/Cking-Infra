@@ -183,7 +183,7 @@ API  api.cking.co.kr
 - 상태: S3 버킷(버전 관리, S3 잠금). 상태 버킷은 Terraform보다 먼저 있어야 해 콘솔로 만들었다
 - **적용 절차:** PR이 `envs/`·`modules/`를 바꾸면 바뀐 스택만 plan해 주소와 동작을 PR 댓글로 남긴다 → 머지 → main에서 apply 워크플로를 수동 실행(스택, 기대 개수) → 승인 → 다시 plan해 개수가 기대와 같을 때만 적용
 - **공개 저장소 대응:** plan·apply 역할의 신뢰 조건을 GitHub Environment(승인자 필요, apply는 main만)로 묶었다. Environment를 빼면 OIDC `sub`가 달라져 역할을 받지 못하고, 포크 PR은 토큰을 받지 못한다. plan 결과는 값 없이 주소와 동작만 남긴다. plan 역할은 ReadOnlyAccess에서 데이터 읽기(S3 객체·큐 메시지·로그 등)를 막고, plan이 읽는 SecureString만 복호화한다(Infra #256)
-- **PR 검사:** `terraform fmt`·`validate`, compose 해석, Alloy·Prometheus·Loki·nginx 설정 검사, 대시보드 형식, shellcheck(부팅 스크립트는 템플릿 값을 채워 검사), actionlint, Python 문법, 부하 테스트 시나리오 형식
+- **PR 검사:** `terraform fmt`·`validate`·tflint, compose 해석, Alloy·Prometheus·Loki·nginx 설정 검사, 대시보드 형식, shellcheck(부팅 스크립트는 템플릿 값을 채워 검사), actionlint, Python 문법, 부하 테스트 시나리오 형식, pytest(경보 진단·부하 테스트 실행기), checkov(받아들인 규칙은 근거와 함께 skip, 근거를 정하지 않은 규칙은 경고만), gitleaks(전체 이력)
 - 컨테이너 이미지와 Actions는 digest·SHA로 고정하고 Dependabot으로 갱신한다
 - 부하 테스트는 실행기(`loadtest/`)로 자동화했다: 환경 생성 → 앱 배포 → 데이터 되돌리기·시딩 → 시나리오 단계 → 정합성 검증 → 결과 버킷 저장
 

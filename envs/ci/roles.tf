@@ -113,6 +113,7 @@ resource "aws_iam_role" "apply" {
 }
 
 resource "aws_iam_role_policy_attachment" "apply_admin" {
+  #checkov:skip=CKV_AWS_274:승인자와 main 브랜치 조건으로 실행 자체를 막는다(설계서 12절)
   role       = aws_iam_role.apply.name
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }

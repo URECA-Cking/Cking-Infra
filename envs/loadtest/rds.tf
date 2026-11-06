@@ -22,6 +22,12 @@ ephemeral "aws_ssm_parameter" "db_password" {
 
 # 사양은 개발 RDS(dev-cking-mysql)와 같다. 측정이 끝나면 지우므로 백업·삭제 보호·최종 스냅샷은 끈다.
 resource "aws_db_instance" "main" {
+  #checkov:skip=CKV_AWS_157:개발 사양으로 측정 때만 만들고 지운다(envs/security/triage.tf accepted-dev)
+  #checkov:skip=CKV_AWS_118:개발 사양으로 측정 때만 만들고 지운다(envs/security/triage.tf accepted-dev)
+  #checkov:skip=CKV_AWS_129:개발 사양으로 측정 때만 만들고 지운다(envs/security/triage.tf accepted-dev)
+  #checkov:skip=CKV_AWS_133:개발 사양으로 측정 때만 만들고 지운다(envs/security/triage.tf accepted-dev)
+  #checkov:skip=CKV_AWS_293:개발 사양으로 측정 때만 만들고 지운다(envs/security/triage.tf accepted-dev)
+  #checkov:skip=CKV2_AWS_60:개발 사양으로 측정 때만 만들고 지운다(envs/security/triage.tf accepted-dev)
   identifier     = "${var.env_name}-cking-mysql"
   engine         = "mysql"
   engine_version = "8.4.9"

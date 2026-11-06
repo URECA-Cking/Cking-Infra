@@ -16,7 +16,7 @@
 .github/workflows/         PR 검사(ci.yml), Terraform plan(terraform-plan.yml, PR 댓글)·apply(terraform-apply.yml, main 수동, 승인), 관측 설정·수집기 배포(deploy-observability.yml, deploy-app-agent.yml. 앱 서버는 바로 적용, 추천 배치 서버는 교체), Lambda 코드 배포(deploy-alert-analyzer.yml 경보 AI 진단, deploy-image-normalizer.yml 이미지 정규화 개발 → 운영)
 .github/dependabot.yml     컨테이너 이미지·GitHub Actions 갱신 PR
 .github/scripts/           CI 보조 스크립트(render-templates.sh: 서버 부팅 스크립트 템플릿을 변수를 채운 모습으로 펼쳐 shellcheck에 넘김)
-alert-analyzer/            경보 AI 진단 Lambda(Python). 경보를 받아 Claude(Claude API)가 런북대로 읽기 전용 조회를 하고 Slack 봇으로 제안. 런북 조치는 승인 버튼(approvals.py)을 누르면 실행 함수(executor.py)가 목록(actions.py)대로 실행. build.sh가 배포 묶음을 만든다
+alert-analyzer/            경보 AI 진단 Lambda(Python). 경보를 받아 Claude(Claude API)가 런북대로 읽기 전용 조회를 하고 Slack 봇으로 제안. 런북 조치는 승인 버튼(approvals.py)을 누르면 실행 함수(executor.py)가 목록(actions.py)대로 실행. build.sh가 배포 묶음을 만든다. tests/는 pytest(AWS·Slack·Claude API는 가짜)
 image-normalizer/          이미지 업로드 정규화 Lambda(Python, Pillow). 업로드 버킷 raw/<최종 키>의 원본을 앱과 같은 규칙(EXIF 회전, 긴 변 2048, JPEG 품질 90)으로 바꿔 최종 키에 저장하고 결과를 결과 큐로 보낸다. build.sh가 배포 묶음을 만든다
 app-agent/                 서버 수집기(Alloy) 설정. agent.alloy(서버 지표·로그·전송)는 항상, app.alloy(앱 지표)·redis.alloy(Redis 지표)·cadvisor.alloy(컨테이너 지표, 부하 테스트 서버)·journal.alloy(systemd 서비스 journald 로그, 추천 배치 서버)는 apply.sh가 서버 역할에 따라 켠다
 bootstrap/                 Terraform보다 먼저 만든 상태 버킷 기록
@@ -97,8 +97,11 @@ envs/security/             계정 보안 기준선. 환경과 상관없이 계�
   triage.tf                Security Hub 자동화 규칙. 받아들이기로 한 지적을 억제하고 이유를 메모로 남긴다
 modules/api-waf/           API(ALB) 앞단 WAF. 개발·운영이 같은 규칙을 쓴다(관리형 규칙, 본문 크기 예외, 로그). 허용 IP·비밀 쿠키 게이트는 운영만 넘기고, IP당 요청 상한(rate_limit)은 값을 넘길 때만 만든다(지금은 어느 환경도 넘기지 않는다)
 modules/k6-server/         부하 테스트 k6 서버(EC2, 보안 그룹, k6·Alloy·AWS CLI 설치). envs/loadtest와 envs/prod가 같이 쓴다
-loadtest/                  부하 테스트 실행 자동화(lt.sh 환경 생성·배포·실행·삭제, runner/ 시나리오 실행기, agent/ 앱 서버 데이터 작업, scenarios/ 시나리오)
+loadtest/                  부하 테스트 실행 자동화(lt.sh 환경 생성·배포·실행·삭제, runner/ 시나리오 실행기, agent/ 앱 서버 데이터 작업, scenarios/ 시나리오, tests/ 실행기·lt.sh pytest)
 observability/             관측 서버 위의 프로그램 설정(compose, Prometheus, Loki, Alloy, Grafana, 쓰기 전용 nginx)과 AI 진단용 읽기 전용 조회(query.py)
+.tflint.hcl                tflint 설정(Terraform 권장 규칙, AWS 규칙 플러그인 버전)
+.checkov.yaml              checkov 설정(Terraform만 검사, 받아들인 규칙과 근거, 경고만 내는 규칙)
+pytest.ini                 pytest 테스트 위치. 개발 의존성은 requirements-dev.txt
 ```
 
 Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙는다. 이 태그가 없는 리소스는 콘솔에서 관리한다.
@@ -109,11 +112,13 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
 - 비밀값은 Parameter Store에 두고 코드에는 경로만 쓴다
 - 변경은 PR의 plan 결과를 보고 리뷰한 뒤 적용한다. `envs/`·`modules/`를 바꾼 PR은 `terraform-plan.yml`이 바뀐 스택만 plan해 요약(리소스 주소와 동작, 값 없음)을 PR 댓글로 남긴다. Environment `terraform-plan` 승인 뒤 돈다(공개 저장소라 승인 없이는 AWS 자격을 주지 않는다). 계획은 기본 변수값 기준이라 켜 둔 토글(`k6_enabled` 등)은 차이로 나온다
 - 인프라(`envs/`) 적용은 머지 뒤 `terraform-apply.yml`을 main에서 수동 실행한다(스택, PR 댓글의 기대 개수 `추가,변경,삭제`, 필요하면 `-var` 값). Environment `terraform-apply` 승인 뒤 새로 plan하고, 개수가 기대와 다르면 적용하지 않는다. `envs/loadtest`를 뺀 모든 스택이 대상이다. 로컬 apply는 `envs/ci`를 처음 만들 때, CI가 안 될 때, `envs/loadtest`(`loadtest/lt.sh`가 띄우고 지운다), 런북의 복구 절차(NAT 방식 되돌리기, DB 복원 되돌리기)에서만 한다. 관측 서버 위의 설정(`observability/`)과 수집기 설정(`app-agent/`)은 main에 머지되면 GitHub Actions가 배포한다(추천 배치 서버는 교체해서 반영). 같은 리소스를 두 주체가 관리하지 않는다
-- 컨테이너 이미지는 `이름:버전@sha256:…`으로 고정한다. 태그는 배포처에서 다른 이미지로 옮길 수 있어, 버전은 사람이 읽는 표기로 남기고 실제로는 digest로 받는다. `observability/`·`app-agent/`의 compose와 GitHub Actions는 Dependabot PR로 갱신을 받는다. 그 밖의 이미지(`ci.yml`의 actionlint, `envs/prod/app.tf`의 k6, `loadtest/agent/lt-app.sh`의 MySQL·Valkey 클라이언트)는 직접 바꾸며, 버전과 digest를 함께 바꾼다. digest는 `docker buildx imagetools inspect 이름:버전`의 `Digest` 값이다
-- PR마다 `ci.yml`이 검사하고, main 룰셋의 필수 검사로 건다. 설정 검증은 compose에 고정된 이미지로 실행한다
-  - `terraform`: `terraform fmt -check`, `envs/` 아래 각 환경(`ci`·`security` 포함)의 `init -backend=false`·`validate`
+- 컨테이너 이미지는 `이름:버전@sha256:…`으로 고정한다. 태그는 배포처에서 다른 이미지로 옮길 수 있어, 버전은 사람이 읽는 표기로 남기고 실제로는 digest로 받는다. `observability/`·`app-agent/`의 compose와 GitHub Actions는 Dependabot PR로 갱신을 받는다. 그 밖의 이미지(`ci.yml`의 actionlint·tflint·checkov·gitleaks, `envs/prod/app.tf`의 k6, `loadtest/agent/lt-app.sh`의 MySQL·Valkey 클라이언트)와 tflint AWS 규칙 플러그인(`.tflint.hcl`), Python 개발 의존성(`requirements-dev.txt`)은 직접 바꾸며, 버전과 digest를 함께 바꾼다. digest는 `docker buildx imagetools inspect 이름:버전`의 `Digest` 값이다
+- PR마다 `ci.yml`이 검사하고, `terraform`·`config`·`lint`는 main 룰셋의 필수 검사로 건다. 설정 검증은 compose에 고정된 이미지로 실행한다
+  - `terraform`: `terraform fmt -check`, `tflint`(`envs/`·`modules/` 전체, Terraform 권장 규칙 + AWS 규칙), `envs/` 아래 각 환경(`ci`·`security` 포함)의 `init -backend=false`·`validate`
   - `config`: compose 해석, Alloy `validate`, `promtool check config`, Loki `-verify-config`, 대시보드 JSON 형식·uid 중복, `nginx -t`
   - `lint`: `shellcheck`(배포 스크립트, 서버 첫 부팅 스크립트는 Terraform 변수를 채운 모습으로 펼쳐서), Python 문법(`py_compile`), 부하 테스트 시나리오 형식(`ltrun.py check`), `actionlint`(워크플로)
+  - `test`: pytest(경보 진단 Lambda, 부하 테스트 실행기·`lt.sh`). 로컬은 `pip install -r requirements-dev.txt` 뒤 `python -m pytest`
+  - `security`: `checkov`(Terraform. 받아들인 규칙은 `.checkov.yaml`에 근거와 함께 skip, 근거를 정하지 않은 규칙은 경고만, 그 밖의 규칙은 실패), `gitleaks`(전체 이력, 값은 가려서 출력)
 - 협업 규칙은 조직 CONTRIBUTING을 따른다. 개발·운영은 브랜치가 아니라 `envs/` 스택으로 나누고 관측 서버·수집기 설정은 두 환경이 같이 쓰므로, `develop` 없이 `main`으로 PR을 보낸다
 
 ## 부하 테스트 환경

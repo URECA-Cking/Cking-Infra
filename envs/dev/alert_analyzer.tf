@@ -44,6 +44,7 @@ resource "aws_ssm_document" "observability_query" {
 
 # 같은 경보 묶기와 하루 상한 기록. 기록은 만료 시각(expires_at)이 지나면 지워진다.
 resource "aws_dynamodb_table" "alert_analyzer" {
+  #checkov:skip=CKV_AWS_28:경보 진단 기록은 만료 시각이 있는 임시 표다(envs/security/triage.tf accepted-identity-data, DynamoDB.2)
   name         = local.alert_analyzer_name
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "key"
