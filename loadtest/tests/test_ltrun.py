@@ -163,7 +163,7 @@ class TestStream:
 
     @pytest.mark.parametrize("tail", ["lag\n\n", "lag\n", "lag"])
     def test_nil_lag_is_unknown(self, runner, reply, tail):
-        """전달 전 메시지가 지워지면 lag를 셀 수 없어 redis-cli·valkey-cli가 빈 줄로 낸다. 밀린 메시지가 있을 수 있으니 0으로 보지 않는다."""
+        """그룹 위치 뒤에 XDEL로 지운 항목이 있으면 lag를 셀 수 없어 redis-cli·valkey-cli가 빈 줄로 낸다. 밀린 메시지가 있을 수 있으니 0으로 보지 않는다."""
         reply["out"] = "name\ng\nconsumers\n1\npending\n0\nlast-delivered-id\n1-0\nentries-read\n\n" + tail
         assert runner.stream() == (0, None)
 
@@ -450,6 +450,7 @@ class TestBreached:
         (5, 10, False),
         (5, 1001, True),
         (5, None, True),
+        (0, None, True),
         (None, None, False),
     ])
     def test_lag_over(self, pending, lag, expected):

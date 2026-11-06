@@ -407,7 +407,7 @@ fetch() {
             if value.lstrip("-").isdigit():
                 nums[key] += int(value)
             elif key == "lag":
-                # 전달 전 메시지가 지워지면 lag를 셀 수 없어 빈 줄로 온다. 다 읽으면 다시 숫자가 된다
+                # 그룹 위치 뒤에 XDEL로 지운 항목이 있으면 lag를 셀 수 없어 빈 줄로 온다. 다 읽으면 다시 숫자가 된다
                 lag_unknown = True
         return nums["pending"], None if lag_unknown else nums["lag"]
 
@@ -712,7 +712,7 @@ fetch() {
 
 
 def breached(stop, sample, pending, lag):
-    """k6 중단 조건. Stream을 읽었는데 lag를 셀 수 없으면 넘은 것으로 본다. 소비가 뒤처져 전달 전 메시지가 지워졌을 때라 밀림이 가장 클 때다."""
+    """k6 중단 조건. Stream을 읽었는데 lag를 셀 수 없으면 밀림을 알 수 없으므로 넘은 것으로 본다."""
     lag_over = stop.get("lag_over")
     return bool((stop.get("p95_ms") is not None and (sample["p95"] or 0) > stop["p95_ms"])
             or (stop.get("fail_pct") is not None and sample["n"] and sample["fail"] * 100 > stop["fail_pct"] * sample["n"])
