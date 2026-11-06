@@ -117,7 +117,7 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
   - `terraform`: `terraform fmt -check`, `tflint`(`envs/`·`modules/` 전체, Terraform 권장 규칙 + AWS 규칙), `envs/` 아래 각 환경(`ci`·`security` 포함)의 `init -backend=false`·`validate`
   - `config`: compose 해석, Alloy `validate`, `promtool check config`, Loki `-verify-config`, 대시보드 JSON 형식·uid 중복, `nginx -t`
   - `lint`: `shellcheck`(배포 스크립트, 서버 첫 부팅 스크립트는 Terraform 변수를 채운 모습으로 펼쳐서), Python 문법(`py_compile`), 부하 테스트 시나리오 형식(`ltrun.py check`), `actionlint`(워크플로)
-  - `test`: pytest(경보 진단 Lambda, 부하 테스트 실행기·`lt.sh`). 로컬은 `pip install -r requirements-dev.txt` 뒤 `python -m pytest`
+  - `test`: pytest(경보 진단 Lambda, 이미지 정규화 Lambda, 부하 테스트 실행기·`lt.sh`). 로컬은 `pip install -r requirements-dev.txt` 뒤 `python -m pytest`
   - `security`: `checkov`(Terraform. 받아들인 규칙은 `.checkov.yaml`에 근거와 함께 skip, 근거를 정하지 않은 규칙은 경고만, 그 밖의 규칙은 실패), `gitleaks`(전체 이력, 값은 가려서 출력)
 - 협업 규칙은 조직 CONTRIBUTING을 따른다. 개발·운영은 브랜치가 아니라 `envs/` 스택으로 나누고 관측 서버·수집기 설정은 두 환경이 같이 쓰므로, `develop` 없이 `main`으로 PR을 보낸다
 
