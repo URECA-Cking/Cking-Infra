@@ -263,7 +263,7 @@ groups:
             datasourceUid: "prometheus"
             model:
               refId: "A"
-              expr: "max by (stream) (redis_stream_group_messages_pending{instance=\"dev-cking-app\"})"
+              expr: "max by (stream) (cking_stream_pending_oldest_age_seconds{instance=\"dev-cking-app\"})"
               instant: true
           - refId: "B"
             datasourceUid: "__expr__"
@@ -284,14 +284,14 @@ groups:
                 - evaluator:
                     type: "gt"
                     params:
-                      - 0
+                      - 600
         noDataState: "OK"
         execErrState: "Error"
-        for: "10m"
+        for: "0s"
         labels:
           severity: "normal"
         annotations:
-          summary: "읽었지만 ACK하지 못한 메시지가 10분째 남아 있습니다. PEL 재처리도 실패하고 있습니다."
+          summary: "읽었지만 ACK하지 못한 메시지 중 가장 오래된 것이 10분을 넘었습니다. PEL 회수나 Dead Stream 이동이 멈췄습니다."
           runbook_url: "https://github.com/URECA-Cking/Cking-Infra/blob/main/docs/runbooks/cking-stream-pending.md"
       - uid: "cking-p95"
         title: "응답 지연"
@@ -1189,7 +1189,7 @@ groups:
             datasourceUid: "prometheus"
             model:
               refId: "A"
-              expr: "max by (stream) (redis_stream_group_messages_pending{instance=\"prod-cking-monitor\"})"
+              expr: "max by (stream) (cking_stream_pending_oldest_age_seconds{job=\"cking-be\",instance=~\"prod-cking-app-.*\"})"
               instant: true
           - refId: "B"
             datasourceUid: "__expr__"
@@ -1210,15 +1210,15 @@ groups:
                 - evaluator:
                     type: "gt"
                     params:
-                      - 0
+                      - 600
         noDataState: "OK"
         execErrState: "Error"
-        for: "10m"
+        for: "0s"
         labels:
           env: "prod"
           severity: "normal"
         annotations:
-          summary: "읽었지만 ACK하지 못한 메시지가 10분째 남아 있습니다. PEL 재처리도 실패하고 있습니다."
+          summary: "읽었지만 ACK하지 못한 메시지 중 가장 오래된 것이 10분을 넘었습니다. PEL 회수나 Dead Stream 이동이 멈췄습니다."
           runbook_url: "https://github.com/URECA-Cking/Cking-Infra/blob/main/docs/runbooks/cking-stream-pending.md"
       - uid: "cking-prod-p95"
         title: "응답 지연"
