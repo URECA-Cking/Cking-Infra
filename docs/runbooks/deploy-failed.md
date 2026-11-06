@@ -51,6 +51,8 @@ sudo bash /opt/cking/deploy.sh "$TAG"
 
 자동 되돌리기가 실패했거나 스모크가 잡지 못한 문제는 수동으로 되돌린다: Cking-BE Actions → `Deploy to prod` → `Run workflow`(`main`) → `image_tag`에 마지막으로 정상이던 태그. 같은 교체·자기 검사·스모크를 거친다.
 
+ALB 헬스체크가 `/livez`라 그 경로를 인증 없이 열기 전(BE #825 이전)의 태그로는 되돌릴 수 없다. 그 태그는 `/livez`에 401을 내 모든 서버가 비정상이 되고, 서버 그룹이 교체를 되풀이한다.
+
 ```bash
 # Mac: 운영에 올렸던 태그 목록
 aws s3 ls s3://prod-cking-deploy-551372961758-ap-northeast-2-an/releases/

@@ -41,4 +41,4 @@ Grafana Explore(Prometheus)에서 `redis_up{instance="dev-cking-app"}`가 1이�
 
 ## 운영에서 다른 점
 
-- 운영에는 이 경보가 없다. 감시용 서버가 ElastiCache에 붙지 못하면 [감시용 서버 끊김](cking-prod-monitor-down.md)이 울린다. ElastiCache 자체가 멈추면 앱 서버 `/readyz`가 실패해 [운영 ALB 경보](prod-alb.md)가 함께 울린다
+- 운영에는 이 경보가 없다. 감시용 서버가 ElastiCache에 붙지 못하면 [감시용 서버 끊김](cking-prod-monitor-down.md)이 울린다. ElastiCache 자체가 멈춰도 ALB 헬스체크(`/livez`)는 Redis를 보지 않아 [운영 ALB 경보](prod-alb.md)는 울리지 않는다. 응모가 실패해 Grafana 운영 [서버 오류 증가](cking-5xx.md)와 [운영 ElastiCache 경보](prod-elasticache.md)가 울린다

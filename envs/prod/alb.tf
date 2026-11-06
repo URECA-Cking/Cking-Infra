@@ -138,7 +138,7 @@ resource "aws_lb_listener" "http" {
   }
 }
 
-# 헬스체크 경로는 ALB만 쓴다. 외부 요청에는 앱 응답 형식과 같은 404를 돌려준다.
+# 헬스체크 경로(/livez는 ALB, /readyz는 서버 안 배포 검사)는 외부에 열지 않는다. 앱 응답 형식과 같은 404를 돌려준다.
 resource "aws_lb_listener_rule" "block_readyz" {
   listener_arn = aws_lb_listener.https.arn
   priority     = 1
