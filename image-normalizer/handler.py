@@ -7,6 +7,7 @@
 import io
 import json
 import logging
+import math
 import os
 import urllib.parse
 
@@ -114,10 +115,15 @@ def _normalize(source, min_width, min_height):
     if image.width < min_width or image.height < min_height:
         raise InvalidImage("dimensions")
 
+    # 16비트 회색(I;16)은 RGBA로 바꾸면 255에서 잘려 거의 흰색이 되므로 먼저 8비트로 줄인다.
+    if image.mode in ("I", "I;16"):
+        image = image.point(lambda value: value / 256).convert("L")
+
     longest = max(image.width, image.height)
     if longest > MAX_LONG_EDGE:
         scale = MAX_LONG_EDGE / longest
-        target = (max(1, round(image.width * scale)), max(1, round(image.height * scale)))
+        # 앱(Java Math.round)과 같게 .5는 올린다. Python round는 짝수 쪽으로 반올림한다.
+        target = (max(1, math.floor(image.width * scale + 0.5)), max(1, math.floor(image.height * scale + 0.5)))
         image = image.resize(target, Image.Resampling.BICUBIC)
 
     if image.mode != "RGB":
