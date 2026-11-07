@@ -4,11 +4,9 @@
 
 ## 범위
 
-- Terraform은 새로 만드는 리소스(관측 서버 등)와 콘솔에서 가져온 리소스를 관리한다. 가져온 리소스: FE 배포 역할(`dev-cking-fe-github-actions-role`), 앱 서버 역할(`dev-cking-ec2-role`)
-- 기존 리소스(VPC, 서브넷, 앱·ALB 보안 그룹, ALB와 HTTPS 리스너, 웹 CloudFront, 앱 서버, 인증서, Route53 영역)는 콘솔이 관리하며 Terraform은 `data` 소스로 읽기만 한다. 개발 RDS는 콘솔이 관리하고 Terraform은 읽지 않는다
-- 업로드 버킷(`dev-cking-uploads-…`)은 콘솔이 관리하고, 버킷 정책(CDN 읽기 허용, TLS 아닌 요청 거부)과 이미지 파이프라인 설정(`raw/` 이벤트 알림, CORS, 수명 주기)은 Terraform이 관리한다
-- 웹 버킷(`dev-cking-frontend-…`)과 배포 버킷(`dev-cking-deploy-…`)은 콘솔이 관리하고, 버킷 정책만 Terraform이 관리한다
-- ALB는 콘솔이 관리하고, API 앞단 WAF 연결과 리스너 규칙(`monitoring.cking.co.kr` Grafana, `loadtest-api.cking.co.kr` 부하 테스트)은 Terraform이 관리한다
+- AWS 리소스는 Terraform이 관리한다. 밖에 두는 것은 상태 버킷(Terraform보다 먼저 있어야 해 콘솔, `bootstrap/`), 사람 IAM 사용자·그룹, 비밀값(사람이 Parameter Store에 넣음), 등록기관(가비아)의 네임서버 위임이다
+- 계정에 하나인 리소스(Route53 영역 `cking.co.kr`, `*.cking.co.kr` 인증서 서울·us-east-1, GitHub OIDC 공급자, 예산 `cking-monthly`)는 `envs/account`가 만들고, 다른 스택은 이름으로 찾는다
+- 다른 스택이 개발 리소스를 이름·이름표로 찾는다. 운영은 개발 VPC·퍼블릭 경로 테이블(`dev-cking-rtb-public`)·관측 서버(피어링, k6), 부하 테스트는 개발 VPC·퍼블릭 서브넷 2a·앱 서버·ALB와 HTTPS 리스너·DB 서브넷 그룹·파라미터 그룹·관측 서버, 보안 기준선은 VPC를 찾는다. 그래서 `envs/dev`를 먼저 적용하고 이 이름들은 바꾸지 않는다
 
 ## 구조
 
@@ -22,34 +20,47 @@ app-agent/                 서버 수집기(Alloy) 설정. agent.alloy(서버 �
 bootstrap/                 Terraform보다 먼저 만든 상태 버킷 기록
 docs/loadtest.md           부하 테스트 측정 결과(1·2·3차, 어뷰징 탐지)
 docs/runbooks/             경보별 대응 절차와 댓글 필터 차단·해제, 추천 배치 서버 절차(런북)
+envs/account/              계정에 하나인 리소스. 다른 스택보다 먼저 적용한다. 상태는 account/terraform.tfstate
+  dns.tf                   Route53 영역 cking.co.kr, *.cking.co.kr + cking.co.kr 인증서(서울 ALB용, us-east-1 CloudFront용)와 DNS 검증
+  github_oidc.tf           GitHub Actions OIDC 공급자
+  budget.tf                월 예산 cking-monthly(실제 85%·100%, 예측 100% 메일)
+  outputs.tf               등록기관에 넣을 네임서버, 인증서, OIDC 공급자
 envs/dev/                  개발 환경. 실행 위치
   terraform.tf             Terraform·프로바이더 버전
   backend.tf               상태 저장소(S3)와 잠금
   providers.tf             리전, 계정 고정, 공통 태그
-  existing.tf              콘솔이 관리하는 기존 리소스 읽기(data)
-  api_waf.tf               API 앞단 WAF(modules/api-waf)를 기존 ALB에 세기만 상태로 연결
+  account.tf               envs/account의 영역·인증서·OIDC 공급자를 이름으로 찾기(data)
+  network.tf               VPC 10.0.0.0/16, AZ 2a·2b의 퍼블릭·프라이빗 서브넷, 인터넷 게이트웨이, 경로 테이블, S3 게이트웨이 엔드포인트(프라이빗 경로)
+  security_groups.tf       ALB(80·443)·앱(ALB에서 8080)·RDS(앱에서 3306) 보안 그룹
+  alb.tf                   ALB(HTTPS, HTTP는 443으로 이동, 헬스체크 /livez, /livez·/readyz 외부 차단), dev-api.cking.co.kr
+  servers.tf               앱 서버·추천 배치 서버가 같이 쓰는 AMI·Docker 버전(운영과 같음)
+  database.tf              RDS MySQL 8.4 단일 AZ(마스터 비밀번호는 Secrets Manager 관리, 평문 연결 거부), 서브넷·파라미터 그룹, DB_HOST·DB_USERNAME 값
+  buckets.tf               업로드·사용자 앱·배포 버킷(퍼블릭 차단, ACL 비활성화, SSE-S3)
+  frontend.tf              사용자 앱 정적 호스팅(CloudFront, OAC, WAF, 무료 요금제, 보안 헤더, Route53)
+  app_deploy.tf            BE 개발 배포 GitHub Actions 역할(배포 파일 올리기, 앱 서버에 Run Command)
+  api_waf.tf               API 앞단 WAF(modules/api-waf)를 개발 ALB에 세기만 상태로 연결
   admin_frontend.tf        관리자 앱 정적 호스팅(S3, CloudFront, WAF, 요금제, Route53)
   uploads_cdn.tf           업로드 이미지 공개 CDN(CloudFront, WAF, 요금제, Route53, 버킷 정책)
   bucket_tls.tf            웹·업로드·관리자·배포 버킷의 TLS 아닌 요청 거부(웹·배포 버킷 정책)
-  app_server.tf            앱 서버 역할(콘솔에서 가져옴)과 수집기 설정 읽기·댓글 필터 호출 권한
-  frontend_deploy.tf       FE 배포 역할(콘솔에서 가져옴)과 앱별 권한
+  app_server.tf            앱 서버(t4g.small, 퍼블릭 2a, 공인 IP, 첫 부팅에 Docker·AWS CLI·swap)와 역할(Parameter Store·배포 파일·업로드 버킷 경로·수집기 설정 읽기, 댓글 필터 호출)
+  frontend_deploy.tf       FE 개발 배포 GitHub Actions 역할과 앱별 권한(사용자 앱·관리자 앱 버킷 동기화, 캐시 무효화)
   observability.tf         관측 서버(EC2, 데이터 디스크, 스냅샷, 버킷, IAM, 앱·추천 배치 서버 수집 포트)
   alerts.tf                서버 상태 검사 경보와 메일 주제
-  observability_access.tf  Grafana 공개 경로(기존 ALB 규칙 monitoring.cking.co.kr, Google 로그인, 대상 그룹, Route53)
+  observability_access.tf  Grafana 공개 경로(개발 ALB 규칙 monitoring.cking.co.kr, Google 로그인, 대상 그룹, Route53)
   observability_deploy.tf  관측 설정·수집기 설정을 배포하는 GitHub Actions 역할(앱 서버 적용, 추천 배치 서버 교체)
   alert_analyzer.tf        경보 AI 진단(분석용 SNS, Lambda와 읽기 전용 역할, 관측 서버 조회 SSM 문서, 같은 경보 묶기·하루 상한 DynamoDB, CI 코드 배포 권한)
   image_pipeline.tf        이미지 업로드 이벤트 파이프라인(작업·결과 큐와 DLQ, 업로드 버킷 raw/ 알림·CORS·수명 주기, 정규화 Lambda와 역할, 앱 서버 raw/ 쓰기·결과 큐 읽기, 결과 큐 주소 Parameter Store, DLQ 경보, CI 코드 배포 권한)
   alert_actions.tf         경보 AI 진단의 조치 승인 버튼(승인 함수 URL, 실행 함수와 조치별 권한, 서버 조치 SSM 문서, 승인자 목록)
   comment_filter.tf        댓글 필터 이미지 저장소(ECR, 개발·운영 공용), 개발 Lambda(arm64 이미지, 함수 URL IAM 인증, 예약 동시성 2, 이미지는 필터 저장소 CI가 바꿈), 필터 저장소 GitHub Actions 개발 역할(모델 읽기, 이미지 푸시, 개발 Lambda 갱신·호출)
   recommendation.tf        개발 추천 배치 서버(1대짜리 서버 그룹, arm64 스팟 6개 유형, 상태 디스크, 시작 대기 자기 검사, 역할, 비밀이 아닌 값)와 추천 배치 저장소 GitHub Actions 개발 역할(배포 패키지 올리기, 배포 버전 값, 서버 교체)
-  outputs.tf               읽어 온 기존 리소스와 관리자 앱 배포·관측 서버·추천 배치 CI·댓글 필터 CI에 넣을 값 출력
-  templates/               서버 첫 부팅 스크립트(추천 배치 서버는 운영의 공통 준비 server-base.sh와 부팅 스크립트 recommendation-init.sh를 함께 쓴다)
+  outputs.tf               BE·FE 개발 CI(앱 서버 ID, 사용자 앱 배포 ID)와 관리자 앱 배포·관측 서버·추천 배치 CI·댓글 필터 CI에 넣을 값 출력
+  templates/               서버 첫 부팅 스크립트(앱 서버·추천 배치 서버는 운영의 공통 준비 server-base.sh를 앞에 붙이고, 추천 배치 서버는 부팅 스크립트 recommendation-init.sh도 운영과 같이 쓴다)
 envs/loadtest/             부하 테스트 환경. 측정 때 띄우고 끝나면 지운다(loadtest/lt.sh). 상태는 loadtest/terraform.tfstate
   existing.tf              개발 환경 리소스 읽기(data)
   variables.tf             환경 이름, 서버·RDS 크기, Docker 버전, 정리 기한(ttl_hours)
   app_server.tf            앱 서버(개발 앱 서버와 같은 AMI·크기·Docker 버전·swap)
   rds.tf                   RDS(개발 RDS와 같은 사양, 빈 DB)
-  alb.tf                   기존 ALB에 loadtest-api.cking.co.kr 경로
+  alb.tf                   개발 ALB에 loadtest-api.cking.co.kr 경로(헬스체크는 개발 대상 그룹과 같은 /livez)
   k6.tf                    k6 서버와 서버 지표 수집기
   parameters.tf            /cking/loadtest/ 중 비밀이 아닌 값
   outputs.tf               앱 서버 ID·주소, API 주소
@@ -111,7 +122,7 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
 - 상태 파일은 S3 원격 백엔드에 둔다. 상태 파일, 변수 파일, 비밀값은 커밋하지 않는다
 - 비밀값은 Parameter Store에 두고 코드에는 경로만 쓴다
 - 변경은 PR의 plan 결과를 보고 리뷰한 뒤 적용한다. `envs/`·`modules/`를 바꾼 PR은 `terraform-plan.yml`이 바뀐 스택만 plan해 요약(리소스 주소와 동작, 값 없음)을 PR 댓글로 남긴다. Environment `terraform-plan` 승인 뒤 돈다(공개 저장소라 승인 없이는 AWS 자격을 주지 않는다). 계획은 기본 변수값 기준이라 켜 둔 토글(`k6_enabled` 등)은 차이로 나온다
-- 인프라(`envs/`) 적용은 머지 뒤 `terraform-apply.yml`을 main에서 수동 실행한다(스택, PR 댓글의 기대 개수 `추가,변경,삭제`, 필요하면 `-var` 값). Environment `terraform-apply` 승인 뒤 새로 plan하고, 개수가 기대와 다르면 적용하지 않는다. `envs/loadtest`를 뺀 모든 스택이 대상이다. 로컬 apply는 `envs/ci`를 처음 만들 때, CI가 안 될 때, `envs/loadtest`(`loadtest/lt.sh`가 띄우고 지운다), 런북의 복구 절차(NAT 방식 되돌리기, DB 복원 되돌리기)에서만 한다. 관측 서버 위의 설정(`observability/`)과 수집기 설정(`app-agent/`)은 main에 머지되면 GitHub Actions가 배포한다(추천 배치 서버는 교체해서 반영). 같은 리소스를 두 주체가 관리하지 않는다
+- 인프라(`envs/`) 적용은 머지 뒤 `terraform-apply.yml`을 main에서 수동 실행한다(스택, PR 댓글의 기대 개수 `추가,변경,삭제`, 필요하면 `-var` 값). Environment `terraform-apply` 승인 뒤 새로 plan하고, 개수가 기대와 다르면 적용하지 않는다. `envs/loadtest`를 뺀 모든 스택이 대상이다. 로컬 apply는 `envs/account`·`envs/ci`·`envs/dev`를 처음 만들 때([처음 구축하는 순서](#처음-구축하는-순서)), CI가 안 될 때, `envs/loadtest`(`loadtest/lt.sh`가 띄우고 지운다), 런북의 복구 절차(NAT 방식 되돌리기, DB 복원 되돌리기)에서만 한다. 관측 서버 위의 설정(`observability/`)과 수집기 설정(`app-agent/`)은 main에 머지되면 GitHub Actions가 배포한다(추천 배치 서버는 교체해서 반영). 같은 리소스를 두 주체가 관리하지 않는다
 - 컨테이너 이미지는 `이름:버전@sha256:…`으로 고정한다. 태그는 배포처에서 다른 이미지로 옮길 수 있어, 버전은 사람이 읽는 표기로 남기고 실제로는 digest로 받는다. `observability/`·`app-agent/`의 compose와 GitHub Actions는 Dependabot PR로 갱신을 받는다. 그 밖의 이미지(`ci.yml`의 actionlint·tflint·checkov·gitleaks, `envs/prod/app.tf`의 k6, `loadtest/agent/lt-app.sh`의 MySQL·Valkey 클라이언트)와 tflint AWS 규칙 플러그인(`.tflint.hcl`), Python 개발 의존성(`requirements-dev.txt`)은 직접 바꾸며, 버전과 digest를 함께 바꾼다. digest는 `docker buildx imagetools inspect 이름:버전`의 `Digest` 값이다
 - PR마다 `ci.yml`이 검사하고, main 룰셋의 필수 검사로 건다. 설정 검증은 compose에 고정된 이미지로 실행한다
   - `terraform`: `terraform fmt -check`, `tflint`(`envs/`·`modules/` 전체, Terraform 권장 규칙 + AWS 규칙), `envs/` 아래 각 환경(`ci`·`security` 포함)의 `init -backend=false`·`validate`
@@ -120,6 +131,51 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
   - `test`: pytest(경보 진단 Lambda, 이미지 정규화 Lambda, 부하 테스트 실행기·`lt.sh`). 로컬은 `pip install -r requirements-dev.txt` 뒤 `python -m pytest`
   - `security`: `checkov`(Terraform. 받아들인 규칙은 `.checkov.yaml`에 근거와 함께 skip, 근거를 정하지 않은 규칙은 경고만, 그 밖의 규칙은 실패), `gitleaks`(전체 이력, 값은 가려서 출력)
 - 협업 규칙은 조직 CONTRIBUTING을 따른다. 개발·운영은 브랜치가 아니라 `envs/` 스택으로 나누고 관측 서버·수집기 설정은 두 환경이 같이 쓰므로, `develop` 없이 `main`으로 PR을 보낸다
+
+## 처음 구축하는 순서
+
+스택은 서로를 이름으로 찾으므로 이 순서로 만든다. 처음 만드는 `envs/account`·`envs/ci`·`envs/dev`는 로컬(관리자 IAM 사용자)에서, 그 뒤 변경은 모두 `terraform-apply.yml`로 적용한다.
+
+1. 상태 버킷([bootstrap/README.md](bootstrap/README.md), 콘솔)
+2. `envs/account`
+   - 예산 알림 메일을 Parameter Store `/cking/account/BUDGET_EMAIL`(String)에 넣는다
+   - 영역만 먼저 만든다: `terraform apply -target=aws_route53_zone.main`
+   - 출력 `route53_name_servers`를 가비아의 `cking.co.kr` 네임서버로 바꾼다. 인증서 DNS 검증은 위임이 끝나야 통과한다
+   - 전체를 적용한다: `terraform apply`. 인증서 두 장이 발급될 때까지 기다린다
+3. `envs/ci`. 그다음 GitHub 저장소에 Environment `terraform-plan`·`terraform-apply`(승인자, apply는 main만)를 둔다
+4. 개발 환경([개발 환경](#개발-환경))
+5. 운영 환경([운영 환경](#운영-환경))
+6. 계정 보안 기준선([계정 보안 기준선](#계정-보안-기준선), 운영 경보 SNS를 쓰므로 운영 뒤)
+7. 부하 테스트 IAM·결과 버킷 `envs/loadtest-base`([부하 테스트 환경](#부하-테스트-환경))
+
+## 개발 환경
+
+1. Parameter Store에 값을 넣는다. 비밀값은 SecureString이다
+   - `envs/dev` plan 전에 있어야 하는 값: `/cking/dev/monitoring/ALERT_EMAIL`(String, 경보 메일), `/cking/dev/monitoring/GOOGLE_OAUTH_CLIENT_ID`(String), `/cking/dev/monitoring/GOOGLE_OAUTH_CLIENT_SECRET`(Grafana Google 로그인, ALB 규칙에 들어간다)
+   - 앱 서버가 배포 때 읽는 `/cking/dev/` 값은 BE `deploy/deploy.sh`의 필수 목록이다. `DB_PASSWORD`는 앱 계정(`cking_app`) 비밀번호다. `COMMENT_FILTER_BASE_URL`은 적용 뒤 `terraform output comment_filter`의 함수 URL을 넣는다
+   - 관측 서버(`/cking/dev/monitoring/`)·추천 배치 서버(`/cking/dev-recommendation/`)가 읽는 나머지 값
+   - Terraform이 만드는 값: `/cking/dev/DB_HOST`, `/cking/dev/DB_USERNAME`, `/cking/dev/IMAGE_PIPELINE_RESULTS_QUEUE_URL`, `/cking/dev/monitoring/AI_ACTION_APPROVERS`, `/cking/dev-recommendation/CKING_BE_URL`·`CKING_TAG_DAILY_CALLS`
+2. Lambda가 처음 읽을 코드·이미지가 있어야 하므로 두 번에 나눠 적용한다(로컬)
+   - 배포 버킷과 필터 이미지 저장소만 먼저 만든다: `terraform apply -target=aws_s3_bucket.deploy -target=aws_ecr_repository.comment_filter`
+   - `alert-analyzer/build.sh`·`image-normalizer/build.sh`로 만든 묶음을 배포 버킷의 `alert-analyzer/initial.zip`·`image-normalizer/initial.zip`에 올리고, 댓글 필터 이미지를 ECR에 올린다. 함수의 처음 이미지는 `comment_filter.tf`의 digest이므로 새로 빌드한 이미지면 그 digest로 바꾼다
+   - 전체를 적용한다: `terraform plan -out=tfplan` → `terraform apply tfplan`
+3. 앱 DB 계정(`cking_app`, `cking` 스키마 권한만)을 처음 한 번 만든다. 운영과 같은 방법이고, 경유지는 앱 서버다(Mac 터미널 1):
+   ```bash
+   APP_ID=$(aws ec2 describe-instances --region ap-northeast-2 --filters Name=tag:Name,Values=dev-cking-app Name=instance-state-name,Values=running --query 'Reservations[0].Instances[0].InstanceId' --output text)
+   DB_HOST=$(aws ssm get-parameter --region ap-northeast-2 --name /cking/dev/DB_HOST --query Parameter.Value --output text)
+   aws ssm start-session --region ap-northeast-2 --target "$APP_ID" --document-name AWS-StartPortForwardingSessionToRemoteHost --parameters "host=$DB_HOST,portNumber=3306,localPortNumber=13306"
+   ```
+   Mac 터미널 2:
+   ```bash
+   SECRET_ARN=$(aws rds describe-db-instances --region ap-northeast-2 --db-instance-identifier dev-cking-mysql --query 'DBInstances[0].MasterUserSecret.SecretArn' --output text)
+   MYSQL_PWD=$(aws secretsmanager get-secret-value --region ap-northeast-2 --secret-id "$SECRET_ARN" --query SecretString --output text | python3 -c 'import json,sys; print(json.load(sys.stdin)["password"])')
+   APP_PW=$(aws ssm get-parameter --region ap-northeast-2 --name /cking/dev/DB_PASSWORD --with-decryption --query Parameter.Value --output text)
+   printf "CREATE USER 'cking_app'@'%%' IDENTIFIED BY '%s';\nGRANT ALL PRIVILEGES ON cking.* TO 'cking_app'@'%%';\n" "$APP_PW" \
+     | MYSQL_PWD="$MYSQL_PWD" MYSQL_HISTFILE=/dev/null mysql -h 127.0.0.1 -P 13306 -u admin
+   unset MYSQL_PWD APP_PW
+   ```
+4. BE·FE 개발 CI의 고정값을 `terraform output foundation`으로 맞춘다: BE `cicd.yml`의 `INSTANCE_ID`(`app_instance_id`), FE `cicd.yml`의 사용자 앱 배포 ID(`frontend_distribution_id`). 그다음 BE·FE develop 배포를 실행한다
+5. 관측 설정과 수집기를 배포한다: `deploy-observability.yml`, 그다음 `deploy-app-agent.yml`(수집기는 앱 compose 네트워크에 붙으므로 첫 BE 배포 뒤)
 
 ## 부하 테스트 환경
 
@@ -136,7 +192,7 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
 5. 앱 서버 수집기: 앱 서버에서 `aws s3 sync --exact-timestamps s3://<관측 버킷>/app-agent/ /opt/app-agent/` 뒤 `CKING_INSTANCE=loadtest-cking-app CKING_CADVISOR=1 bash /opt/app-agent/apply.sh`. 수집기는 앱 compose의 네트워크(`cking_default`)에 붙으므로 앱 배포 뒤에 적용한다
 6. 측정이 끝나면 `envs/loadtest`에서 `terraform destroy`. `envs/loadtest-base`의 역할과 Parameter Store 비밀값은 다음 측정에 다시 쓰므로 남긴다. 그만 쓸 때 직접 지운다
 
-- 앱 주소는 `https://loadtest-api.cking.co.kr`(기존 ALB, 443 규칙 우선순위 200)
+- 앱 주소는 `https://loadtest-api.cking.co.kr`(개발 ALB, 443 규칙 우선순위 200)
 - k6 결과 지표는 `k6 run -o experimental-prometheus-rw <스크립트>`로 관측 서버에 보낸다. 주소는 k6 서버의 `/etc/profile.d/k6.sh`
 - k6는 Access Token을 실행 중에 직접 서명한다. 비밀값은 환경변수로만 넘긴다: `JWT_SECRET="$(aws ssm get-parameter --region ap-northeast-2 --name /cking/loadtest/JWT_SECRET --with-decryption --query Parameter.Value --output text)" k6 run -o experimental-prometheus-rw <스크립트>`
 - 이름표: 앱 서버 `loadtest-cking-app`, k6 서버 `loadtest-cking-k6`

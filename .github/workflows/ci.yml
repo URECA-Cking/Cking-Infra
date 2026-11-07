@@ -31,7 +31,7 @@ jobs:
           docker run "${args[@]}" -e GITHUB_TOKEN "$TFLINT_IMAGE" --init --config /repo/.tflint.hcl
           docker run "${args[@]}" "$TFLINT_IMAGE" --recursive --config /repo/.tflint.hcl --format compact
       - run: |
-          for dir in envs/ci envs/dev envs/loadtest envs/loadtest-base envs/prod envs/prod-base envs/security; do
+          for dir in envs/account envs/ci envs/dev envs/loadtest envs/loadtest-base envs/prod envs/prod-base envs/security; do
             terraform -chdir="$dir" init -backend=false -input=false
             terraform -chdir="$dir" validate
           done
@@ -102,7 +102,7 @@ jobs:
             .github/scripts/render-templates.sh
           # 부팅 스크립트는 Terraform templatefile이라 변수를 채운 모습으로 펼쳐 검사한다. 파일을 고치면 user_data가 바뀌어 서버가 재시작된다.
           # SC1091: /etc/os-release는 서버에만 있다.
-          templates=(envs/dev/templates/observability-init.sh envs/loadtest/templates/app-init.sh modules/k6-server/k6-init.sh
+          templates=(envs/dev/templates/observability-init.sh envs/dev/templates/app-init.sh envs/loadtest/templates/app-init.sh modules/k6-server/k6-init.sh
             envs/prod/templates/server-base.sh envs/prod/templates/monitor-init.sh envs/prod/templates/app-init.sh
             envs/prod/templates/nat-init.sh envs/prod/templates/recommendation-init.sh)
           .github/scripts/render-templates.sh "$RUNNER_TEMP/rendered" "${templates[@]}"

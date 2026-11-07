@@ -28,13 +28,13 @@ resource "aws_iam_role_policy" "frontend_deploy" {
         Sid      = "SyncFrontendBucket"
         Effect   = "Allow"
         Action   = ["s3:PutObject", "s3:DeleteObject", "s3:ListBucket"]
-        Resource = [data.aws_s3_bucket.frontend.arn, "${data.aws_s3_bucket.frontend.arn}/*"]
+        Resource = [aws_s3_bucket.frontend.arn, "${aws_s3_bucket.frontend.arn}/*"]
       },
       {
         Sid      = "InvalidateCache"
         Effect   = "Allow"
         Action   = "cloudfront:CreateInvalidation"
-        Resource = data.aws_cloudfront_distribution.frontend.arn
+        Resource = aws_cloudfront_distribution.frontend.arn
       }
     ]
   })

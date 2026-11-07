@@ -8,14 +8,6 @@ locals {
   recommendation_asg_arn = "arn:aws:autoscaling:${local.region}:${local.account_id}:autoScalingGroup:*:autoScalingGroupName/${local.recommendation_name}"
   recommendation_state   = "dev-cking-recommendation-state"
   recommendation_hook    = "dev-cking-recommendation-launch"
-
-  # 개발 앱 서버·운영 서버와 같은 AMI(ubuntu-resolute-26.04-arm64-server-20260604)와 Docker 버전(envs/prod/servers.tf).
-  recommendation_ami = "ami-019e063f3fff5d27f"
-  recommendation_docker_versions = {
-    docker_version     = "5:29.8.1-1~ubuntu.26.04~resolute"
-    containerd_version = "2.3.5-1~ubuntu.26.04~resolute"
-    compose_version    = "5.5.1-1~ubuntu.26.04~resolute"
-  }
 }
 
 # 배치 저장소 CI: develop에서 배포 패키지 업로드 → 배포 버전 값 갱신 → 서버 교체 시작.
@@ -102,7 +94,7 @@ resource "aws_ssm_parameter" "recommendation_tag_daily_calls" {
 # 캐시·적재 기록·예산 파일. 잃으면 배치 문서의 복구 절차를 따라야 하므로 지우지 않는다.
 # 쓰임새를 아직 재지 않아 넉넉히 두고, 디스크 여유 경보(20% 미만)가 이 디스크도 본다.
 resource "aws_ebs_volume" "recommendation_state" {
-  availability_zone = data.aws_subnet.public_2a.availability_zone
+  availability_zone = aws_subnet.this["public_2a"].availability_zone
   type              = "gp3"
   size              = 10
   encrypted         = true
@@ -117,7 +109,7 @@ resource "aws_ebs_volume" "recommendation_state" {
 resource "aws_security_group" "recommendation" {
   name        = "dev-cking-recommendation-sg"
   description = "Dev recommendation batch server. No inbound, SSM only"
-  vpc_id      = data.aws_vpc.main.id
+  vpc_id      = aws_vpc.main.id
 
   tags = { Name = "dev-cking-recommendation-sg" }
 }
@@ -218,7 +210,7 @@ resource "aws_iam_instance_profile" "recommendation" {
 # 운영 서버와 같은 공통 준비(envs/prod/templates/server-base.sh)와 부팅 스크립트를 써서 개발에서 같은 부팅 과정을 확인한다.
 resource "aws_launch_template" "recommendation" {
   name          = local.recommendation_name
-  image_id      = local.recommendation_ami
+  image_id      = local.server_ami
   instance_type = "t4g.small"
 
   iam_instance_profile {
@@ -232,7 +224,7 @@ resource "aws_launch_template" "recommendation" {
   }
 
   user_data = base64encode(templatefile("${path.module}/../prod/templates/recommendation-init.sh", {
-    server_base          = templatefile("${path.module}/../prod/templates/server-base.sh", local.recommendation_docker_versions)
+    server_base          = templatefile("${path.module}/../prod/templates/server-base.sh", local.docker_versions)
     asg_name             = local.recommendation_name
     lifecycle_hook       = local.recommendation_hook
     state_volume         = local.recommendation_state
@@ -279,7 +271,7 @@ resource "aws_autoscaling_group" "recommendation" {
   min_size            = 1
   max_size            = 1
   desired_capacity    = 1
-  vpc_zone_identifier = [data.aws_subnet.public_2a.id]
+  vpc_zone_identifier = [aws_subnet.this["public_2a"].id]
   health_check_type   = "EC2"
 
   mixed_instances_policy {

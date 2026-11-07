@@ -31,7 +31,7 @@ resource "aws_sqs_queue_policy" "image_jobs" {
       Action    = "sqs:SendMessage"
       Resource  = aws_sqs_queue.image_jobs.arn
       Condition = {
-        ArnEquals    = { "aws:SourceArn" = data.aws_s3_bucket.uploads.arn }
+        ArnEquals    = { "aws:SourceArn" = aws_s3_bucket.uploads.arn }
         StringEquals = { "aws:SourceAccount" = local.account_id }
       }
     }]
@@ -51,9 +51,9 @@ resource "aws_sqs_queue" "image_results" {
   redrive_policy             = jsonencode({ deadLetterTargetArn = aws_sqs_queue.image_results_dlq.arn, maxReceiveCount = 5 })
 }
 
-# 버킷은 콘솔이 관리하고 알림·CORS·수명 주기만 여기서 관리한다(버킷 정책과 같은 방식, uploads_cdn.tf).
+# 업로드 버킷(buckets.tf)의 raw/ 알림, 브라우저 직접 업로드 CORS, 수명 주기.
 resource "aws_s3_bucket_notification" "uploads" {
-  bucket = data.aws_s3_bucket.uploads.id
+  bucket = aws_s3_bucket.uploads.id
 
   queue {
     queue_arn     = aws_sqs_queue.image_jobs.arn
@@ -65,7 +65,7 @@ resource "aws_s3_bucket_notification" "uploads" {
 }
 
 resource "aws_s3_bucket_cors_configuration" "uploads" {
-  bucket = data.aws_s3_bucket.uploads.id
+  bucket = aws_s3_bucket.uploads.id
 
   cors_rule {
     allowed_methods = ["PUT"]
@@ -75,9 +75,9 @@ resource "aws_s3_bucket_cors_configuration" "uploads" {
   }
 }
 
-# 콘솔에서 만든 구독 인증 30일 규칙을 그대로 옮기고 raw/ 1일 규칙을 더한다.
+# 구독 인증 이미지는 30일, 파이프라인 원본 raw/는 1일 뒤 지운다. 게시글·프로필 이미지는 앱이 지운다.
 resource "aws_s3_bucket_lifecycle_configuration" "uploads" {
-  bucket = data.aws_s3_bucket.uploads.id
+  bucket = aws_s3_bucket.uploads.id
 
   rule {
     id     = "expire-subscription-verifications-30d"
@@ -140,13 +140,13 @@ resource "aws_iam_role_policy" "image_normalizer" {
         Sid      = "ReadRaw"
         Effect   = "Allow"
         Action   = ["s3:GetObject"]
-        Resource = "${data.aws_s3_bucket.uploads.arn}/raw/*"
+        Resource = "${aws_s3_bucket.uploads.arn}/raw/*"
       },
       {
         Sid      = "WriteFinal"
         Effect   = "Allow"
         Action   = ["s3:PutObject"]
-        Resource = [for p in local.image_final_prefixes : "${data.aws_s3_bucket.uploads.arn}/${p}*"]
+        Resource = [for p in local.image_final_prefixes : "${aws_s3_bucket.uploads.arn}/${p}*"]
       },
       {
         Sid      = "Jobs"
@@ -216,7 +216,7 @@ resource "aws_iam_role_policy" "app_server_image_pipeline" {
         Sid      = "PresignRaw"
         Effect   = "Allow"
         Action   = ["s3:PutObject"]
-        Resource = "${data.aws_s3_bucket.uploads.arn}/raw/*"
+        Resource = "${aws_s3_bucket.uploads.arn}/raw/*"
       },
       {
         Sid      = "Results"

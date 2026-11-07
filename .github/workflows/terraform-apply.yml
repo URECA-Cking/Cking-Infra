@@ -8,7 +8,7 @@ on:
       stack:
         description: 스택
         type: choice
-        options: [dev, loadtest-base, prod-base, prod, security, ci]
+        options: [account, dev, loadtest-base, prod-base, prod, security, ci]
       expect:
         description: "기대 개수 추가,변경,삭제(PR plan 댓글의 값, 예: 16,2,0)"
         required: true

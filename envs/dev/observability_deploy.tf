@@ -77,7 +77,7 @@ resource "aws_iam_role_policy" "app_agent_deploy" {
         Sid      = "SendAppAgentDeployCommand"
         Effect   = "Allow"
         Action   = "ssm:SendCommand"
-        Resource = [data.aws_instance.app.arn, "arn:aws:ssm:ap-northeast-2::document/AWS-RunShellScript"]
+        Resource = [aws_instance.app.arn, "arn:aws:ssm:ap-northeast-2::document/AWS-RunShellScript"]
       },
       {
         Sid      = "RefreshRecommendationServer"

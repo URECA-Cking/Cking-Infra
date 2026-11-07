@@ -4,8 +4,8 @@ module "api_waf" {
   source = "../../modules/api-waf"
 
   name               = "dev-cking-api"
-  alb_arn            = data.aws_lb.main.arn
-  api_host           = "dev-api.cking.co.kr"
+  alb_arn            = aws_lb.main.arn
+  api_host           = local.api_host
   mode               = "count"
   log_retention_days = 14
 }
