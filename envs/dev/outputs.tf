@@ -1,5 +1,5 @@
 output "foundation" {
-  description = "개발 기반 리소스와 BE·FE CI에 넣을 값"
+  description = "개발 기반 리소스 ID"
   value = {
     vpc_id                   = aws_vpc.main.id
     alb_arn                  = aws_lb.main.arn
@@ -13,7 +13,7 @@ output "foundation" {
 }
 
 output "admin_frontend" {
-  description = "관리자 앱 배포에 필요한 값"
+  description = "관리자 앱 버킷·배포 ID·배포 역할"
   value = {
     bucket          = aws_s3_bucket.admin_frontend.bucket
     distribution_id = aws_cloudfront_distribution.admin_frontend.id

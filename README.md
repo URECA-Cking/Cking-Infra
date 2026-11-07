@@ -37,13 +37,13 @@ envs/dev/                  개발 환경. 실행 위치
   database.tf              RDS MySQL 8.4 단일 AZ(마스터 비밀번호는 Secrets Manager 관리, 평문 연결 거부), 서브넷·파라미터 그룹, DB_HOST·DB_USERNAME 값
   buckets.tf               업로드·사용자 앱·배포 버킷(퍼블릭 차단, ACL 비활성화, SSE-S3)
   frontend.tf              사용자 앱 정적 호스팅(CloudFront, OAC, WAF, 무료 요금제, 보안 헤더, Route53)
-  app_deploy.tf            BE 개발 배포 GitHub Actions 역할(배포 파일 올리기, 앱 서버에 Run Command)
+  app_deploy.tf            BE 개발 배포 GitHub Actions 역할(배포 파일 올리기, 이름표로 앱 서버 찾기, 앱 서버에 Run Command)
   api_waf.tf               API 앞단 WAF(modules/api-waf)를 개발 ALB에 세기만 상태로 연결
   admin_frontend.tf        관리자 앱 정적 호스팅(S3, CloudFront, WAF, 요금제, Route53)
   uploads_cdn.tf           업로드 이미지 공개 CDN(CloudFront, WAF, 요금제, Route53, 버킷 정책)
   bucket_tls.tf            웹·업로드·관리자·배포 버킷의 TLS 아닌 요청 거부(웹·배포 버킷 정책)
   app_server.tf            앱 서버(t4g.small, 퍼블릭 2a, 공인 IP, 첫 부팅에 Docker·AWS CLI·swap)와 역할(Parameter Store·배포 파일·업로드 버킷 경로·수집기 설정 읽기, 댓글 필터 호출)
-  frontend_deploy.tf       FE 개발 배포 GitHub Actions 역할과 앱별 권한(사용자 앱·관리자 앱 버킷 동기화, 캐시 무효화)
+  frontend_deploy.tf       FE 개발 배포 GitHub Actions 역할과 앱별 권한(사용자 앱·관리자 앱 버킷 동기화, 도메인으로 배포 찾기, 캐시 무효화)
   observability.tf         관측 서버(EC2, 데이터 디스크, 스냅샷, 버킷, IAM, 앱·추천 배치 서버 수집 포트)
   alerts.tf                서버 상태 검사 경보와 메일 주제
   observability_access.tf  Grafana 공개 경로(개발 ALB 규칙 monitoring.cking.co.kr, Google 로그인, 대상 그룹, Route53)
@@ -53,7 +53,7 @@ envs/dev/                  개발 환경. 실행 위치
   alert_actions.tf         경보 AI 진단의 조치 승인 버튼(승인 함수 URL, 실행 함수와 조치별 권한, 서버 조치 SSM 문서, 승인자 목록)
   comment_filter.tf        댓글 필터 이미지 저장소(ECR, 개발·운영 공용), 개발 Lambda(arm64 이미지, 함수 URL IAM 인증, 예약 동시성 2, 이미지는 필터 저장소 CI가 바꿈), 필터 저장소 GitHub Actions 개발 역할(모델 읽기, 이미지 푸시, 개발 Lambda 갱신·호출)
   recommendation.tf        개발 추천 배치 서버(1대짜리 서버 그룹, arm64 스팟 6개 유형, 상태 디스크, 시작 대기 자기 검사, 역할, 비밀이 아닌 값)와 추천 배치 저장소 GitHub Actions 개발 역할(배포 패키지 올리기, 배포 버전 값, 서버 교체)
-  outputs.tf               BE·FE 개발 CI(앱 서버 ID, 사용자 앱 배포 ID)와 관리자 앱 배포·관측 서버·추천 배치 CI·댓글 필터 CI에 넣을 값 출력
+  outputs.tf               개발 기반 리소스 ID, 관리자 앱·관측 서버·추천 배치·댓글 필터 관련 값 출력
   templates/               서버 첫 부팅 스크립트(앱 서버·추천 배치 서버는 운영의 공통 준비 server-base.sh를 앞에 붙이고, 추천 배치 서버는 부팅 스크립트 recommendation-init.sh도 운영과 같이 쓴다)
 envs/loadtest/             부하 테스트 환경. 측정 때 띄우고 끝나면 지운다(loadtest/lt.sh). 상태는 loadtest/terraform.tfstate
   existing.tf              개발 환경 리소스 읽기(data)
@@ -174,7 +174,7 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
      | MYSQL_PWD="$MYSQL_PWD" MYSQL_HISTFILE=/dev/null mysql -h 127.0.0.1 -P 13306 -u admin
    unset MYSQL_PWD APP_PW
    ```
-4. BE·FE 개발 CI의 고정값을 `terraform output foundation`으로 맞춘다: BE `cicd.yml`의 `INSTANCE_ID`(`app_instance_id`), FE `cicd.yml`의 사용자 앱 배포 ID(`frontend_distribution_id`). 그다음 BE·FE develop 배포를 실행한다
+4. BE·FE develop 배포를 실행한다. BE CI는 앱 서버를 이름표 `dev-cking-app`으로, FE CI는 사용자 앱·관리자 앱 배포를 도메인으로 찾는다
 5. 관측 설정과 수집기를 배포한다: `deploy-observability.yml`, 그다음 `deploy-app-agent.yml`(수집기는 앱 compose 네트워크에 붙으므로 첫 BE 배포 뒤)
 
 ## 부하 테스트 환경

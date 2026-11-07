@@ -39,6 +39,13 @@ resource "aws_iam_role_policy" "app_deploy" {
         Resource = [aws_instance.app.arn, "arn:aws:ssm:${local.region}::document/AWS-RunShellScript"]
       },
       {
+        # 앱 서버는 다시 만들면 ID가 바뀐다. BE CI가 이름표로 ID를 찾는다. 이 액션은 리소스를 좁힐 수 없다.
+        Sid      = "FindAppServer"
+        Effect   = "Allow"
+        Action   = "ec2:DescribeInstances"
+        Resource = "*"
+      },
+      {
         Sid      = "ReadCommandResult"
         Effect   = "Allow"
         Action   = "ssm:GetCommandInvocation"
