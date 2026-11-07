@@ -35,6 +35,13 @@ resource "aws_iam_role_policy" "frontend_deploy" {
         Effect   = "Allow"
         Action   = "cloudfront:CreateInvalidation"
         Resource = aws_cloudfront_distribution.frontend.arn
+      },
+      {
+        # 배포를 다시 만들면 ID가 바뀐다. FE CI가 도메인으로 ID를 찾는다. 이 액션은 리소스를 좁힐 수 없다.
+        Sid      = "FindFrontendDistributions"
+        Effect   = "Allow"
+        Action   = "cloudfront:ListDistributions"
+        Resource = "*"
       }
     ]
   })
