@@ -34,9 +34,10 @@ locals {
 }
 
 data "aws_acm_certificate" "cdn" {
-  provider = aws.us_east_1
-  domain   = "*.cking.co.kr"
-  statuses = ["ISSUED"]
+  provider    = aws.us_east_1
+  domain      = "*.cking.co.kr"
+  statuses    = ["ISSUED"]
+  most_recent = true
 }
 
 data "aws_cloudfront_cache_policy" "caching_optimized" {

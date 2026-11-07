@@ -41,9 +41,10 @@ API  api.cking.co.kr
 
 | 환경 | Terraform 스택 | 구성 |
 |---|---|---|
+| 계정 공용 | `envs/account` | Route53 영역 `cking.co.kr`, `*.cking.co.kr` 인증서(서울·us-east-1), GitHub OIDC 공급자, 월 예산. 다른 스택은 이름으로 찾는다 |
 | CI | `envs/ci` | Terraform plan·apply 역할(GitHub OIDC, Environment 승인) |
 | 보안 기준선 | `envs/security` | CloudTrail, GuardDuty, Config, Security Hub, Access Analyzer |
-| 개발 | `envs/dev` | 앱 서버 1대(t4g.small, 앱과 Redis 컨테이너), RDS db.t4g.micro 단일 AZ, 관측 서버, 추천 배치 서버(스팟), 댓글 필터·이미지 정규화 Lambda. VPC·ALB·앱 서버 등 처음 콘솔로 만든 리소스는 `data`로 읽는다 |
+| 개발 | `envs/dev` | 앱 서버 1대(t4g.small, 앱과 Redis 컨테이너), RDS db.t4g.micro 단일 AZ, ALB, 사용자·관리자 앱 CloudFront, 관측 서버, 추천 배치 서버(스팟), 댓글 필터·이미지 정규화 Lambda. 운영·부하 테스트·보안 기준선 스택이 개발 VPC·ALB·관측 서버 등을 이름으로 찾아 쓰므로 먼저 적용한다 |
 | 부하 테스트 | `envs/loadtest`, IAM은 `envs/loadtest-base` | 측정 때만 만들고 지운다. 앱 서버·RDS는 개발과 같은 사양, k6 서버 c7g.medium |
 | 운영 IAM | `envs/prod-base` | 운영 서버·배포 역할. 운영 본체보다 먼저 적용하고 본체를 지워도 남긴다 |
 | 운영 | `envs/prod` | 1절 구성. 별도 VPC `10.1.0.0/16` |
@@ -94,6 +95,8 @@ API  api.cking.co.kr
 | 백업 | 자동 백업 14일·시점 복구, 삭제 방지, 마지막 스냅샷 | |
 | 연결 | TLS 강제(`require_secure_transport`), 앱 전용 계정(스키마 권한만) | 마스터 비밀번호는 RDS가 Secrets Manager에서 관리 |
 
+- 개발은 db.t4g.micro 단일 AZ, 자동 백업 7일이다. 연결 방식(TLS 강제, 앱 전용 계정, 마스터 비밀번호 Secrets Manager 관리)은 운영과 같다
+
 ### 5.2 ElastiCache Valkey
 
 | 항목 | 운영 | 근거 |
@@ -140,7 +143,7 @@ API  api.cking.co.kr
 | 네트워크 | 보안 그룹을 보안 그룹 참조로 연결(ALB → 앱 8080 → RDS·Valkey). 22번 없음 |
 | API 앞단 | WAF(`modules/api-waf`): AWS 관리형 규칙, 업로드 본문 검사 예외, 로그(토큰·쿠키 가림). 개발은 세기만, 운영은 차단. 운영 NAT IP는 규칙을 건너뛴다. IP당 요청 상한은 모듈에 있지만 두 환경 모두 켜지 않았다 |
 | 오픈 전 접근 | 비밀 쿠키 게이트: 웹·관리자는 CloudFront Function, API는 WAF가 쿠키·헤더가 없으면 403(Infra #204·#216). 오픈하는 날 `gate_enabled = false` |
-| 운영 ALB | Host가 `api.cking.co.kr`일 때만 앱으로, 나머지는 404(Infra #257). 헬스체크는 앱 생존만 보는 `/livez`, `/livez`·`/readyz`는 외부에서 막는다 |
+| ALB | 운영은 Host가 `api.cking.co.kr`일 때만 앱으로, 나머지는 404(Infra #257). 개발·운영 모두 헬스체크는 앱 생존만 보는 `/livez`, `/livez`·`/readyz`는 외부에서 막는다 |
 | 정적 파일 | S3 퍼블릭 차단 + CloudFront OAC. 프로필 이미지 경로만 CDN으로 공개, 나머지 이미지는 앱이 권한을 확인한 뒤 사전 서명 GET |
 | 비밀값 | Parameter Store SecureString. 서버가 배포 때 직접 읽고 Actions를 거치지 않는다. 저장소·로그·이미지에 두지 않는다 |
 | CI 인증 | GitHub OIDC, 저장소·브랜치별 역할. 액세스 키 없음 |
@@ -181,6 +184,8 @@ API  api.cking.co.kr
 ## 10. IaC와 CI
 
 - 상태: S3 버킷(버전 관리, S3 잠금). 상태 버킷은 Terraform보다 먼저 있어야 해 콘솔로 만들었다
+- Terraform 밖에 두는 것: 상태 버킷, 사람 IAM 사용자·그룹, 비밀값(사람이 Parameter Store에 넣음), 등록기관(가비아) 네임서버 위임
+- 적용 순서: `envs/account` → `envs/ci` → `envs/dev` → `envs/prod-base` → `envs/prod` → `envs/security`. 계정 공용 리소스와 개발 리소스를 뒤 스택이 이름으로 찾는다. 처음 만드는 `envs/account`·`envs/ci`는 CI 역할이 아직 없어 로컬에서, `envs/dev`는 Lambda 코드를 넣을 배포 버킷이 먼저 있어야 해 로컬에서 두 번에 나눠 적용한다
 - **적용 절차:** PR이 `envs/`·`modules/`를 바꾸면 바뀐 스택만 plan해 주소와 동작을 PR 댓글로 남긴다 → 머지 → main에서 apply 워크플로를 수동 실행(스택, 기대 개수) → 승인 → 다시 plan해 개수가 기대와 같을 때만 적용
 - **공개 저장소 대응:** plan·apply 역할의 신뢰 조건을 GitHub Environment(승인자 필요, apply는 main만)로 묶었다. Environment를 빼면 OIDC `sub`가 달라져 역할을 받지 못하고, 포크 PR은 토큰을 받지 못한다. plan 결과는 값 없이 주소와 동작만 남긴다. plan 역할은 ReadOnlyAccess에서 데이터 읽기(S3 객체·큐 메시지·로그 등)를 막고, plan이 읽는 SecureString만 복호화한다(Infra #256)
 - **PR 검사:** `terraform fmt`·`validate`·tflint, compose 해석, Alloy·Prometheus·Loki·nginx 설정 검사, 대시보드 형식, shellcheck(부팅 스크립트는 템플릿 값을 채워 검사), actionlint, Python 문법, 부하 테스트 시나리오 형식, pytest(경보 진단·부하 테스트 실행기), checkov(받아들인 규칙은 근거와 함께 skip, 근거를 정하지 않은 규칙은 경고만), gitleaks(전체 이력)

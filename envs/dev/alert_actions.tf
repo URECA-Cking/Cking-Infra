@@ -217,7 +217,7 @@ resource "aws_iam_role_policy" "alert_executor" {
         Effect = "Allow"
         Action = "ssm:SendCommand"
         Resource = [
-          data.aws_instance.app.arn,
+          aws_instance.app.arn,
           aws_instance.observability.arn,
           aws_ssm_document.dev_app_restart.arn,
           aws_ssm_document.dev_redis_maxmemory.arn,
@@ -268,7 +268,7 @@ resource "aws_iam_role_policy" "alert_executor" {
         Sid      = "DevServerStopStart"
         Effect   = "Allow"
         Action   = ["ec2:StopInstances", "ec2:StartInstances"]
-        Resource = [data.aws_instance.app.arn, aws_instance.observability.arn]
+        Resource = [aws_instance.app.arn, aws_instance.observability.arn]
       },
     ])
   })
@@ -299,7 +299,7 @@ resource "aws_lambda_function" "alert_actions" {
       STATE_TABLE               = aws_dynamodb_table.alert_analyzer.name
       SLACK_CHANNELS            = jsonencode(local.alert_channels)
       EXECUTOR_FUNCTION         = local.alert_executor_name
-      DEV_APP_INSTANCE_ID       = data.aws_instance.app.id
+      DEV_APP_INSTANCE_ID       = aws_instance.app.id
       OBSERVABILITY_INSTANCE_ID = aws_instance.observability.id
       QUERY_DOCUMENT            = aws_ssm_document.observability_query.name
     }

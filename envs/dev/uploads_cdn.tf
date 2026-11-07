@@ -1,5 +1,5 @@
 resource "aws_s3_bucket_policy" "uploads" {
-  bucket = data.aws_s3_bucket.uploads.id
+  bucket = aws_s3_bucket.uploads.id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -10,8 +10,8 @@ resource "aws_s3_bucket_policy" "uploads" {
         Principal = { Service = "cloudfront.amazonaws.com" }
         Action    = "s3:GetObject"
         Resource = [
-          "${data.aws_s3_bucket.uploads.arn}/member-profile-images/*",
-          "${data.aws_s3_bucket.uploads.arn}/creator-space-profile-images/*",
+          "${aws_s3_bucket.uploads.arn}/member-profile-images/*",
+          "${aws_s3_bucket.uploads.arn}/creator-space-profile-images/*",
         ]
         Condition = { StringEquals = { "AWS:SourceArn" = aws_cloudfront_distribution.uploads.arn } }
       },
@@ -79,7 +79,7 @@ resource "aws_cloudfront_distribution" "uploads" {
 
   origin {
     origin_id                = "uploads-s3"
-    domain_name              = data.aws_s3_bucket.uploads.bucket_regional_domain_name
+    domain_name              = aws_s3_bucket.uploads.bucket_regional_domain_name
     origin_access_control_id = aws_cloudfront_origin_access_control.uploads.id
   }
 

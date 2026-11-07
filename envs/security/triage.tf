@@ -58,7 +58,7 @@ resource "aws_securityhub_automation_rule" "suppress" {
   depends_on = [aws_securityhub_account.this]
 }
 
-# 개발 환경: 비용 구성(단일 AZ RDS, ALB 접근 로그·삭제 보호 없음, 버킷 수명 주기, 승인 버튼 공개 함수 URL은 Slack 서명 검사)
+# 개발 환경: 비용 구성(단일 AZ RDS, ALB 접근 로그·삭제 보호 없음, 버킷 수명 주기, 승인 버튼 공개 함수 URL은 Slack 서명 검사), RDS 버전은 운영과 같게 고정
 resource "aws_securityhub_automation_rule" "suppress_dev" {
   rule_name   = "accepted-dev"
   description = "개발 환경 비용 구성. 승인 버튼 함수 URL은 Slack 서명을 검사한다 (Infra #219)"
@@ -66,7 +66,7 @@ resource "aws_securityhub_automation_rule" "suppress_dev" {
 
   criteria {
     dynamic "compliance_security_control_id" {
-      for_each = ["RDS.5", "RDS.6", "RDS.8", "RDS.9", "ELB.4", "ELB.5", "ELB.6", "S3.13", "Lambda.1", "AutoScaling.2"]
+      for_each = ["RDS.5", "RDS.6", "RDS.8", "RDS.9", "RDS.13", "ELB.4", "ELB.5", "ELB.6", "S3.13", "Lambda.1", "AutoScaling.2"]
       content {
         comparison = "EQUALS"
         value      = compliance_security_control_id.value

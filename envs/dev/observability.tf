@@ -1,7 +1,7 @@
 resource "aws_security_group" "observability" {
   name        = "dev-cking-observability-sg"
   description = "Observability server"
-  vpc_id      = data.aws_vpc.main.id
+  vpc_id      = aws_vpc.main.id
   tags        = { Name = "dev-cking-observability-sg" }
 }
 
@@ -11,7 +11,7 @@ resource "aws_vpc_security_group_ingress_rule" "observability_metrics_from_app" 
   ip_protocol                  = "tcp"
   from_port                    = 9009
   to_port                      = 9009
-  referenced_security_group_id = data.aws_security_group.app.id
+  referenced_security_group_id = aws_security_group.app.id
 }
 
 resource "aws_vpc_security_group_ingress_rule" "observability_logs_from_app" {
@@ -20,7 +20,7 @@ resource "aws_vpc_security_group_ingress_rule" "observability_logs_from_app" {
   ip_protocol                  = "tcp"
   from_port                    = 3500
   to_port                      = 3500
-  referenced_security_group_id = data.aws_security_group.app.id
+  referenced_security_group_id = aws_security_group.app.id
 }
 
 resource "aws_vpc_security_group_ingress_rule" "observability_metrics_from_recommendation" {
@@ -152,7 +152,7 @@ resource "aws_iam_instance_profile" "observability" {
 resource "aws_instance" "observability" {
   ami                         = "ami-01e3230cee0cae555"
   instance_type               = "t4g.small"
-  subnet_id                   = data.aws_subnet.public_2b.id
+  subnet_id                   = aws_subnet.this["public_2b"].id
   private_ip                  = "10.0.21.245"
   vpc_security_group_ids      = [aws_security_group.observability.id]
   iam_instance_profile        = aws_iam_instance_profile.observability.name
@@ -183,7 +183,7 @@ resource "aws_instance" "observability" {
 }
 
 resource "aws_ebs_volume" "observability_data" {
-  availability_zone = data.aws_subnet.public_2b.availability_zone
+  availability_zone = aws_subnet.this["public_2b"].availability_zone
   type              = "gp3"
   size              = 10
   encrypted         = true

@@ -1,3 +1,7 @@
+data "aws_ssm_parameter" "alert_email" {
+  name = "/cking/dev/monitoring/ALERT_EMAIL"
+}
+
 resource "aws_sns_topic" "alerts" {
   name = "dev-cking-alerts"
 }
@@ -11,7 +15,7 @@ resource "aws_sns_topic_subscription" "alerts_email" {
 locals {
   status_check_instances = {
     observability = aws_instance.observability.id
-    app           = data.aws_instance.app.id
+    app           = aws_instance.app.id
   }
 }
 

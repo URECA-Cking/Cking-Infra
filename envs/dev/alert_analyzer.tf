@@ -164,7 +164,7 @@ resource "aws_lambda_function" "alert_analyzer" {
       OBSERVABILITY_INSTANCE_ID = aws_instance.observability.id
       QUERY_DOCUMENT            = aws_ssm_document.observability_query.name
       SLACK_CHANNELS            = jsonencode(local.alert_channels)
-      DEV_APP_INSTANCE_ID       = data.aws_instance.app.id
+      DEV_APP_INSTANCE_ID       = aws_instance.app.id
     }
   }
 

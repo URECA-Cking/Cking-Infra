@@ -7,8 +7,9 @@ locals {
 }
 
 data "aws_acm_certificate" "wildcard" {
-  domain   = "*.cking.co.kr"
-  statuses = ["ISSUED"]
+  domain      = "*.cking.co.kr"
+  statuses    = ["ISSUED"]
+  most_recent = true
 }
 
 data "aws_route53_zone" "main" {
