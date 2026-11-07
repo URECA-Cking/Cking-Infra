@@ -167,15 +167,15 @@ resource "aws_iam_role_policy" "image_normalizer" {
 # 20MP 원본 한 장 디코딩에 픽셀만 약 57MiB. 메모리를 늘리면 CPU도 늘어 처리 시간이 준다.
 # 동시 실행 상한은 몰려도 큐에서 기다리게 해 비용과 버킷 쓰기 속도를 묶는다.
 resource "aws_lambda_function" "image_normalizer" {
-  function_name = local.image_normalizer_name
-  role          = aws_iam_role.image_normalizer.arn
-  runtime       = "python3.13"
-  architectures = ["arm64"]
-  handler       = "handler.handler"
-  s3_bucket     = "dev-cking-deploy-${local.account_id}"
-  s3_key        = "image-normalizer/initial.zip"
-  memory_size   = 1536
-  timeout       = 60
+  function_name    = local.image_normalizer_name
+  role             = aws_iam_role.image_normalizer.arn
+  runtime          = "python3.13"
+  architectures    = ["arm64"]
+  handler          = "handler.handler"
+  filename         = data.archive_file.lambda_bootstrap.output_path
+  source_code_hash = data.archive_file.lambda_bootstrap.output_base64sha256
+  memory_size      = 1536
+  timeout          = 60
 
   reserved_concurrent_executions = 5
 
@@ -188,7 +188,7 @@ resource "aws_lambda_function" "image_normalizer" {
   depends_on = [aws_cloudwatch_log_group.image_normalizer, aws_iam_role_policy.image_normalizer]
 
   lifecycle {
-    ignore_changes = [s3_key, s3_object_version, source_code_hash]
+    ignore_changes = [filename, s3_bucket, s3_key, s3_object_version, source_code_hash]
   }
 }
 

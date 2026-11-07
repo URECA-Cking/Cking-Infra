@@ -19,7 +19,8 @@ terraform.rc
 __pycache__/
 .pytest_cache/
 
-# Lambda 배포 묶음(build.sh 기본 출력)
+# Lambda 배포 묶음(build.sh 기본 출력), 처음 만들 때 쓰는 임시 코드 묶음(lambda_bootstrap.tf)
+**/.build/
 alert-analyzer/dist/
 image-normalizer/dist/
 

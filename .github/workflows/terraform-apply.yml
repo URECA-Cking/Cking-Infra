@@ -49,6 +49,8 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::551372961758:role/cking-terraform-apply
           aws-region: ap-northeast-2
+          # 운영 첫 적용(10-22 52분)이 기본 1시간에 가까워 2시간. 역할 max_session_duration과 같다
+          role-duration-seconds: 7200
 
       - name: plan
         env:

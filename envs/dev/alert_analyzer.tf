@@ -3,8 +3,7 @@
 # 봇 게시가 안 되면 채널 웹훅으로 글자만 보낸다. 조치는 승인자가 버튼을 눌러야 실행된다(alert_actions.tf).
 # 개발 VPC에는 NAT가 없어 Lambda는 VPC 밖에 두고, 관측 서버 Prometheus·Loki 조회는 고정 SSM 문서로만 한다.
 # 모델은 Claude API로 부른다. 이 계정은 Bedrock의 Anthropic 모델이 막혀 있다(403 not available for this account).
-# 함수 코드는 alert-analyzer/ 배포 워크플로가 바꾸므로 Terraform은 비교하지 않는다. 처음 apply 전에 build.sh로 만든 묶음을
-# s3://dev-cking-deploy-<계정 ID>/alert-analyzer/initial.zip 에 올려 둔다.
+# 함수 코드는 alert-analyzer/ 배포 워크플로가 바꾸므로 Terraform은 비교하지 않는다. 처음에는 임시 코드로 만든다(lambda_bootstrap.tf).
 
 locals {
   alert_analyzer_name = "dev-cking-alert-analyzer"
@@ -145,15 +144,15 @@ resource "aws_iam_role_policy" "alert_analyzer" {
 # 경보 1건은 26~36초였다. 응답이 멈춘 호출이 실행 상한까지 가도 0.5GB×600초로 $0.004라 넉넉히 둔다.
 # 동시에 여러 경보가 와도 두 개까지만 진단해 비용이 한꺼번에 늘지 않게 한다.
 resource "aws_lambda_function" "alert_analyzer" {
-  function_name = local.alert_analyzer_name
-  role          = aws_iam_role.alert_analyzer.arn
-  runtime       = "python3.13"
-  architectures = ["arm64"]
-  handler       = "handler.handler"
-  s3_bucket     = "dev-cking-deploy-${local.account_id}"
-  s3_key        = "alert-analyzer/initial.zip"
-  memory_size   = 512
-  timeout       = 600
+  function_name    = local.alert_analyzer_name
+  role             = aws_iam_role.alert_analyzer.arn
+  runtime          = "python3.13"
+  architectures    = ["arm64"]
+  handler          = "handler.handler"
+  filename         = data.archive_file.lambda_bootstrap.output_path
+  source_code_hash = data.archive_file.lambda_bootstrap.output_base64sha256
+  memory_size      = 512
+  timeout          = 600
 
   reserved_concurrent_executions = 2
 
@@ -171,7 +170,7 @@ resource "aws_lambda_function" "alert_analyzer" {
   depends_on = [aws_cloudwatch_log_group.alert_analyzer, aws_iam_role_policy.alert_analyzer]
 
   lifecycle {
-    ignore_changes = [s3_key, s3_object_version, source_code_hash]
+    ignore_changes = [filename, s3_bucket, s3_key, s3_object_version, source_code_hash]
   }
 }
 
