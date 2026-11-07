@@ -281,15 +281,15 @@ resource "aws_lambda_function" "alert_actions" {
     (local.alert_executor_name) = { handler = "executor.handler", timeout = 900 }
   }
 
-  function_name = each.key
-  role          = aws_iam_role.alert_actions[each.key].arn
-  runtime       = "python3.13"
-  architectures = ["arm64"]
-  handler       = each.value.handler
-  s3_bucket     = "dev-cking-deploy-${local.account_id}"
-  s3_key        = "alert-analyzer/initial.zip"
-  memory_size   = 256
-  timeout       = each.value.timeout
+  function_name    = each.key
+  role             = aws_iam_role.alert_actions[each.key].arn
+  runtime          = "python3.13"
+  architectures    = ["arm64"]
+  handler          = each.value.handler
+  filename         = data.archive_file.lambda_bootstrap.output_path
+  source_code_hash = data.archive_file.lambda_bootstrap.output_base64sha256
+  memory_size      = 256
+  timeout          = each.value.timeout
 
   # 조치는 한 번에 하나만 돈다
   reserved_concurrent_executions = each.key == local.alert_executor_name ? 1 : 2
@@ -308,7 +308,7 @@ resource "aws_lambda_function" "alert_actions" {
   depends_on = [aws_cloudwatch_log_group.alert_actions]
 
   lifecycle {
-    ignore_changes = [s3_key, s3_object_version, source_code_hash]
+    ignore_changes = [filename, s3_bucket, s3_key, s3_object_version, source_code_hash]
   }
 }
 

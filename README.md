@@ -52,6 +52,7 @@ envs/dev/                  개발 환경. 실행 위치
   image_pipeline.tf        이미지 업로드 이벤트 파이프라인(작업·결과 큐와 DLQ, 업로드 버킷 raw/ 알림·CORS·수명 주기, 정규화 Lambda와 역할, 앱 서버 raw/ 쓰기·결과 큐 읽기, 결과 큐 주소 Parameter Store, DLQ 경보, CI 코드 배포 권한)
   alert_actions.tf         경보 AI 진단의 조치 승인 버튼(승인 함수 URL, 실행 함수와 조치별 권한, 서버 조치 SSM 문서, 승인자 목록)
   comment_filter.tf        댓글 필터 이미지 저장소(ECR, 개발·운영 공용), 개발 Lambda(arm64 이미지, 함수 URL IAM 인증, 예약 동시성 2, 이미지는 필터 저장소 CI가 바꿈), 필터 저장소 GitHub Actions 개발 역할(모델 읽기, 이미지 푸시, 개발 Lambda 갱신·호출)
+  lambda_bootstrap.tf      zip 함수를 처음 만들 때 쓰는 임시 코드 묶음(archive_file). 실제 코드는 배포 워크플로가 넣는다
   recommendation.tf        개발 추천 배치 서버(1대짜리 서버 그룹, arm64 스팟 6개 유형, 상태 디스크, 시작 대기 자기 검사, 역할, 비밀이 아닌 값)와 추천 배치 저장소 GitHub Actions 개발 역할(배포 패키지 올리기, 배포 버전 값, 서버 교체)
   outputs.tf               개발 기반 리소스 ID, 관리자 앱·관측 서버·추천 배치·댓글 필터 관련 값 출력
   templates/               서버 첫 부팅 스크립트(앱 서버·추천 배치 서버는 운영의 공통 준비 server-base.sh를 앞에 붙이고, 추천 배치 서버는 부팅 스크립트 recommendation-init.sh도 운영과 같이 쓴다)
@@ -87,6 +88,7 @@ envs/prod/                 운영 환경. 상태는 prod/terraform.tfstate
   app.tf                   앱 서버 오토스케일링 그룹(c6g.large 2~4대, 서버당 분당 요청 6,300건 목표 추적, 교체 배포, 시작 대기 중 자기 스모크 검사)
   cdn.tf                   CloudFront(종량제, WAF 없음): cking.co.kr(www 이동)·admin.cking.co.kr 프론트(gate_enabled면 비밀 쿠키 게이트 함수), images.cking.co.kr 프로필 이미지
   comment_filter.tf        운영 댓글 필터 Lambda(arm64 이미지, 함수 URL IAM 인증, 예약 동시성 8, 이미지는 필터 저장소 main CI가 개발에서 확인한 이미지로 바꿈)
+  lambda_bootstrap.tf      이미지 정규화 함수를 처음 만들 때 쓰는 임시 코드 묶음(archive_file)
   image_pipeline.tf        이미지 업로드 이벤트 파이프라인(작업·결과 큐와 DLQ, 업로드 버킷 raw/ 알림·CORS, 정규화 Lambda와 SQS 연결 최대 동시성, DLQ 경보). 결과 큐 주소 Parameter Store는 image_pipeline_enabled일 때만
   alarms.tf                AWS 서비스 경보(ALB, 서버 띄우기 실패, ElastiCache, RDS) → SNS → 운영 채널(Amazon Q)·메일. 같은 SNS가 GuardDuty 경보(envs/security)도 받는다
   k6.tf                    운영 부하 테스트 k6 서버(modules/k6-server, k6_enabled일 때만, 프라이빗 앱 서브넷 2a)
@@ -155,10 +157,11 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
    - 앱 서버가 배포 때 읽는 `/cking/dev/` 값은 BE `deploy/deploy.sh`의 필수 목록이다. `DB_PASSWORD`는 앱 계정(`cking_app`) 비밀번호다. `COMMENT_FILTER_BASE_URL`은 적용 뒤 `terraform output comment_filter`의 함수 URL을 넣는다
    - 관측 서버(`/cking/dev/monitoring/`)·추천 배치 서버(`/cking/dev-recommendation/`)가 읽는 나머지 값
    - Terraform이 만드는 값: `/cking/dev/DB_HOST`, `/cking/dev/DB_USERNAME`, `/cking/dev/IMAGE_PIPELINE_RESULTS_QUEUE_URL`, `/cking/dev/monitoring/AI_ACTION_APPROVERS`, `/cking/dev-recommendation/CKING_BE_URL`·`CKING_TAG_DAILY_CALLS`
-2. Lambda가 처음 읽을 코드·이미지가 있어야 하므로 두 번에 나눠 적용한다(로컬)
+2. 댓글 필터 함수는 ECR의 가장 최근 이미지로 만들어지므로 두 번에 나눠 적용한다(로컬)
    - 배포 버킷과 필터 이미지 저장소만 먼저 만든다: `terraform apply -target=aws_s3_bucket.deploy -target=aws_ecr_repository.comment_filter`
-   - `alert-analyzer/build.sh`·`image-normalizer/build.sh`로 만든 묶음을 배포 버킷의 `alert-analyzer/initial.zip`·`image-normalizer/initial.zip`에 올리고, 댓글 필터 이미지를 ECR에 올린다. 함수의 처음 이미지는 `comment_filter.tf`의 digest이므로 새로 빌드한 이미지면 그 digest로 바꾼다
+   - 필터 모델을 배포 버킷 `filter/models/<모델 이름>/best/`에 올리고(필터 저장소 CI가 이미지를 빌드할 때 읽는다), 필터 이미지를 ECR에 올린다(필터 저장소 README "모델")
    - 전체를 적용한다: `terraform plan -out=tfplan` → `terraform apply tfplan`
+   - 경보 진단(승인·실행 포함)·이미지 정규화 함수는 임시 코드(`lambda_bootstrap.tf`)로 만들어진다. 적용 뒤 Actions `deploy-alert-analyzer`·`deploy-image-normalizer`를 main에서 실행해 실제 코드를 넣는다
 3. 앱 DB 계정(`cking_app`, `cking` 스키마 권한만)을 처음 한 번 만든다. 운영과 같은 방법이고, 경유지는 앱 서버다(Mac 터미널 1):
    ```bash
    APP_ID=$(aws ec2 describe-instances --region ap-northeast-2 --filters Name=tag:Name,Values=dev-cking-app Name=instance-state-name,Values=running --query 'Reservations[0].Instances[0].InstanceId' --output text)
@@ -205,6 +208,8 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
    - RDS 마스터 비밀번호는 RDS가 Secrets Manager에 만들고 교체하므로 넣지 않는다
    - 비밀 쿠키 게이트 값 `/cking/prod/GATE_SECRET`(`openssl rand -hex 24`). Terraform이 읽어 CloudFront 함수(웹·관리자)와 API WAF 규칙에 넣으므로 상태 파일에 남는다. 팀원 입장 주소는 `https://cking.co.kr/?gate=<값>`이고 30일 쿠키가 생긴다. 정식 오픈 때 `gate_enabled`를 끈다
 3. `envs/prod`를 `terraform-apply.yml`로 적용한다. 비밀이 아닌 값은 Terraform이 만든다: `/cking/prod/`의 `DB_HOST`, `DB_USERNAME`, `REDIS_HOST`, `REDIS_USERNAME`, `COMMENT_FILTER_BASE_URL`, `IMAGE_PIPELINE_RESULTS_QUEUE_URL`(`image_pipeline_enabled`일 때), `/cking/prod-monitor/`의 `REDIS_HOST`·`REDIS_USERNAME`, `/cking/prod-recommendation/`의 `CKING_BE_URL`·`CKING_TAG_DAILY_CALLS`
+   - Amazon Q에 Slack 워크스페이스를 연결하지 않은 계정에서는 `-var` 값 `slack_alerts_enabled=false`로 적용한다(운영 경보 SNS의 메일·경보 진단 구독은 그대로). 연결은 콘솔 OAuth로만 된다
+   - 이미지 정규화 함수는 임시 코드로 만들어진다. 적용 뒤 Actions `deploy-image-normalizer`를 main에서 실행한다(운영 job은 저장소 변수 `IMAGE_NORMALIZER_PROD=true`일 때). 댓글 필터 함수는 ECR의 가장 최근 이미지로 만들어진다
    - 추천 배치 서버는 배치 저장소 main의 첫 운영 배포 전까지 배포 버전 값이 없어 시작 대기에서 버려지기를 반복한다. 켜는 순서는 [추천 배치 서버](docs/runbooks/recommendation-batch.md#운영에서-다른-점)
 4. 앱 DB 계정(`cking_app`, `cking` 스키마 권한만)을 처음 한 번 만든다. 앱은 마스터가 아닌 이 계정으로 접속한다. Mac에 Session Manager 플러그인, `mysql` 클라이언트, `python3`가 필요하다
    - `/cking/prod/DB_PASSWORD`에 앱 계정 비밀번호를 SecureString으로 넣는다

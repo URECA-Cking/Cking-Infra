@@ -42,12 +42,18 @@ resource "aws_iam_role_policy" "comment_filter_function" {
   })
 }
 
+# 처음 만들 때는 저장소의 가장 최근 이미지를 쓴다. 이후 이미지는 필터 저장소 CI가 바꾸므로 비교하지 않는다.
+data "aws_ecr_image" "comment_filter" {
+  repository_name = data.aws_ecr_repository.comment_filter.name
+  most_recent     = true
+}
+
 # 메모리·실행 상한은 개발과 같다(로컬 측정 최대 메모리 약 962MB, 개발 콜드 스타트 최대 53.5초에 각각 2배 여유).
 resource "aws_lambda_function" "comment_filter" {
   function_name = local.comment_filter_function
   role          = aws_iam_role.comment_filter_function.arn
   package_type  = "Image"
-  image_uri     = "${data.aws_ecr_repository.comment_filter.repository_url}@sha256:5e646701ee3e1240fdf6a6152d5dc7bb7c2da94560c8c9396b3e6d7582dc0d00"
+  image_uri     = "${data.aws_ecr_repository.comment_filter.repository_url}@${data.aws_ecr_image.comment_filter.image_digest}"
   architectures = ["arm64"]
   memory_size   = 2048
   timeout       = 120
