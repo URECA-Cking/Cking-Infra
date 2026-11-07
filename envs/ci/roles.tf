@@ -109,7 +109,7 @@ resource "aws_iam_role_policy" "plan" {
 resource "aws_iam_role" "apply" {
   name                 = "cking-terraform-apply"
   assume_role_policy   = data.aws_iam_policy_document.trust["terraform-apply"].json
-  max_session_duration = 3600
+  max_session_duration = 7200
 }
 
 resource "aws_iam_role_policy_attachment" "apply_admin" {
