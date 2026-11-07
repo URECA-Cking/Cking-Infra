@@ -100,7 +100,15 @@ resource "aws_iam_role_policy_attachment" "chatbot" {
 }
 
 # Amazon Q 설정은 서울 리전 API가 없어 지원 리전에서 만든다. 구독하는 SNS 주제는 서울에 있어도 된다.
+variable "slack_alerts_enabled" {
+  description = "Amazon Q에 Slack 워크스페이스를 연결한 계정에서만 true(연결은 콘솔 OAuth)"
+  type        = bool
+  default     = true
+}
+
 resource "aws_chatbot_slack_channel_configuration" "alerts" {
+  count = var.slack_alerts_enabled ? 1 : 0
+
   region                = "us-west-2"
   configuration_name    = "prod-cking-alerts"
   iam_role_arn          = aws_iam_role.chatbot.arn
