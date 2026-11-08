@@ -2,7 +2,7 @@
 
 > 전제: 개발 서버 1대(`dev-cking-app`), Docker Compose, Cking-BE `deploy.sh` 배포
 
-5xx 응답이 전체 요청의 5%를 넘고 5분 지속될 때. 요청이 초당 0.1건 이상일 때만 판단한다(헬스체크 `/livez`·`/readyz` 제외). 급함(`@channel`).
+5xx 응답이 전체 요청의 5%를 넘고 5분 지속될 때. 요청이 초당 0.1건 이상일 때만 판단한다(헬스 경로 `/livez`·`/readyz` 제외). 급함(`@channel`).
 
 ## 뜻하는 것
 

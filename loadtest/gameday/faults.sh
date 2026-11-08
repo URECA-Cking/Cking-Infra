@@ -61,7 +61,7 @@ victim=$(apps | head -1 | cut -f1)
 log "4 앱 메모리 초과 $victim"
 ssm_root "$victim" "docker update --memory 700m --memory-swap 700m cking-app >/dev/null; for i in \$(seq 1 60); do [ \$(docker inspect -f {{.State.OOMKilled}} cking-app) = true ] && break; sleep 1; done; docker update --memory 1800m --memory-swap 1800m cking-app >/dev/null; docker inspect -f 'oom={{.State.OOMKilled}} restarts={{.RestartCount}} running={{.State.Running}}' cking-app" | sed 's/^/  /' | tee -a "$LOG"
 
-# 5. 가용 영역 하나의 앱 계층 잃기: app-2a 서브넷에 ALB → 앱 8080을 막는 임시 NACL을 붙였다가 8분 뒤 되돌린다
+# 5. 가용 영역 하나의 앱 계층 잃기: app-2a 서브넷에 ALB → 앱 8080(요청)·8081(헬스체크)을 막는 임시 NACL을 붙였다가 8분 뒤 되돌린다
 at 40
 SUB=$(aws ec2 describe-subnets --region $R --filters Name=tag:Name,Values=prod-cking-subnet-app-2a --query 'Subnets[0].SubnetId' --output text)
 VPC=$(aws ec2 describe-subnets --region $R --subnet-ids "$SUB" --query 'Subnets[0].VpcId' --output text)
@@ -70,7 +70,7 @@ ASSOC=$(aws ec2 describe-network-acls --region $R --filters Name=association.sub
 ORIG=$(aws ec2 describe-network-acls --region $R --filters Name=association.subnet-id,Values="$SUB" --query 'NetworkAcls[0].NetworkAclId' --output text)
 NACL=$(aws ec2 create-network-acl --region $R --vpc-id "$VPC" --tag-specifications 'ResourceType=network-acl,Tags=[{Key=Name,Value=gameday-az-2a}]' --query NetworkAcl.NetworkAclId --output text)
 n=10; for c in 10.1.0.0/20 10.1.16.0/20; do
-  aws ec2 create-network-acl-entry --region $R --network-acl-id "$NACL" --ingress --rule-number $n --protocol tcp --port-range From=8080,To=8080 --cidr-block $c --rule-action deny; n=$((n+1)); done
+  aws ec2 create-network-acl-entry --region $R --network-acl-id "$NACL" --ingress --rule-number $n --protocol tcp --port-range From=8080,To=8081 --cidr-block $c --rule-action deny; n=$((n+1)); done
 aws ec2 create-network-acl-entry --region $R --network-acl-id "$NACL" --ingress --rule-number 100 --protocol -1 --cidr-block 0.0.0.0/0 --rule-action allow
 aws ec2 create-network-acl-entry --region $R --network-acl-id "$NACL" --egress --rule-number 100 --protocol -1 --cidr-block 0.0.0.0/0 --rule-action allow
 NEWASSOC=$(aws ec2 replace-network-acl-association --region $R --association-id "$ASSOC" --network-acl-id "$NACL" --query NewAssociationId --output text)
