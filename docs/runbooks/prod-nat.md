@@ -30,8 +30,9 @@ sysctl net.ipv4.ip_forward
 
 ## 원인별 대응
 
-`forwarding` 경보는 NAT 인스턴스가 1분마다 보내는 `Cking/NAT ForwardingReady`(전달 서비스 active, `ip_forward=1`, 기본 경로 장치로 마스커레이드 규칙이 있으면 1)로 판단한다. 상태 검사 경보 없이 이것만 울리면 아래 둘 중 하나다.
+`forwarding` 경보는 NAT 인스턴스가 1분마다 보내는 `Cking/NAT ForwardingReady`(전달 서비스 active, `ip_forward=1`, 기본 경로 장치로 마스커레이드 규칙이 있으면 1)로 판단한다. 상태 검사 경보 없이 이것만 울리면 아래 셋 중 하나다.
 
+- **처음 만들거나 교체한 직후**(인스턴스 시작 2분 안, 1분쯤 뒤 OK): 경보가 첫 지표(시작 약 50초 뒤) 전에 평가되면 부팅 전 빈 구간을 지표 없음으로 세어 울린다. 대응하지 않는다. 2026-11-08 운영 첫 적용에서 2b가 14:33:55 ALARM → 14:34:55 OK, 지표는 처음부터 1
 - **인스턴스가 멈춤**(위 표에서 `stopped`): `aws ec2 start-instances --region ap-northeast-2 --instance-ids <ID>`. EIP와 경로는 그대로라 켜지면 돌아온다
 - **지표만 끊김**(인스턴스·서비스 정상): `systemctl status cking-nat-check.timer cking-nat-check.service --no-pager`와 `journalctl -u cking-nat-check -n 20`. awscli가 없으면 `sudo apt-get install -y awscli`
 

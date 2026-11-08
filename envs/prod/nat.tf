@@ -109,7 +109,8 @@ resource "aws_cloudwatch_metric_alarm" "nat_instance_check" {
 }
 
 # 상태 검사는 EC2·OS만 본다. 전달 서비스가 실패하거나 인스턴스가 멈추면 그대로 통과해 따로 본다.
-# 5분은 첫 부팅(지표 시작 1분 + awscli 설치, 측정하지 않음)에 여유를 둔 값이다.
+# 멈춘 인스턴스는 지표가 끊기므로 지표 없음을 위반으로 본다. 그래서 인스턴스와 같이 처음 만들 때 첫 지표(시작 약 50초 뒤) 전에
+# 평가되면 부팅 전 빈 구간까지 위반으로 세어 1분쯤 울렸다가 OK가 된다(런북 prod-nat.md).
 resource "aws_cloudwatch_metric_alarm" "nat_forwarding" {
   for_each = local.nat_zones
 
