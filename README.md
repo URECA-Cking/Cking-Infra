@@ -142,8 +142,8 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
 2. `envs/account`
    - 예산 알림 메일을 Parameter Store `/cking/account/BUDGET_EMAIL`(String)에 넣는다
    - 영역만 먼저 만든다: `terraform apply -target=aws_route53_zone.main`
-   - 출력 `route53_name_servers`를 가비아의 `cking.co.kr` 네임서버로 바꾼다. 인증서 DNS 검증은 위임이 끝나야 통과한다
-   - 전체를 적용한다: `terraform apply`. 인증서 두 장이 발급될 때까지 기다린다
+   - 출력 `route53_name_servers`를 가비아의 `cking.co.kr` 네임서버로 바꾼다. 인증서 DNS 검증은 위임이 끝나야 통과한다. 위임은 `dig +norec NS cking.co.kr @c.dns.kr`의 권한 부분(`+short`는 비어 나온다)에 새 네임서버가 나오면 끝난 것이다
+   - 위임이 끝난 뒤 전체를 적용한다: `terraform apply`. 인증서 두 장이 발급될 때까지 기다린다. 위임 전에 시작해 검증이 시간 초과(1시간 15분)로 끝난 인증서는 위임 뒤에도 발급이 늦다(2026-11-08 14분 넘게 대기, 새로 만든 인증서는 1분 36초). 쓰는 곳이 없는 첫 구축이면 `terraform apply -replace=aws_acm_certificate.regional -replace=aws_acm_certificate.cloudfront`로 새로 만든다
 3. `envs/ci`. 그다음 GitHub 저장소에 Environment `terraform-plan`·`terraform-apply`(승인자, apply는 main만)를 둔다
 4. 개발 환경([개발 환경](#개발-환경))
 5. 운영 환경([운영 환경](#운영-환경))
@@ -159,7 +159,7 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
    - Terraform이 만드는 값: `/cking/dev/DB_HOST`, `/cking/dev/DB_USERNAME`, `/cking/dev/IMAGE_PIPELINE_RESULTS_QUEUE_URL`, `/cking/dev/monitoring/AI_ACTION_APPROVERS`, `/cking/dev-recommendation/CKING_BE_URL`·`CKING_TAG_DAILY_CALLS`
 2. 댓글 필터 함수는 ECR의 가장 최근 이미지로 만들어지므로 두 번에 나눠 적용한다(로컬)
    - 배포 버킷과 필터 이미지 저장소만 먼저 만든다: `terraform apply -target=aws_s3_bucket.deploy -target=aws_ecr_repository.comment_filter`
-   - 필터 모델을 배포 버킷 `filter/models/<모델 이름>/best/`에 올리고(필터 저장소 CI가 이미지를 빌드할 때 읽는다), 필터 이미지를 ECR에 올린다(필터 저장소 README "모델")
+   - 필터 모델을 배포 버킷 `filter/models/<모델 이름>/best/`에 올리고(필터 저장소 CI가 이미지를 빌드할 때 읽는다), 필터 이미지를 ECR에 올린다. 필터 저장소 CI 역할은 전체 적용에서 만들어지므로 첫 이미지는 로컬에서 CI와 같은 순서로 올린다: 필터 저장소 develop 최신 커밋에서 `scripts/build-image.sh filter:check` → `scripts/check-image.sh filter:check`(필터 저장소 README "배포", Docker·`jq` 필요) → `cking-comment-filter:<커밋 12자리>`로 푸시. 필터 CI는 개발 Lambda의 이미지 태그를 커밋으로 읽어 이력을 비교하므로, 태그가 커밋이 아니면 다음 개발 배포가 멈춘다
    - 전체를 적용한다: `terraform plan -out=tfplan` → `terraform apply tfplan`
    - 경보 진단(승인·실행 포함)·이미지 정규화 함수는 임시 코드(`lambda_bootstrap.tf`)로 만들어진다. 적용 뒤 Actions `deploy-alert-analyzer`·`deploy-image-normalizer`를 main에서 실행해 실제 코드를 넣는다
 3. 앱 DB 계정(`cking_app`, `cking` 스키마 권한만)을 처음 한 번 만든다. 운영과 같은 방법이고, 경유지는 앱 서버다(Mac 터미널 1):
@@ -179,6 +179,7 @@ Terraform이 관리하는 리소스에는 `ManagedBy = terraform` 태그가 붙�
    ```
 4. BE·FE develop 배포를 실행한다. BE CI는 앱 서버를 이름표 `dev-cking-app`으로, FE CI는 사용자 앱·관리자 앱 배포를 도메인으로 찾는다
 5. 관측 설정과 수집기를 배포한다: `deploy-observability.yml`, 그다음 `deploy-app-agent.yml`(수집기는 앱 compose 네트워크에 붙으므로 첫 BE 배포 뒤)
+6. 추천 배치·필터 저장소의 develop 배포를 실행한다. 추천 배치 서버는 부팅 때 관측 버킷의 수집기 설정(`app-agent/`)을 받아 실행하므로 5번 뒤에 한다(없으면 부팅 스크립트가 실패해 시작 대기에서 버려지고, 교체가 20분 시간 초과로 실패한다). 필터 저장소 CI는 2번에서 올린 이미지를 같은 태그로 받아 확인하고 개발 Lambda를 바꾼다
 
 ## 부하 테스트 환경
 
