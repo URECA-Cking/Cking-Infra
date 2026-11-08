@@ -57,4 +57,11 @@ resource "aws_flow_log" "vpc" {
 resource "aws_inspector2_enabler" "this" {
   account_ids    = [local.account_id]
   resource_types = ["EC2", "ECR", "LAMBDA"]
+
+  # 빈 계정에서 켜기·끄기가 기본 5분을 넘었다.
+  timeouts {
+    create = "15m"
+    update = "15m"
+    delete = "15m"
+  }
 }
