@@ -58,6 +58,13 @@
    echo "$RULE"   # 9단계에서 지운다
    ```
 
+   규칙은 만든 바로 뒤에는 적용되지 않는다(2026-11-08 훈련: 7초 뒤 요청은 200, 19초 안에 503). 503이 나오는 것을 본 뒤 5단계로 간다. 운영 앱 서버의 요청은 운영 NAT IP로 나가 WAF 게이트를 건너뛴다
+
+   ```bash
+   # 운영 앱 서버
+   curl -s -o /dev/null -w '%{http_code}\n' https://api.cking.co.kr/api/events   # 503
+   ```
+
 5. Stream 처리를 기다린다. [Stream 런북](stream.md#운영-상태-확인)으로 모든 Stream의 `lag`·`pending`이 0인지 본다. 남은 메시지는 옛 DB에 반영되고 끝나야 한다. 전환 뒤에 남아 있으면 새 서버가 복원 DB에 복원 시각 이후의 일부 쓰기를 넣는다
 6. 앱을 복원 DB로 돌린다. 새 서버를 먼저 띄우고 옛 서버를 뺀다
 
@@ -87,6 +94,8 @@
    # Mac
    aws elbv2 delete-rule --region ap-northeast-2 --rule-arn "$RULE"
    ```
+
+   푼 뒤에도 바로 200이 나오지 않는다(2026-11-08 훈련: 19초 안에 200). 4단계와 같은 요청이 200인 것을 본다
 
 10. Terraform을 맞춘다. `DB_HOST`는 Terraform이 관리하므로, 복원 DB를 계속 쓸 거면 `envs/prod`의 DB 리소스를 복원 DB로 가져오는(import) PR을 만든다. 그 전에 `envs/prod`를 apply하면 `DB_HOST`가 옛 DB로 돌아간다
 
