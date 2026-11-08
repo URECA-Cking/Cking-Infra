@@ -100,7 +100,7 @@ envs/prod/                 운영 환경. 상태는 prod/terraform.tfstate
 envs/prod-base/            운영 환경 EC2 역할·인스턴스 프로필과 RDS 모니터링 역할. 운영 서버보다 먼저 만들고 운영 환경을 지워도 남긴다. 상태는 prod-base/terraform.tfstate
   iam.tf                   앱 서버·추천 배치 서버·감시용 서버·NAT 인스턴스·k6 서버 역할, RDS Enhanced Monitoring 역할(SSM, 운영 비밀값·배포 파일·업로드 버킷, 수집기 설정 읽기, 댓글 필터 호출, 이미지 파이프라인 raw/ 쓰기·결과 큐 읽기, 앱·추천 배치 서버 시작 대기 끝내기, 추천 배치 상태 디스크 붙이기, k6 실행기의 운영 앱 서버 명령·결과 쓰기. NAT 인스턴스는 SSM만)
   outputs.tf               인스턴스 프로필 이름
-envs/ci/                   Terraform을 GitHub Actions로 plan·apply하는 역할. plan은 읽기 전용(데이터 읽기 거부, plan에 필요한 비밀값 5개만 복호화), apply는 관리자. 신뢰는 GitHub Environment terraform-plan·terraform-apply(승인자 필요). 상태는 ci/terraform.tfstate
+envs/ci/                   Terraform을 GitHub Actions로 plan·apply하는 역할. plan은 읽기 전용(데이터 읽기 거부, ReadOnlyAccess에 없는 CloudFront 요금제 구독 읽기 추가, plan에 필요한 비밀값 5개만 복호화), apply는 관리자. 신뢰는 GitHub Environment terraform-plan·terraform-apply(승인자 필요). 상태는 ci/terraform.tfstate
   roles.tf                 plan·apply 역할
 envs/security/             계정 보안 기준선. 환경과 상관없이 계정에 하나. 상태는 security/terraform.tfstate
   logs.tf                  감사 로그 버킷(CloudTrail·Config·VPC 흐름 로그 공용, 1년 보관)과 CloudTrail 추적(전 리전, 관리 이벤트, 로그 파일 검증)

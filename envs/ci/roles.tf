@@ -59,6 +59,13 @@ resource "aws_iam_role_policy_attachment" "plan_read_only" {
 
 # ReadOnlyAccess는 데이터도 읽는다(업로드 이미지·구독 인증 화면, 로그, 큐 메시지, 경보 기록). plan은 설정만 읽으면 되므로 막는다.
 data "aws_iam_policy_document" "plan" {
+  # ReadOnlyAccess에 없다. 개발 CloudFront 요금제 구독(awscc_pricingplanmanager_subscription)을 읽는 데 필요하다.
+  statement {
+    sid       = "ReadPricingPlanSubscriptions"
+    actions   = ["pricingplanmanager:GetSubscription"]
+    resources = ["*"]
+  }
+
   # SecureString 기본 키(aws/ssm)는 키 정책이 계정 안의 SSM 경유 복호화를 이미 허용한다. 허용 목록으로는 줄어들지 않아 거부로 막는다.
   statement {
     sid       = "DenyDecryptExceptPlanSecrets"
