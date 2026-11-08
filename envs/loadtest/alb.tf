@@ -7,6 +7,15 @@ resource "aws_vpc_security_group_ingress_rule" "app_from_alb" {
   referenced_security_group_id = data.aws_security_group.alb.id
 }
 
+resource "aws_vpc_security_group_ingress_rule" "app_management_from_alb" {
+  security_group_id            = aws_security_group.app.id
+  description                  = "ALB health check"
+  ip_protocol                  = "tcp"
+  from_port                    = 8081
+  to_port                      = 8081
+  referenced_security_group_id = data.aws_security_group.alb.id
+}
+
 # 헬스체크·등록 해제 대기는 개발 앱 대상 그룹(dev-cking-app-tg)과 같다.
 resource "aws_lb_target_group" "app" {
   name                 = "${var.env_name}-cking-app-tg"
@@ -17,7 +26,8 @@ resource "aws_lb_target_group" "app" {
   deregistration_delay = 300
 
   health_check {
-    path                = "/livez"
+    port                = "8081"
+    path                = "/actuator/health/liveness"
     matcher             = "200"
     interval            = 10
     healthy_threshold   = 2

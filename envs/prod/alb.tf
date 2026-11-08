@@ -1,4 +1,4 @@
-# 운영 API 입구. HTTPS만 받는다. 헬스체크는 앱 생존만 보는 /livez, 배포 확인은 서버 안에서 /readyz.
+# 운영 API 입구. HTTPS만 받는다. 헬스체크는 관리 포트(8081)의 liveness로 앱 생존만, 배포 확인은 서버 안에서 /readyz.
 # 해제 대기는 앱 종료 대기(stop_grace_period 90초)와 맞춰, 서버를 교체할 때 진행 중인 요청을 끊지 않는다.
 
 locals {
@@ -44,12 +44,30 @@ resource "aws_vpc_security_group_egress_rule" "alb_to_app" {
   referenced_security_group_id = aws_security_group.app.id
 }
 
+resource "aws_vpc_security_group_egress_rule" "alb_to_app_management" {
+  security_group_id            = aws_security_group.alb.id
+  description                  = "App health check"
+  ip_protocol                  = "tcp"
+  from_port                    = 8081
+  to_port                      = 8081
+  referenced_security_group_id = aws_security_group.app.id
+}
+
 resource "aws_vpc_security_group_ingress_rule" "app_from_alb" {
   security_group_id            = aws_security_group.app.id
   description                  = "ALB"
   ip_protocol                  = "tcp"
   from_port                    = 8080
   to_port                      = 8080
+  referenced_security_group_id = aws_security_group.alb.id
+}
+
+resource "aws_vpc_security_group_ingress_rule" "app_management_from_alb" {
+  security_group_id            = aws_security_group.app.id
+  description                  = "ALB health check"
+  ip_protocol                  = "tcp"
+  from_port                    = 8081
+  to_port                      = 8081
   referenced_security_group_id = aws_security_group.alb.id
 }
 
@@ -78,8 +96,10 @@ resource "aws_lb_target_group" "app" {
   deregistration_delay = 90
 
   # DB·Redis까지 보는 /readyz로 검사하면 공유 의존성 장애에 모든 서버가 비정상이 되고 그룹이 멀쩡한 서버를 교체한다.
+  # 서비스 포트(8080)는 DB·Redis를 기다리는 요청이 요청 스레드를 다 잡으면 /livez도 시간 초과된다. 관리 포트는 별도 웹 서버다.
   health_check {
-    path                = "/livez"
+    port                = "8081"
+    path                = "/actuator/health/liveness"
     matcher             = "200"
     interval            = 10
     timeout             = 5
@@ -139,7 +159,7 @@ resource "aws_lb_listener" "http" {
   }
 }
 
-# 헬스체크 경로(/livez는 ALB, /readyz는 서버 안 배포 검사)는 외부에 열지 않는다. 앱 응답 형식과 같은 404를 돌려준다.
+# 서비스 포트의 헬스 경로(/livez, 서버 안 배포 검사의 /readyz)는 외부에 열지 않는다. 앱 응답 형식과 같은 404를 돌려준다.
 resource "aws_lb_listener_rule" "block_readyz" {
   listener_arn = aws_lb_listener.https.arn
   priority     = 1

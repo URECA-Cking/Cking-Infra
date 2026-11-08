@@ -1,4 +1,4 @@
-# 들어오는 길은 보안 그룹 참조로만 연다: 인터넷 → ALB 80·443 → 앱 8080 → RDS 3306.
+# 들어오는 길은 보안 그룹 참조로만 연다: 인터넷 → ALB 80·443 → 앱 8080(헬스체크 8081) → RDS 3306.
 # 나가는 길은 ALB·앱 모두 전부 연다. ALB는 앱·관측 서버·부하 테스트 앱과 Google 로그인(OIDC) 토큰 주소로, 앱은 이미지·AWS API·외부 API로 나간다.
 
 resource "aws_security_group" "alb" {
@@ -39,6 +39,15 @@ resource "aws_vpc_security_group_ingress_rule" "app_from_alb" {
   ip_protocol                  = "tcp"
   from_port                    = 8080
   to_port                      = 8080
+  referenced_security_group_id = aws_security_group.alb.id
+}
+
+resource "aws_vpc_security_group_ingress_rule" "app_management_from_alb" {
+  security_group_id            = aws_security_group.app.id
+  description                  = "ALB health check"
+  ip_protocol                  = "tcp"
+  from_port                    = 8081
+  to_port                      = 8081
   referenced_security_group_id = aws_security_group.alb.id
 }
 

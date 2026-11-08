@@ -31,8 +31,8 @@ envs/dev/                  개발 환경. 실행 위치
   providers.tf             리전, 계정 고정, 공통 태그
   account.tf               envs/account의 영역·인증서·OIDC 공급자를 이름으로 찾기(data)
   network.tf               VPC 10.0.0.0/16, AZ 2a·2b의 퍼블릭·프라이빗 서브넷, 인터넷 게이트웨이, 경로 테이블, S3 게이트웨이 엔드포인트(프라이빗 경로)
-  security_groups.tf       ALB(80·443)·앱(ALB에서 8080)·RDS(앱에서 3306) 보안 그룹
-  alb.tf                   ALB(HTTPS, HTTP는 443으로 이동, 헬스체크 /livez, /livez·/readyz 외부 차단), dev-api.cking.co.kr
+  security_groups.tf       ALB(80·443)·앱(ALB에서 8080·헬스체크 8081)·RDS(앱에서 3306) 보안 그룹
+  alb.tf                   ALB(HTTPS, HTTP는 443으로 이동, 헬스체크 관리 포트 8081 liveness, /livez·/readyz 외부 차단), dev-api.cking.co.kr
   servers.tf               앱 서버·추천 배치 서버가 같이 쓰는 AMI·Docker 버전(운영과 같음)
   database.tf              RDS MySQL 8.4 단일 AZ(마스터 비밀번호는 Secrets Manager 관리, 평문 연결 거부), 서브넷·파라미터 그룹, DB_HOST·DB_USERNAME 값
   buckets.tf               업로드·사용자 앱·배포 버킷(퍼블릭 차단, ACL 비활성화, SSE-S3)
@@ -61,7 +61,7 @@ envs/loadtest/             부하 테스트 환경. 측정 때 띄우고 끝나�
   variables.tf             환경 이름, 서버·RDS 크기, Docker 버전, 정리 기한(ttl_hours)
   app_server.tf            앱 서버(개발 앱 서버와 같은 AMI·크기·Docker 버전·swap)
   rds.tf                   RDS(개발 RDS와 같은 사양, 빈 DB)
-  alb.tf                   개발 ALB에 loadtest-api.cking.co.kr 경로(헬스체크는 개발 대상 그룹과 같은 /livez)
+  alb.tf                   개발 ALB에 loadtest-api.cking.co.kr 경로(헬스체크는 개발 대상 그룹과 같은 8081 liveness)
   k6.tf                    k6 서버와 서버 지표 수집기
   parameters.tf            /cking/loadtest/ 중 비밀이 아닌 값
   outputs.tf               앱 서버 ID·주소, API 주소
@@ -84,7 +84,7 @@ envs/prod/                 운영 환경. 상태는 prod/terraform.tfstate
   monitor.tf               감시용 서버(오토스케일링 그룹 1대, t4g.micro, 앱 서브넷 2a·2b)
   recommendation.tf        추천 배치 서버(1대짜리 서버 그룹, t4g.small 온디맨드, 앱 서브넷 2a, 상태 디스크, 시작 대기 자기 검사, 비밀이 아닌 값)와 추천 배치 저장소 GitHub Actions 운영 역할(개발 패키지 복사, 배포 버전 값, 서버 교체)
   buckets.tf               배포·업로드·ALB 접근 로그·웹·관리자 프론트 버킷(업로드 버킷 raw/ 1일 수명 주기)
-  alb.tf                   ALB(HTTPS, 헬스체크 /livez, /livez·/readyz 외부 차단, 접근 로그), api.cking.co.kr, API 앞단 WAF(차단, 운영 NAT IP 허용, 비밀 쿠키 게이트)
+  alb.tf                   ALB(HTTPS, 헬스체크 관리 포트 8081 liveness, /livez·/readyz 외부 차단, 접근 로그), api.cking.co.kr, API 앞단 WAF(차단, 운영 NAT IP 허용, 비밀 쿠키 게이트)
   app.tf                   앱 서버 오토스케일링 그룹(c6g.large 2~4대, 서버당 분당 요청 6,300건 목표 추적, 교체 배포, 시작 대기 중 자기 스모크 검사)
   cdn.tf                   CloudFront(종량제, WAF 없음): cking.co.kr(www 이동)·admin.cking.co.kr 프론트(gate_enabled면 비밀 쿠키 게이트 함수), images.cking.co.kr 프로필 이미지
   comment_filter.tf        운영 댓글 필터 Lambda(arm64 이미지, 함수 URL IAM 인증, 예약 동시성 8, 이미지는 필터 저장소 main CI가 개발에서 확인한 이미지로 바꿈)
