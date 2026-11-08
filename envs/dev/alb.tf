@@ -1,5 +1,5 @@
 # 개발 API 입구. 같은 ALB에 Grafana(observability_access.tf)와 부하 테스트 앱(envs/loadtest) 호스트 규칙이 붙는다.
-# 헬스체크는 운영과 같이 앱 생존만 보는 /livez다. 배포 확인은 서버 안의 deploy.sh가 /readyz로 한다.
+# 헬스체크는 운영과 같이 관리 포트(8081)의 liveness로 앱 생존만 본다. 배포 확인은 서버 안의 deploy.sh가 /readyz로 한다.
 
 locals {
   api_host       = "dev-api.cking.co.kr"
@@ -24,7 +24,8 @@ resource "aws_lb_target_group" "app" {
   vpc_id   = aws_vpc.main.id
 
   health_check {
-    path                = "/livez"
+    port                = "8081"
+    path                = "/actuator/health/liveness"
     matcher             = "200"
     interval            = 10
     timeout             = 5
