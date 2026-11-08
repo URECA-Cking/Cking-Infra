@@ -1,5 +1,6 @@
-# NAT 방식. gateway는 AZ마다 관리형 NAT Gateway, instance는 AZ마다 t4g.nano NAT 인스턴스다.
-# 운영 NAT를 지나는 데이터가 하루 1GB 안팎이라 비용 대부분이 켜 둔 시간 요금이다(게이트웨이 월 약 $86, 인스턴스 약 $9).
+# NAT 방식. gateway는 AZ마다 관리형 NAT Gateway, instance는 AZ마다 t4g.micro NAT 인스턴스다.
+# t4g.nano(512MB)는 Inspector 검사·apt가 메모리 부족으로 죽어 SSM 에이전트와 전달 확인 지표가 끊겼다.
+# 운영 NAT를 지나는 데이터가 하루 1GB 안팎이라 비용 대부분이 켜 둔 시간 요금이다(게이트웨이 월 약 $86, 인스턴스 약 $17).
 # 인스턴스는 패치·복구를 직접 맡는 대신 하드웨어 고장은 시스템 검사 경보가 같은 인스턴스로 복구하고(EIP·주소 유지), OS가 멈추면 재부팅한다.
 
 variable "nat_mode" {
@@ -39,7 +40,7 @@ resource "aws_instance" "nat" {
   for_each = local.nat_zones
 
   ami                    = local.server_ami
-  instance_type          = "t4g.nano"
+  instance_type          = "t4g.micro"
   subnet_id              = aws_subnet.this["public-${each.key}"].id
   vpc_security_group_ids = [aws_security_group.nat.id]
   iam_instance_profile   = "prod-cking-nat-role"

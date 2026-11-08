@@ -1,6 +1,6 @@
 # 운영 NAT 인스턴스 경보
 
-> 전제: `nat_mode = "instance"`(envs/prod/nat.tf). AZ마다 NAT 인스턴스 `prod-cking-nat-2a`·`prod-cking-nat-2b`(t4g.nano, 퍼블릭 서브넷, EIP), 같은 AZ 앱 서브넷의 바깥 경로가 그 인스턴스로 간다. 데이터 서브넷은 바깥 경로가 없다
+> 전제: `nat_mode = "instance"`(envs/prod/nat.tf). AZ마다 NAT 인스턴스 `prod-cking-nat-2a`·`prod-cking-nat-2b`(t4g.micro, 퍼블릭 서브넷, EIP), 같은 AZ 앱 서브넷의 바깥 경로가 그 인스턴스로 간다. 데이터 서브넷은 바깥 경로가 없다
 
 | 경보 | 조건 | 자동 조치 |
 | --- | --- | --- |
