@@ -196,7 +196,7 @@ resource "aws_lambda_function" "image_normalizer" {
 resource "aws_lambda_event_source_mapping" "image_jobs" {
   event_source_arn        = aws_sqs_queue.image_jobs.arn
   function_name           = aws_lambda_function.image_normalizer.arn
-  batch_size              = 1
+  batch_size              = 10
   function_response_types = ["ReportBatchItemFailures"]
 
   scaling_config {
