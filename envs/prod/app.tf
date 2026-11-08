@@ -124,4 +124,7 @@ resource "aws_autoscaling_policy" "app_requests" {
     }
     target_value = 6300
   }
+
+  # 대상 그룹이 리스너 규칙으로 ALB에 붙기 전이면 ALBRequestCountPerTarget 정책을 만들 수 없다.
+  depends_on = [aws_lb_listener_rule.app]
 }
