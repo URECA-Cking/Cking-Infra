@@ -1,7 +1,7 @@
 # 이미지 업로드 이벤트 파이프라인(개발 envs/dev/image_pipeline.tf와 같은 구성). 브라우저가 업로드 버킷 raw/<최종 키>에
 # 사전 서명 PUT으로 올리면 S3 이벤트 → 작업 큐 → 정규화 Lambda → 최종 키 저장 → 결과 큐 → 앱이 업로드 기록을 완료로 바꾼다.
-# 앱은 결과 큐 주소(Parameter Store)가 있을 때만 이 경로를 쓴다. 인프라를 먼저 만들고 켜기 전·후를 잰 뒤
-# image_pipeline_enabled로 주소를 넣는다. 개발 측정 결과는 Infra #228·BE #780.
+# 앱은 결과 큐 주소(Parameter Store)가 있을 때만 이 경로를 쓴다. 주소는 image_pipeline_enabled(기본 켬)가 넣는다.
+# 개발 측정 결과는 Infra #228·BE #780.
 
 variable "image_pipeline_enabled" {
   description = "앱이 이미지 파이프라인을 쓰게 결과 큐 주소를 Parameter Store에 넣는다. 다음 앱 배포(서버 교체)부터 적용. 10-29 운영에서 켬"
@@ -143,8 +143,8 @@ resource "aws_iam_role_policy" "image_normalizer" {
   })
 }
 
-# 메모리·실행 상한·동시성은 개발과 같다. 개발 측정: 처리 p95 0.58초·최대 0.80초, 메모리 최대 266MB(메모리를 늘리면
-# CPU도 늘어 처리 시간이 준다), 동시 5에서 초당 약 7~8건. 큐 대기(가장 오래된 메시지)가 30초에 가까워지면 동시성을 올린다.
+# 메모리·실행 상한·동시성은 개발과 같다. 개발 측정(동시 5·배치 10)에서 초당 약 8건, 호출 처리 최대 5.2초다(설계서 6절).
+# 메모리를 늘리면 CPU도 늘어 처리 시간이 준다. 큐 대기(가장 오래된 메시지)가 30초에 가까워지면 동시성을 올린다.
 resource "aws_lambda_function" "image_normalizer" {
   function_name    = local.image_normalizer_name
   role             = aws_iam_role.image_normalizer.arn

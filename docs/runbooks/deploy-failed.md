@@ -1,6 +1,6 @@
 # 배포 실패
 
-> 전제: 앱은 Cking-BE `cicd.yml` → S3 → SSM → 앱 서버 `deploy.sh`. 관측 설정·앱 서버 수집기는 이 저장소의 `deploy-observability.yml`, `deploy-app-agent.yml` → S3 → SSM → `apply.sh`. Lambda 코드는 이 저장소의 `deploy-alert-analyzer.yml`, `deploy-image-normalizer.yml` → `build.sh` 묶음 → S3 → `update-function-code`
+> 전제: 앱은 Cking-BE `cicd.yml` → S3 → SSM → 앱 서버 `deploy.sh`. 관측 설정·앱 서버 수집기는 이 저장소의 `deploy-observability.yml`, `deploy-app-agent.yml` → S3 → SSM → `apply.sh`(수집기는 그 뒤 개발 추천 배치 서버를 교체한다). Lambda 코드는 이 저장소의 `deploy-alert-analyzer.yml`, `deploy-image-normalizer.yml` → `build.sh` 묶음 → S3 → `update-function-code`
 
 GitHub Actions에서 배포 워크플로가 실패했을 때.
 
@@ -68,7 +68,7 @@ aws s3 ls s3://prod-cking-deploy-551372961758-ap-northeast-2-an/releases/
 
 ## 관측 설정·앱 서버 수집기 배포 (이 저장소)
 
-- 실패 로그는 `관측 서버에 적용`·`앱 서버에 적용` 단계에 `apply.sh` 출력으로 남는다
+- 실패 로그는 `관측 서버에 적용`·`앱 서버에 적용` 단계에 `apply.sh` 출력으로 남는다. `추천 배치 서버 교체` 단계가 실패하면(20분 안에 끝나지 않거나 교체 실패) [추천 배치 서버](recommendation-batch.md#먼저-볼-곳)
 - `apply.sh`는 바뀐 컨테이너만 다시 만든다. 실패하면 일부 컨테이너만 새 설정일 수 있다. 출력의 `docker compose ps`로 상태를 본다
 - 설정 오류면 고치는 PR을 머지하거나, 되돌리는 PR(`git revert`)을 머지한다. 머지하면 다시 배포된다
 - 일시적 오류(이미지 pull, SSM)면 Actions에서 Re-run 또는 Run workflow

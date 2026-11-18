@@ -1,5 +1,5 @@
 # 개발 MySQL. 단일 AZ, 프라이빗 서브넷. 마스터 비밀번호는 RDS가 Secrets Manager에서 만들고 교체해 아무도 입력하지 않는다.
-# 앱은 마스터가 아닌 앱 전용 계정으로 접속한다. 앱 계정은 RDS가 뜬 뒤 SQL로 만든다(README 개발 환경 절차).
+# 앱은 마스터가 아닌 앱 전용 계정으로 접속한다. 앱 계정은 RDS가 뜬 뒤 SQL로 만든다(docs/setup.md 개발 환경).
 # 서브넷 그룹·파라미터 그룹 이름은 부하 테스트 RDS(envs/loadtest)가 이름으로 같이 쓴다.
 
 resource "aws_db_subnet_group" "main" {

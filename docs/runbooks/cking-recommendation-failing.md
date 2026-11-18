@@ -31,12 +31,12 @@ sudo jq '{status, source, stages}' /var/lib/cking-content/summary.json
 
 - `BACKEND_REQUEST_FAILED`: BE에 닿지 못했거나 5xx를 받았다. BE 배포 중이면 끝나고 풀린다. 계속되면 [앱 중단](cking-app-down.md) 경보와 BE 로그를 본다
 - `BACKEND_AUTHORIZATION_FAILED`: BE가 배치 키를 거절했다(401/403). 배치의 `CKING_CONTENT_TAG_ACCESS_TOKEN`·`CKING_RECOMMENDATION_API_KEY`와 BE의 해시(`/cking/dev/CKING_CONTENT_TAG_TOKEN_HASH`, `/cking/dev/CKING_RECOMMENDATION_API_KEY_HASHES`)가 짝이 맞는지 본다. 값을 바꿨다면 BE는 재배포, 배치는 서버 교체가 있어야 반영된다
-- `PROVIDER_FAILURE`: 공급자(OpenAI) 호출이나 응답 검증이 실패했다. 다음 실행에서 다시 호출한다. 계속되면 공급자 상태와 지출 한도(OpenAI 월 $15)를 본다
+- `PROVIDER_FAILURE`: 공급자(OpenAI) 호출이나 응답 검증이 실패했다. 다음 실행에서 다시 호출한다. 계속되면 공급자 상태와 지출 한도(OpenAI 월 \$15)를 본다
 - `FINAL_PROVIDER_FAILURE`: 같은 입력이 3번 실패했다. 원인을 해결한 뒤 [콘텐츠 작업자 운영](https://github.com/URECA-Cking/Cking-LLM-Benchmark/blob/develop/docs/guides/content-worker.md)의 수동 재시도 절차를 따른다
 - `DAILY_BUDGET_EXHAUSTED`: 하루 호출 상한(`CKING_TAG_DAILY_CALLS`, 100번)을 다 썼다. UTC 자정(한국 09:00)에 풀린다. 개발 크리에이터 수(11명)에 비해 많이 쓴 것이므로 같은 입력을 반복 호출하는지 `budget-<날짜>.json`과 `records/*/attempts.json`부터 본다
 - `TAXONOMY_NOT_APPROVED`, `CONFIGURATION_MISMATCH`: BE에 등록된 taxonomy·생성 설정 해시가 배포 패키지와 다르다. 패키지를 새로 배포했다면 CI 요약의 `configHash`와 BE `creator_content_taxonomy`를 비교하고, 바뀌었으면 승인을 받아 새로 등록한다
 - `INPUT_REFRESH_REQUIRED`: 처리 중 소개가 바뀌어 BE가 409를 돌려줬다. 다음 실행이 입력을 다시 읽는다. `PERSISTENT_INPUT_CONFLICT`로 넘어가면 작업자 운영 문서의 409 복구 절차를 따른다
-- `RECOMMENDATION_FAILED`: 태그 다음 단계인 추천 계산·적재가 실패했다. 임베딩 공급자(DeepInfra) 상태와 지출 한도(월 $5)를 본다
+- `RECOMMENDATION_FAILED`: 태그 다음 단계인 추천 계산·적재가 실패했다. 임베딩 공급자(DeepInfra) 상태와 지출 한도(월 \$5)를 본다
 - `WORKER_STARTUP_FAILED`: 환경 파일이나 패키지 문제다. 서버의 부팅 로그(`/var/log/cloud-init-output.log`)를 본다
 
 ## 해결 확인

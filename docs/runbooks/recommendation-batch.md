@@ -81,4 +81,5 @@ Grafana Explore(Loki)에서 작업자 로그는 `{instance="dev-cking-recommenda
   2. 운영 DB `creator_content_taxonomy`에 승인 taxonomy 등록 → `OPENAI_API_KEY`·`DEEPINFRA_API_KEY`(개발 값) → 서버 교체(타이머 켜짐). taxonomy 없이 키만 넣으면 타이머가 켜져 입력 조회가 막히고 [추천 배치 실패 반복](cking-recommendation-failing.md)이 울린다
   - taxonomy 행은 배포 패키지의 taxonomy 파일·해시 계산 코드와 생성 설정 해시가 개발 등록 때와 같으면 개발 DB의 행과 같다. 넣은 뒤 배치 서버에서 배치 토큰으로 `GET /api/internal/content-tags/inputs`가 200·`taxonomyApproved: true`이고 해시가 패키지와 같은지 본다
 - 운영 데이터를 되돌릴 때 배치를 이미 켰다면 타이머를 멈추고 taxonomy를 다시 등록한 뒤 상태 폴더를 비운다. 작업자는 BE를 주소로만 구분해 예전 DB에 보낸 기록을 새 DB에도 보낸 것으로 본다
+- 수집기 설정이 바뀌어도 운영 서버는 교체되지 않는다(수집기 배포 워크플로는 개발 그룹만 교체). 다음 배치 배포(서버 교체) 때 반영된다
 - 운영을 내릴 때는 상태 디스크의 `prevent_destroy`를 먼저 뺀다

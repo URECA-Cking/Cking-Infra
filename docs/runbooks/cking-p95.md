@@ -27,7 +27,7 @@
 - GC 정지가 큼: 힙 부족. **크킹 앱 → 힙·힙 밖** 추세로 BE 이슈
 - Hikari 대기: [DB 연결 대기](cking-hikari-pending.md)
 - CPU가 높고 크레딧은 남음: 요청량이 서버 처리 한계에 닿았다. 서버 1대(t4g.small)는 응모 초당 250부터 CPU 83% 이상이고 DB 연결 10개를 다 쓴다(부하 테스트 2차). 요청이 몰린 상황이면 지나가길 기다린다
-- **크킹 앱 → Redis 명령 평균 시간 (앱 쪽)**이 큼: Redis가 늦게 응답한다. 앱에 Redis 명령 제한 시간이 없어(Lettuce 기본 60초) 요청이 그만큼 묶인다. Redis 상태는 [응모 실패 (Redis 쓰기 거부)](cking-redis-rejected.md#먼저-볼-곳)의 명령으로 본다
+- **크킹 앱 → Redis 명령 평균 시간 (앱 쪽)**이 큼: Redis가 늦게 응답한다. Redis 명령 제한 시간은 1초라 요청이 최대 1초 묶인 뒤 실패한다. Redis 상태는 [응모 실패 (Redis 쓰기 거부)](cking-redis-rejected.md#먼저-볼-곳)의 명령으로 본다
 
 ## 해결 확인
 
