@@ -103,3 +103,19 @@ env = { RATE = "80", DURATION = "20m" }
 - 운영 k6 역할(`prod-cking-k6-role`, `envs/prod-base`): 운영 앱 서버(그룹 이름표 `prod-cking-app`)에만 `AWS-RunShellScript`, 명령 결과·서버·그룹·대상 조회, 그룹 자동 교체 멈춤·재개, `loadtest-cking-query`로 넘어가기, 결과 버킷 `prod/` 읽기·쓰기, 운영 경보 Slack 웹훅. 앱 서버에서 root 명령이 되는 권한이라 k6 서버를 평소에 두지 않는다
 - 비밀 쿠키 게이트: 운영 k6 서버는 프라이빗 서브넷이라 NAT 공인 IP로 나가고, WAF는 NAT IP를 게이트보다 먼저 허용한다(`allow-internal`, 우선순위 0). 그래서 헤더 없이 통과한다. 운영 경보·감시 서버와 같은 경로다
 - 끝난 뒤 운영 데이터 되돌리기(관리자만 남김)와 JWT_SECRET 교체(BE 문서 1·4·8단계)는 실행기가 하지 않는다
+
+## 수동 실행
+
+`lt.sh`가 하는 일을 직접 실행하는 순서다. `envs/loadtest-base`는 역할 외에 결과 버킷(`loadtest-cking-results-…`), 지표 조회 역할(`loadtest-cking-query`), 남은 리소스 정리기(`loadtest-cking-janitor`, `cking:ttl-hours` 태그가 붙은 서버·RDS를 기한 뒤 멈춤)를 만든다.
+
+1. `envs/loadtest-base`를 `terraform-apply.yml`로 적용한다. 앱 서버·k6 서버 IAM 역할을 만든다. 처음 한 번만 하고, 테스트 환경을 지워도 남긴다(서버와 같은 apply로 만들면 역할이 전파되기 전에 부팅해 SSM 에이전트가 붙지 않는다)
+2. Parameter Store `/cking/loadtest/`에 비밀값을 SecureString으로 넣는다: `DB_PASSWORD`, `JWT_SECRET`, `ADMIN_ACCOUNT_LOGIN_ID`, `ADMIN_ACCOUNT_PASSWORD`, `DOCS_USERNAME`, `DOCS_PASSWORD`. 나머지 값은 Terraform이 만든다
+3. `envs/loadtest`에서 `terraform plan -out=tfplan` → `terraform apply tfplan`
+4. 앱 배포: 개발 서버에 떠 있는 이미지 태그로 앱 서버에서 `aws s3 cp s3://dev-cking-deploy-551372961758/releases/<태그>/deploy.sh /opt/cking/deploy.sh` 뒤 `PARAM_PATH=/cking/loadtest/ bash /opt/cking/deploy.sh <태그>`(BE CI가 개발 서버에 배포하는 방식과 같다). 측정 내내 같은 태그를 쓴다
+5. 앱 서버 수집기: 앱 서버에서 `aws s3 sync --exact-timestamps s3://<관측 버킷>/app-agent/ /opt/app-agent/` 뒤 `CKING_INSTANCE=loadtest-cking-app CKING_CADVISOR=1 bash /opt/app-agent/apply.sh`. 수집기는 앱 compose의 네트워크(`cking_default`)에 붙으므로 앱 배포 뒤에 적용한다
+6. 측정이 끝나면 `envs/loadtest`에서 `terraform destroy`. `envs/loadtest-base`의 역할과 Parameter Store 비밀값은 다음 측정에 다시 쓰므로 남긴다. 그만 쓸 때 직접 지운다
+
+- 앱 주소는 `https://loadtest-api.cking.co.kr`(개발 ALB, 443 규칙 우선순위 200)
+- k6 결과 지표는 `k6 run -o experimental-prometheus-rw <스크립트>`로 관측 서버에 보낸다. 주소는 k6 서버의 `/etc/profile.d/k6.sh`
+- k6는 Access Token을 실행 중에 직접 서명한다. 비밀값은 환경변수로만 넘긴다: `JWT_SECRET="$(aws ssm get-parameter --region ap-northeast-2 --name /cking/loadtest/JWT_SECRET --with-decryption --query Parameter.Value --output text)" k6 run -o experimental-prometheus-rw <스크립트>`
+- 이름표: 앱 서버 `loadtest-cking-app`, k6 서버 `loadtest-cking-k6`
