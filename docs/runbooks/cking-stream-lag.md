@@ -43,4 +43,4 @@ idle은 짧은데 lag가 줄지 않는다. 소비자는 서버마다 응모 Stre
 ## 운영에서 다른 점
 
 - 소비자가 서버마다 있으므로, 처리가 느릴 때 서버 대수를 늘리면 동시 처리가 는다. DB가 병목이면 효과가 없으므로 RDS CPU(CloudWatch)를 먼저 본다
-- 대수 조정: `aws autoscaling set-desired-capacity --region ap-northeast-2 --auto-scaling-group-name prod-cking-app --desired-capacity 3` (최대 4). 목표 추적 정책이 CPU 기준으로 다시 줄일 수 있다
+- 대수 조정: `aws autoscaling set-desired-capacity --region ap-northeast-2 --auto-scaling-group-name prod-cking-app --desired-capacity 3` (최대 4). 목표 추적 정책(서버당 분당 요청 6,300건)이 다시 줄일 수 있다

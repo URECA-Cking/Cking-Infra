@@ -37,5 +37,5 @@ free -m
 
 ## 운영에서 다른 점
 
-- 운영 앱 서버에는 Redis가 없다(앱 상한 1000MiB + 수집기 256MiB, swap 1GiB). 감시용 서버는 t4g.micro(1GiB, swap 1GiB)에 수집기만 돈다. 운영 추천 배치 서버는 개발과 같다
+- 운영 앱 서버에는 Redis가 없다(앱 상한 1,800MiB + 수집기 256MiB, swap 1GiB). 감시용 서버는 t4g.micro(1GiB, swap 1GiB)에 수집기만 돈다. 운영 추천 배치 서버는 개발과 같다
 - 원인을 본 뒤 고치기 어려우면 서버를 교체한다([운영](README.md#운영))

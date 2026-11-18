@@ -160,7 +160,7 @@ API  api.cking.co.kr
 | BE 운영 | main push → 빌드 → 서버 교체: 새 서버가 같은 태그로 뜬 뒤 스모크로 자기 검사를 통과해야 ALB에 들어가고 옛 서버를 뺀다. 실패하면 새 서버를 버리고, ALB 경로 스모크가 실패하면 이전 태그로 한 번 자동 교체. 버려진 새 서버가 그룹 크기의 2배가 되면 교체를 실패로 보고 취소한다(AWS가 버려진 서버를 다시 띄워 교체가 30분 동안 끝나지 않았다. 판정 약 9분, [`gameday.md`](gameday.md) 9절) |
 | FE | 빌드 → S3 동기화 → CloudFront 무효화. 배포 ID는 도메인으로 찾는다 |
 | 댓글 필터·추천 배치 | main에서 다시 빌드하지 않고 개발 CI가 확인한 산출물을 올린다(필터는 이미지 digest 확인, 배치는 sha256·`verified` 확인) |
-| 관측 설정·수집기 | main 머지 → S3 → SSM으로 서버의 `apply.sh`(바뀐 서비스만 다시 만듦). 운영 서버(앱·감시용·추천 배치)는 부팅 때 S3에서 받는다 |
+| 관측 설정·수집기 | main 머지 → S3 → SSM으로 관측 서버·개발 앱 서버의 `apply.sh`(바뀐 서비스만 다시 만듦). 개발 추천 배치 서버는 교체하고, 운영 서버(앱·감시용·추천 배치)는 부팅 때 S3에서 받는다 |
 
 - 배포 job은 저장소 변수 `DEPLOY_ENABLED`가 `true`일 때만 돈다
 - 연속 머지는 취소하지 않고 순서대로 모두 배포하며, 이미 배포된 커밋보다 오래된 커밋은 건너뛴다
@@ -189,7 +189,7 @@ API  api.cking.co.kr
 - 적용 순서: `envs/account` → `envs/ci` → `envs/dev` → `envs/prod-base` → `envs/prod` → `envs/security`. 계정 공용 리소스와 개발 리소스를 뒤 스택이 이름으로 찾는다. 처음 만드는 `envs/account`·`envs/ci`는 CI 역할이 아직 없어 로컬에서, `envs/dev`는 Lambda 코드를 넣을 배포 버킷이 먼저 있어야 해 로컬에서 두 번에 나눠 적용한다
 - **적용 절차:** PR이 `envs/`·`modules/`를 바꾸면 바뀐 스택만 plan해 주소와 동작을 PR 댓글로 남긴다 → 머지 → main에서 apply 워크플로를 수동 실행(스택, 기대 개수) → 승인 → 다시 plan해 개수가 기대와 같을 때만 적용
 - **공개 저장소 대응:** plan·apply 역할의 신뢰 조건을 GitHub Environment(승인자 필요, apply는 main만)로 묶었다. Environment를 빼면 OIDC `sub`가 달라져 역할을 받지 못하고, 포크 PR은 토큰을 받지 못한다. plan 결과는 값 없이 주소와 동작만 남긴다. plan 역할은 ReadOnlyAccess에서 데이터 읽기(S3 객체·큐 메시지·로그 등)를 막고, ReadOnlyAccess에 없는 CloudFront 요금제 구독 읽기를 더하고, plan이 읽는 SecureString만 복호화한다(Infra #256)
-- **PR 검사:** `terraform fmt`·`validate`·tflint, compose 해석, Alloy·Prometheus·Loki·nginx 설정 검사, 대시보드 형식, shellcheck(부팅 스크립트는 템플릿 값을 채워 검사), actionlint, Python 문법, 부하 테스트 시나리오 형식, pytest(경보 진단·부하 테스트 실행기), checkov(받아들인 규칙은 근거와 함께 skip, 근거를 정하지 않은 규칙은 경고만), gitleaks(전체 이력)
+- **PR 검사:** `terraform fmt`·`validate`·tflint, compose 해석, Alloy·Prometheus·Loki·nginx 설정 검사, 대시보드 형식, shellcheck(부팅 스크립트는 템플릿 값을 채워 검사), actionlint, Python 문법, 부하 테스트 시나리오 형식, pytest(경보 진단·이미지 정규화 Lambda·부하 테스트 실행기), checkov(받아들인 규칙은 근거와 함께 skip, 근거를 정하지 않은 규칙은 경고만), gitleaks(전체 이력)
 - 컨테이너 이미지와 Actions는 digest·SHA로 고정하고 Dependabot으로 갱신한다
 - 부하 테스트는 실행기(`loadtest/`)로 자동화했다: 환경 생성 → 앱 배포 → 데이터 되돌리기·시딩 → 시나리오 단계 → 정합성 검증 → 결과 버킷 저장
 
