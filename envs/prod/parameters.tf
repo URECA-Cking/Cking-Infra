@@ -1,5 +1,5 @@
 # deploy.sh와 감시용 서버가 읽는 값 중 비밀이 아닌 것만 여기서 만든다.
-# 비밀값(DB_PASSWORD, REDIS_PASSWORD 등)은 사람이 SecureString으로 직접 넣는다(README 운영 환경 절차).
+# 비밀값(DB_PASSWORD, REDIS_PASSWORD 등)은 사람이 SecureString으로 직접 넣는다(docs/setup.md 운영 환경).
 
 locals {
   db_app_username = "cking_app"

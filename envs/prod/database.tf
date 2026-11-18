@@ -1,5 +1,5 @@
 # MySQL 다중 AZ(주 + 대기 1). 마스터 비밀번호는 RDS가 Secrets Manager에서 만들고 교체해 아무도 입력하지 않는다.
-# 앱은 마스터가 아닌 앱 전용 계정으로 접속한다. 앱 계정은 RDS가 뜬 뒤 SQL로 만든다(README 운영 환경 절차).
+# 앱은 마스터가 아닌 앱 전용 계정으로 접속한다. 앱 계정은 RDS가 뜬 뒤 SQL로 만든다(docs/setup.md 운영 환경).
 
 resource "aws_db_subnet_group" "main" {
   name       = "prod-cking-db"
