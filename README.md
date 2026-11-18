@@ -1,8 +1,8 @@
 <div align="center">
-  <img src="./docs/images/cking-logo.png" alt="CKing 로고" width="420" />
+  <img src="./docs/images/cking-logo.png" alt="Cking 로고" width="420" />
 
   <h3>크리에이터와 팬을 잇는 팬 참여형 이벤트 플랫폼</h3>
-  <p>CKing의 AWS 인프라 코드(Terraform)와 운영 문서 저장소입니다.</p>
+  <p>Cking의 AWS 인프라 코드(Terraform)와 운영 문서 저장소입니다.</p>
 
   <p><a href="https://cking.co.kr"><img alt="서비스 종료" src="https://img.shields.io/badge/SERVICE_ENDED-cking.co.kr-6B7280?style=for-the-badge&logo=googlechrome&logoColor=white" /></a></p>
   <p><a href="https://github.com/URECA-Cking/Cking-BE"><img alt="백엔드 저장소" src="https://img.shields.io/badge/BACKEND-Repository-282C3B?style=for-the-badge&logo=github&logoColor=white" /></a></p>
